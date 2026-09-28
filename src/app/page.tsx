@@ -63,8 +63,12 @@ export default function PhotoboothKioskPage() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
-  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
-  const [livePhotos, setLivePhotos] = useState<LivePhotoMedia[]>([]);
+  const [capturedPhotos, setCapturedPhotos] = useState<(string | null)[]>(() =>
+    Array(selectedPackage.shotsCount || 4).fill(null)
+  );
+  const [livePhotos, setLivePhotos] = useState<(LivePhotoMedia | null)[]>(() =>
+    Array(selectedPackage.shotsCount || 4).fill(null)
+  );
 
   // Frame Slot Editor state
   const [selectedTemplate, setSelectedTemplate] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
@@ -78,8 +82,24 @@ export default function PhotoboothKioskPage() {
 
   const totalShotsRequired = selectedPackage.shotsCount || 4;
 
+  // Active timers & sequence control
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const sequenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isAutoSequenceRef = useRef<boolean>(false);
+
+  // Helper to sync slot array length with selected package shots
+  useEffect(() => {
+    setCapturedPhotos((prev) => {
+      const next = [...prev];
+      while (next.length < totalShotsRequired) next.push(null);
+      return next.slice(0, totalShotsRequired);
+    });
+    setLivePhotos((prev) => {
+      const next = [...prev];
+      while (next.length < totalShotsRequired) next.push(null);
+      return next.slice(0, totalShotsRequired);
+    });
+  }, [totalShotsRequired]);
 
   const clearAllActiveTimers = () => {
     if (countdownIntervalRef.current) {
@@ -125,22 +145,23 @@ export default function PhotoboothKioskPage() {
     return canvas.toDataURL('image/jpeg', 0.95);
   };
 
-  // Start capture sequence
-  const startCaptureSequence = () => {
-    clearAllActiveTimers();
-    setCapturedPhotos([]);
-    setLivePhotos([]);
-    setCurrentShotIndex(0);
-    setIsCapturing(true);
-    runShotCountdown(0, [], []);
-  };
+  // Earliest empty slot index (0 to totalShotsRequired - 1), or -1 if full
+  const earliestEmptySlot = capturedPhotos.findIndex((p) => !p);
+  const filledPhotosCount = capturedPhotos.filter((p): p is string => Boolean(p)).length;
+  const isAllShotsCompleted = filledPhotosCount === totalShotsRequired;
+  const lastFilledIndex = capturedPhotos.reduce((last, p, i) => (p ? i : last), -1);
 
-  const runShotCountdown = (shotIdx: number, accPhotos: string[], accLive: LivePhotoMedia[]) => {
+  // UNIVERSAL PICTURE TAKING ENGINE
+  // Always captures into a single targeted empty slot without double-shooting
+  const runUniversalCapture = (targetSlot: number, autoAdvance: boolean) => {
     clearAllActiveTimers();
+    isAutoSequenceRef.current = autoAdvance;
+    setIsCapturing(true);
+    setCurrentShotIndex(targetSlot);
+
     let count = settings.countdownSeconds;
     setCountdown(count);
 
-    // Start 5-second Live Photo buffer
     const video = document.querySelector('video') as HTMLVideoElement | null;
     if (video && video.srcObject) {
       livePhotoRecorder.startRecording(video.srcObject as MediaStream);
@@ -163,32 +184,54 @@ export default function PhotoboothKioskPage() {
           photoboothAudio.playShutterSound();
         }
 
-        const frameData = captureFrameFromVideo();
-        const nextPhotos = [...accPhotos, frameData || ''];
-        setCapturedPhotos(nextPhotos);
-
-        // Stop Live Photo recorder
-        const liveUrl = await livePhotoRecorder.stopRecording();
-        const nextLive: LivePhotoMedia[] = [
-          ...accLive,
-          { photoIndex: shotIdx, gifUrl: liveUrl, durationSeconds: 5 },
-        ];
-        setLivePhotos(nextLive);
-
+        // Immediately terminate countdown interval to prevent any re-triggers
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
         }
 
+        const newFrame = captureFrameFromVideo();
+        const liveUrl = await livePhotoRecorder.stopRecording();
+
+        // Place captured frame directly into the targeted slot
+        setCapturedPhotos((prev) => {
+          const next = [...prev];
+          while (next.length < totalShotsRequired) next.push(null);
+          next[targetSlot] = newFrame || '';
+          return next;
+        });
+
+        setLivePhotos((prev) => {
+          const next = [...prev];
+          while (next.length < totalShotsRequired) next.push(null);
+          next[targetSlot] = { photoIndex: targetSlot, gifUrl: liveUrl, durationSeconds: 5 };
+          return next;
+        });
+
+        // 500ms post-shutter display before advancing or completing
         sequenceTimeoutRef.current = setTimeout(() => {
           setCountdown(null);
-          if (shotIdx + 1 < totalShotsRequired) {
-            setCurrentShotIndex(shotIdx + 1);
-            sequenceTimeoutRef.current = setTimeout(() => {
-              runShotCountdown(shotIdx + 1, nextPhotos, nextLive);
-            }, 1000);
+
+          if (isAutoSequenceRef.current) {
+            // Find earliest empty slot among latest photos
+            setCapturedPhotos((latestPhotos) => {
+              const nextEmpty = latestPhotos.findIndex((p) => !p);
+
+              if (nextEmpty !== -1 && isAutoSequenceRef.current) {
+                setCurrentShotIndex(nextEmpty);
+                sequenceTimeoutRef.current = setTimeout(() => {
+                  if (isAutoSequenceRef.current) {
+                    runUniversalCapture(nextEmpty, true);
+                  }
+                }, 1000);
+              } else {
+                isAutoSequenceRef.current = false;
+                setIsCapturing(false);
+              }
+              return latestPhotos;
+            });
           } else {
-            // All shots captured! Stay on review screen so user can see and retake any shot
+            // Single slot retake or fill completed: cleanly finish without cascading
             setIsCapturing(false);
           }
         }, 500);
@@ -196,68 +239,51 @@ export default function PhotoboothKioskPage() {
     }, 1000);
   };
 
-  // Remove the just-taken picture and immediately capture a new picture to replace only that slot
-  const handleRemoveAndRetakeJustTaken = (targetIndex: number) => {
+  // Trigger universal picture taking: fills the earliest empty slot (or specific target slot)
+  const triggerUniversalCapture = (specificSlot?: number) => {
+    const target =
+      typeof specificSlot === 'number' && specificSlot >= 0 && specificSlot < totalShotsRequired
+        ? specificSlot
+        : capturedPhotos.findIndex((p) => !p);
+
+    if (target === -1) return;
+    runUniversalCapture(target, false);
+  };
+
+  // Start complete capture sequence from earliest order
+  const startCaptureSequence = () => {
     clearAllActiveTimers();
+    setCapturedPhotos(Array(totalShotsRequired).fill(null));
+    setLivePhotos(Array(totalShotsRequired).fill(null));
+    setCurrentShotIndex(0);
+    runUniversalCapture(0, true);
+  };
 
-    // Remove targeted shot from the list
-    const remainingPhotos = [...capturedPhotos];
-    remainingPhotos.splice(targetIndex, 1);
-    const remainingLive = [...livePhotos];
-    remainingLive.splice(targetIndex, 1);
+  // Remove a prior photo to leave its slot empty for universal retake
+  const handleRemovePhoto = (indexToRemove: number) => {
+    // Immediately cancel any in-flight auto-sequence, countdown, or timer
+    isAutoSequenceRef.current = false;
+    clearAllActiveTimers();
+    setIsCapturing(false);
+    setCountdown(null);
+    livePhotoRecorder.stopRecording().catch(() => {});
 
-    setCapturedPhotos(remainingPhotos);
-    setLivePhotos(remainingLive);
-    setCurrentShotIndex(targetIndex);
-    setIsCapturing(true);
+    // Clear the specific slot
+    setCapturedPhotos((prev) => {
+      const next = [...prev];
+      while (next.length < totalShotsRequired) next.push(null);
+      next[indexToRemove] = null;
+      return next;
+    });
 
-    let count = settings.countdownSeconds;
-    setCountdown(count);
+    setLivePhotos((prev) => {
+      const next = [...prev];
+      while (next.length < totalShotsRequired) next.push(null);
+      next[indexToRemove] = null;
+      return next;
+    });
 
-    const video = document.querySelector('video') as HTMLVideoElement | null;
-    if (video && video.srcObject) {
-      livePhotoRecorder.startRecording(video.srcObject as MediaStream);
-    }
-
-    if (settings.playAudioCues) {
-      photoboothAudio.playCountdownBeep(false);
-    }
-
-    countdownIntervalRef.current = setInterval(async () => {
-      count -= 1;
-      if (count > 0) {
-        setCountdown(count);
-        if (settings.playAudioCues) {
-          photoboothAudio.playCountdownBeep(false);
-        }
-      } else if (count === 0) {
-        setCountdown(0);
-        if (settings.playAudioCues) {
-          photoboothAudio.playShutterSound();
-        }
-
-        const newFrame = captureFrameFromVideo();
-        const nextPhotos = [...remainingPhotos];
-        nextPhotos.splice(targetIndex, 0, newFrame || '');
-        setCapturedPhotos(nextPhotos);
-
-        const liveUrl = await livePhotoRecorder.stopRecording();
-        const nextLive = [...remainingLive];
-        nextLive.splice(targetIndex, 0, { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 });
-        setLivePhotos(nextLive);
-
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
-        }
-
-        sequenceTimeoutRef.current = setTimeout(() => {
-          setCountdown(null);
-          // Always stop capturing after retaking that single slot so it does NOT double-shoot
-          setIsCapturing(false);
-        }, 500);
-      }
-    }, 1000);
+    setCurrentShotIndex(indexToRemove);
   };
 
   // Confirm Frame Adjustments & Open Consent Modal
@@ -272,8 +298,9 @@ export default function PhotoboothKioskPage() {
     setIsProcessing(true);
 
     try {
+      const validPhotos = capturedPhotos.map((p) => p || '');
       const compositeUrl = await renderCustomFrameSlotComposite(
-        capturedPhotos,
+        validPhotos,
         selectedTemplate,
         slotAdjustments,
         settings.eventName,
@@ -286,8 +313,8 @@ export default function PhotoboothKioskPage() {
         createdAt: Date.now(),
         eventId: settings.eventName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         packageId: selectedPackage.id,
-        rawPhotos: capturedPhotos,
-        livePhotos,
+        rawPhotos: validPhotos,
+        livePhotos: livePhotos.filter((lp): lp is LivePhotoMedia => Boolean(lp)),
         compositeUrl,
         layout: selectedTemplate.layout,
         filter: settings.selectedFilter,
@@ -334,10 +361,13 @@ export default function PhotoboothKioskPage() {
   };
 
   const handleResetKiosk = () => {
+    clearAllActiveTimers();
     setCurrentStep('WELCOME');
-    setCapturedPhotos([]);
-    setLivePhotos([]);
+    setCapturedPhotos(Array(totalShotsRequired).fill(null));
+    setLivePhotos(Array(totalShotsRequired).fill(null));
     setCurrentShotIndex(0);
+    setIsCapturing(false);
+    setCountdown(null);
     setCurrentSession(null);
     setSlotAdjustments({});
   };
@@ -451,7 +481,7 @@ export default function PhotoboothKioskPage() {
           {/* Captured Photos Strip with Retake Buttons */}
           <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/90 border border-zinc-800 rounded-3xl shadow-xl">
             <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center hidden lg:block mb-1">
-              Your Poses ({capturedPhotos.length}/{totalShotsRequired})
+              Your Poses ({filledPhotosCount}/{totalShotsRequired})
             </div>
             {Array.from({ length: totalShotsRequired }).map((_, idx) => {
               const photo = capturedPhotos[idx];
@@ -460,8 +490,13 @@ export default function PhotoboothKioskPage() {
               return (
                 <div
                   key={idx}
+                  onClick={() => {
+                    if (!photo && !isCapturing) {
+                      triggerUniversalCapture(idx);
+                    }
+                  }}
                   className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${
-                    isCurrent ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105' : photo ? 'border-zinc-700 hover:border-pink-400' : 'border-zinc-800'
+                    isCurrent ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105' : photo ? 'border-zinc-700 hover:border-pink-400' : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
                   }`}
                 >
                   {photo ? (
@@ -474,24 +509,25 @@ export default function PhotoboothKioskPage() {
                         #{idx + 1}
                       </span>
 
-                      {/* Small "x" circle button appearing ONLY on the one image prior that had just been taken */}
-                      {idx === capturedPhotos.length - 1 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveAndRetakeJustTaken(idx);
-                          }}
-                          title={`Remove Pose #${idx + 1} and retake`}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5 stroke-[3]" />
-                        </button>
-                      )}
+                      {/* Remove button to clear image and allow universal retake for this slot */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemovePhoto(idx);
+                        }}
+                        title={`Remove Pose #${idx + 1} to retake`}
+                        className={`absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 hover:scale-115 cursor-pointer ${
+                          idx === lastFilledIndex ? 'animate-pulse ring-rose-400/50' : ''
+                        }`}
+                      >
+                        <X className="w-3.5 h-3.5 stroke-[3]" />
+                      </button>
                     </>
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
-                      <Camera className="w-4 h-4 mb-1 opacity-40" />
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
+                      <Camera className="w-4 h-4 mb-1 opacity-40 group-hover:opacity-80 transition-opacity" />
                       <span className="text-[11px] font-bold">Pose #{idx + 1}</span>
+                      <span className="text-[9px] text-zinc-500 font-medium">Empty</span>
                     </div>
                   )}
                 </div>
@@ -504,7 +540,7 @@ export default function PhotoboothKioskPage() {
       {/* STEP 2 BOTTOM BAR: START SHOOTING OR CONTINUE TO FRAME SELECTION */}
       {currentStep === 'CAMERA_SESSION' && !isCapturing && (
         <footer className="max-w-xl mx-auto w-full flex flex-col sm:flex-row items-center justify-center gap-3 z-10 pb-4">
-          {capturedPhotos.length === 0 ? (
+          {filledPhotosCount === 0 ? (
             <button
               onClick={startCaptureSequence}
               className="w-full py-5 rounded-3xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-black text-xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center gap-2"
@@ -512,7 +548,7 @@ export default function PhotoboothKioskPage() {
               <Sparkles className="w-6 h-6" />
               Start Capture ({totalShotsRequired} Poses)
             </button>
-          ) : capturedPhotos.length === totalShotsRequired ? (
+          ) : isAllShotsCompleted ? (
             <>
               <button
                 onClick={startCaptureSequence}
@@ -531,10 +567,11 @@ export default function PhotoboothKioskPage() {
             </>
           ) : (
             <button
-              onClick={() => runShotCountdown(capturedPhotos.length, capturedPhotos, livePhotos)}
+              onClick={() => triggerUniversalCapture()}
               className="w-full py-4 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center gap-2"
             >
-              Take Remaining Pose #{capturedPhotos.length + 1}
+              <Camera className="w-5 h-5" />
+              Take Empty Pose #{earliestEmptySlot + 1}
             </button>
           )}
         </footer>
@@ -543,7 +580,7 @@ export default function PhotoboothKioskPage() {
       {/* STEP 3: INTERACTIVE FRAME & PINCH-ZOOM SLOT EDITOR */}
       {currentStep === 'FRAME_EDITOR' && (
         <FrameSlotEditor
-          capturedPhotos={capturedPhotos}
+          capturedPhotos={capturedPhotos.map((p) => p || '')}
           selectedTemplate={selectedTemplate}
           onSelectTemplate={setSelectedTemplate}
           slotAdjustments={slotAdjustments}
@@ -556,7 +593,8 @@ export default function PhotoboothKioskPage() {
           onConfirm={handleConfirmFrame}
           onRetakePhoto={(targetIdx) => {
             setCurrentStep('CAMERA_SESSION');
-            handleRemoveAndRetakeJustTaken(targetIdx);
+            handleRemovePhoto(targetIdx);
+            triggerUniversalCapture(targetIdx);
           }}
         />
       )}
