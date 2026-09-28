@@ -69,6 +69,8 @@ export default function PhotoboothKioskPage() {
   const [livePhotos, setLivePhotos] = useState<(LivePhotoMedia | null)[]>(() =>
     Array(selectedPackage.shotsCount || 4).fill(null)
   );
+  // Track the single prior image that was just taken (only this slot can be removed/retaken)
+  const [lastTakenSlot, setLastTakenSlot] = useState<number | null>(null);
 
   // Frame Slot Editor state
   const [selectedTemplate, setSelectedTemplate] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
@@ -212,6 +214,7 @@ export default function PhotoboothKioskPage() {
         });
 
         setCurrentShotIndex(destinationSlot);
+        setLastTakenSlot(destinationSlot);
 
         setLivePhotos((prev) => {
           const next = [...prev];
@@ -264,6 +267,7 @@ export default function PhotoboothKioskPage() {
   // Start complete capture sequence from earliest order
   const startCaptureSequence = () => {
     clearAllActiveTimers();
+    setLastTakenSlot(null);
     setCapturedPhotos(Array(totalShotsRequired).fill(null));
     setLivePhotos(Array(totalShotsRequired).fill(null));
     setCurrentShotIndex(0);
@@ -272,6 +276,12 @@ export default function PhotoboothKioskPage() {
 
   // Remove a prior photo: slot becomes empty, and the picture taking action goes on filling top empty slots
   const handleRemovePhoto = (indexToRemove: number) => {
+    // Only the single immediately prior image can be removed / retaken
+    if (lastTakenSlot !== null && indexToRemove !== lastTakenSlot) {
+      return;
+    }
+    setLastTakenSlot(null);
+
     // 1. Clear the specific slot
     setCapturedPhotos((prev) => {
       const next = [...prev];
@@ -389,6 +399,7 @@ export default function PhotoboothKioskPage() {
   const handleResetKiosk = () => {
     clearAllActiveTimers();
     setCurrentStep('WELCOME');
+    setLastTakenSlot(null);
     setCapturedPhotos(Array(totalShotsRequired).fill(null));
     setLivePhotos(Array(totalShotsRequired).fill(null));
     setCurrentShotIndex(0);
@@ -535,19 +546,19 @@ export default function PhotoboothKioskPage() {
                         #{idx + 1}
                       </span>
 
-                      {/* Remove button to clear image and allow universal retake for this slot */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemovePhoto(idx);
-                        }}
-                        title={`Remove Pose #${idx + 1} to retake`}
-                        className={`absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 hover:scale-115 cursor-pointer ${
-                          idx === lastFilledIndex ? 'animate-pulse ring-rose-400/50' : ''
-                        }`}
-                      >
-                        <X className="w-3.5 h-3.5 stroke-[3]" />
-                      </button>
+                      {/* Cross button appears ONLY on just one prior image */}
+                      {idx === lastTakenSlot && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePhoto(idx);
+                          }}
+                          title={`Remove Pose #${idx + 1} and retake`}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5 stroke-[3]" />
+                        </button>
+                      )}
                     </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
