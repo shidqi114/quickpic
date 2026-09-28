@@ -1,4 +1,6 @@
-export type StripLayout = 'strip-3' | 'strip-4' | 'grid-2x2' | 'single';
+export type StripLayout = 'strip-3' | 'strip-4' | 'grid-2x2' | 'single' | '4r-classic' | 'a4-collage';
+
+export type FrameCategory = 'strip' | '4r' | 'a4' | 'square';
 
 export type PhotoFilter = 
   | 'none' 
@@ -16,7 +18,152 @@ export interface FrameTheme {
   textColor: string;
   accentColor: string;
   borderWidth: number;
-  overlayUrl?: string; // Optional custom PNG frame
+}
+
+export interface FrameSlot {
+  id: string;
+  x: number;          // Percentage or pixel offset (0-100%)
+  y: number;
+  width: number;      // Width percentage (0-100%)
+  height: number;
+  rotation?: number;
+  aspectRatio: number; // e.g. 4/3 or 1/1
+}
+
+export interface FrameTemplate {
+  id: string;
+  name: string;
+  category: FrameCategory;
+  layout: StripLayout;
+  slotCount: number;
+  slots: FrameSlot[];
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  overlayPngUrl?: string; // Optional custom PNG border
+  previewThumbnailUrl?: string;
+}
+
+export interface SlotAdjustment {
+  slotId: string;
+  photoIndex: number;
+  zoom: number;       // 1.0 to 3.0
+  panX: number;       // -100 to +100 px
+  panY: number;
+  filter: PhotoFilter;
+}
+
+export interface PhotoboothPackage {
+  id: string;
+  name: string;
+  description: string;
+  price: number;              // in IDR / currency
+  formattedPrice: string;
+  shotsCount: number;
+  physicalPrintsCount: number;
+  includesLivePhotoGif: boolean;
+  includesSoftFiles: boolean;
+  isPopular?: boolean;
+}
+
+export interface ExtraPrintOption {
+  id: string;
+  name: string;
+  pricePerUnit: number;
+  quantity: number;
+}
+
+export interface VoucherCode {
+  code: string;
+  type: 'percentage' | 'fixed' | 'free';
+  value: number; // e.g. 20 (for 20%), 15000, or 100%
+  description: string;
+  validUntil: string;
+  isActive: boolean;
+  usageCount: number;
+}
+
+export interface PaymentDetails {
+  method: 'qris_midtrans' | 'qris_xendit' | 'cash_bypass';
+  amount: number;
+  qrisPayloadString?: string;
+  qrisImageUrl?: string;
+  transactionId: string;
+  status: 'pending' | 'settled' | 'bypassed';
+  staffBypassPinUsed?: boolean;
+  voucherApplied?: VoucherCode;
+}
+
+export interface LivePhotoMedia {
+  photoIndex: number;
+  gifUrl: string;
+  videoUrl?: string;
+  durationSeconds: number;
+}
+
+export interface SocialConsent {
+  granted: boolean;
+  customerHandle?: string;
+  timestamp: number;
+}
+
+export interface PhotoSession {
+  id: string;
+  createdAt: number;
+  eventId: string;
+  packageId: string;
+  rawPhotos: string[];          // Base64 or Cloud URLs
+  livePhotos?: LivePhotoMedia[]; // 5-second video / GIF captures
+  compositeUrl: string;         // Final rendered frame/strip URL
+  layout: StripLayout;
+  filter: PhotoFilter;
+  themeId: string;
+  selectedTemplateId: string;
+  slotAdjustments?: SlotAdjustment[];
+  payment: PaymentDetails;
+  consent: SocialConsent;
+  storagePath?: string;
+  guestDownloadUrl?: string;
+  expiresAt: number;            // 30 days from creation
+  printStatus: 'not_requested' | 'queued' | 'printed';
+}
+
+export interface POSItem {
+  id: string;
+  name: string;
+  category: 'merchandise' | 'frame' | 'keychain' | 'packaging';
+  price: number;
+  stock: number;
+  imageUrl?: string;
+}
+
+export interface QueueTicket {
+  ticketNumber: string;
+  customerName?: string;
+  packageName: string;
+  createdAt: number;
+  estimatedWaitMinutes: number;
+  status: 'waiting' | 'called' | 'completed' | 'cancelled';
+  qrVerificationCode: string;
+}
+
+export interface DeviceTelemetry {
+  deviceId: string;
+  lastPingTime: number;
+  isOnline: boolean;
+  cpuPct: number;
+  ramPct: number;
+  camera: {
+    connected: boolean;
+    model: string;
+  };
+  printer: {
+    connected: boolean;
+    name: string;
+    ribbonRemaining: number;
+    ribbonPercentage: number;
+    queueDepth: number;
+  };
 }
 
 export interface BoothSettings {
@@ -32,27 +179,5 @@ export interface BoothSettings {
   customOverlayUrl?: string;
   mirrorCamera: boolean;
   printEnabled: boolean;
-}
-
-export interface PhotoSession {
-  id: string;
-  createdAt: number;
-  eventId: string;
-  rawPhotos: string[]; // Base64 or Blob URLs
-  compositeUrl: string; // Final rendered strip URL / Base64
-  layout: StripLayout;
-  filter: PhotoFilter;
-  themeId: string;
-  storagePath?: string;
-  guestDownloadUrl?: string;
-}
-
-export interface EventConfig {
-  id: string;
-  title: string;
-  date: string;
-  hashtag: string;
-  boothSettings: BoothSettings;
-  photoCount: number;
-  createdAt: number;
+  hardwareDaemonUrl?: string; // e.g. http://localhost:8000
 }

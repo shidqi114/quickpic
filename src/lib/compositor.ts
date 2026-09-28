@@ -1,4 +1,4 @@
-import { StripLayout, PhotoFilter, FrameTheme, BoothSettings } from '@/types/photobooth';
+import { StripLayout, PhotoFilter, FrameTheme, BoothSettings, FrameTemplate, SlotAdjustment } from '@/types/photobooth';
 
 export const FRAME_THEMES: FrameTheme[] = [
   {
@@ -310,4 +310,102 @@ export async function renderPhotoComposite(
   }
 
   return canvas.toDataURL('image/jpeg', 0.92);
+}
+
+export async function renderCustomFrameSlotComposite(
+  photoUrls: string[],
+  template: FrameTemplate,
+  slotAdjustments: Record<string, SlotAdjustment>,
+  eventName = 'QUICKPIC PHOTOBOOTH',
+  eventDate = 'SEP 2026'
+): Promise<string> {
+  const images = await Promise.all(photoUrls.map(loadImage));
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context not supported');
+
+  // Set high-res print canvas dimensions based on template category
+  if (template.category === 'strip') {
+    canvas.width = 1200;
+    canvas.height = 3600; // Standard 2x6 inch @ 600 DPI
+  } else if (template.category === '4r') {
+    canvas.width = 2400;
+    canvas.height = 3600; // Standard 4x6 inch @ 600 DPI
+  } else {
+    canvas.width = 2480;
+    canvas.height = 3508; // Standard A4 @ 300 DPI
+  }
+
+  // Draw frame background
+  ctx.fillStyle = template.backgroundColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle border accent
+  ctx.strokeStyle = template.accentColor;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+  // Render each slot with its zoom, pan, and filter adjustments
+  for (let i = 0; i < template.slots.length; i++) {
+    const slot = template.slots[i];
+    const adj = slotAdjustments[slot.id] || {
+      slotId: slot.id,
+      photoIndex: i % images.length,
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+      filter: 'none',
+    };
+
+    const img = images[adj.photoIndex] || images[0];
+    if (!img) continue;
+
+    const slotPixelX = (slot.x / 100) * canvas.width;
+    const slotPixelY = (slot.y / 100) * canvas.height;
+    const slotPixelW = (slot.width / 100) * canvas.width;
+    const slotPixelH = (slot.height / 100) * canvas.height;
+
+    // Create offscreen slot canvas
+    const slotCanvas = document.createElement('canvas');
+    slotCanvas.width = slotPixelW;
+    slotCanvas.height = slotPixelH;
+    const slotCtx = slotCanvas.getContext('2d');
+
+    if (slotCtx) {
+      slotCtx.save();
+      // Apply zoom & pan translation from center
+      const centerX = slotPixelW / 2;
+      const centerY = slotPixelH / 2;
+      slotCtx.translate(centerX + adj.panX * 2, centerY + adj.panY * 2);
+      slotCtx.scale(adj.zoom, adj.zoom);
+      slotCtx.drawImage(img, -centerX, -centerY, slotPixelW, slotPixelH);
+      slotCtx.restore();
+
+      // Apply per-slot filter
+      applyFilterToCanvas(slotCtx, slotPixelW, slotPixelH, adj.filter);
+
+      // Draw slot onto master canvas
+      ctx.drawImage(slotCanvas, slotPixelX, slotPixelY);
+
+      // Slot border
+      ctx.strokeStyle = template.accentColor;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(slotPixelX, slotPixelY, slotPixelW, slotPixelH);
+    }
+  }
+
+  // Draw branding footer
+  const footerY = canvas.height - 180;
+  ctx.fillStyle = template.textColor;
+  ctx.textAlign = 'center';
+
+  ctx.font = 'bold 54px sans-serif';
+  ctx.fillText(eventName.toUpperCase(), canvas.width / 2, footerY);
+
+  ctx.font = '36px sans-serif';
+  ctx.globalAlpha = 0.75;
+  ctx.fillText(eventDate, canvas.width / 2, footerY + 60);
+  ctx.globalAlpha = 1.0;
+
+  return canvas.toDataURL('image/jpeg', 0.95);
 }

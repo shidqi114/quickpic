@@ -1,15 +1,38 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Settings, Maximize, Sparkles, Image as ImageIcon, Layers, RefreshCw } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Camera, Settings, Maximize, Sparkles, RefreshCw, Layers, ArrowLeft, Heart, Check, QrCode, Printer, Undo2 } from 'lucide-react';
 import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { SettingsModal } from '@/components/SettingsModal';
+import { PackagePaymentModal } from '@/components/Payment/PackagePaymentModal';
+import { FrameSlotEditor } from '@/components/FrameEditor/FrameSlotEditor';
+import { ConsentModal } from '@/components/ConsentModal';
 import { ResultModal } from '@/components/ResultModal';
-import { BoothSettings, PhotoFilter, PhotoSession } from '@/types/photobooth';
-import { FRAME_THEMES, renderPhotoComposite } from '@/lib/compositor';
+import {
+  BoothSettings,
+  PhotoFilter,
+  PhotoSession,
+  PhotoboothPackage,
+  PaymentDetails,
+  FrameTemplate,
+  SlotAdjustment,
+  SocialConsent,
+  LivePhotoMedia,
+} from '@/types/photobooth';
+import { FRAME_TEMPLATES, PHOTOBOOTH_PACKAGES } from '@/lib/constants';
+import { renderCustomFrameSlotComposite, FRAME_THEMES } from '@/lib/compositor';
 import { photoboothAudio } from '@/lib/audio';
 import { savePhotoSession } from '@/lib/firebase';
+import { livePhotoRecorder } from '@/lib/livephoto';
 import Link from 'next/link';
+
+type KioskStep = 
+  | 'WELCOME'
+  | 'PACKAGE_PAYMENT'
+  | 'CAMERA_SESSION'
+  | 'FRAME_EDITOR'
+  | 'CONSENT_MODAL'
+  | 'RESULT_QR';
 
 const DEFAULT_SETTINGS: BoothSettings = {
   eventName: 'Summer Gala 2026',
@@ -23,38 +46,38 @@ const DEFAULT_SETTINGS: BoothSettings = {
   selectedThemeId: 'classic-white',
   mirrorCamera: true,
   printEnabled: true,
+  hardwareDaemonUrl: 'http://localhost:8000',
 };
 
-export default function PhotoboothPage() {
+export default function PhotoboothKioskPage() {
+  const [currentStep, setCurrentStep] = useState<KioskStep>('WELCOME');
   const [settings, setSettings] = useState<BoothSettings>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  
-  // Photobooth state machine
+
+  // Selected package & payment details
+  const [selectedPackage, setSelectedPackage] = useState<PhotoboothPackage>(PHOTOBOOTH_PACKAGES[0]);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [extraPrintsCount, setExtraPrintsCount] = useState(0);
+
+  // Camera session state
   const [isCapturing, setIsCapturing] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [livePhotos, setLivePhotos] = useState<LivePhotoMedia[]>([]);
+
+  // Frame Slot Editor state
+  const [selectedTemplate, setSelectedTemplate] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
+  const [slotAdjustments, setSlotAdjustments] = useState<Record<string, SlotAdjustment>>({});
+
+  // Consent & Output state
+  const [socialConsent, setSocialConsent] = useState<SocialConsent>({ granted: false, timestamp: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentSession, setCurrentSession] = useState<PhotoSession | null>(null);
   const [guestUrl, setGuestUrl] = useState<string>('');
 
-  // Number of shots required for current layout
-  const getRequiredShotCount = () => {
-    switch (settings.layout) {
-      case 'strip-3':
-        return 3;
-      case 'strip-4':
-      case 'grid-2x2':
-        return 4;
-      case 'single':
-      default:
-        return 1;
-    }
-  };
+  const totalShotsRequired = selectedPackage.shotsCount || 4;
 
-  const totalShots = getRequiredShotCount();
-
-  // Trigger Fullscreen
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -63,7 +86,7 @@ export default function PhotoboothPage() {
     }
   };
 
-  // Capture single frame from the live video feed
+  // Helper to capture single frame from viewfinder
   const captureFrameFromVideo = (): string | null => {
     const video = document.querySelector('video') as HTMLVideoElement | null;
     if (!video) return null;
@@ -86,22 +109,28 @@ export default function PhotoboothPage() {
 
   // Start capture sequence
   const startCaptureSequence = () => {
-    if (isCapturing || isProcessing) return;
     setCapturedPhotos([]);
+    setLivePhotos([]);
     setCurrentShotIndex(0);
     setIsCapturing(true);
-    runShotCountdown(0, []);
+    runShotCountdown(0, [], []);
   };
 
-  // Countdown runner
-  const runShotCountdown = (shotIdx: number, accumulatedShots: string[]) => {
+  const runShotCountdown = (shotIdx: number, accPhotos: string[], accLive: LivePhotoMedia[]) => {
     let count = settings.countdownSeconds;
     setCountdown(count);
+
+    // Start 5-second Live Photo buffer
+    const video = document.querySelector('video') as HTMLVideoElement | null;
+    if (video && video.srcObject) {
+      livePhotoRecorder.startRecording(video.srcObject as MediaStream);
+    }
+
     if (settings.playAudioCues) {
       photoboothAudio.playCountdownBeep(false);
     }
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       count -= 1;
       if (count > 0) {
         setCountdown(count);
@@ -109,57 +138,113 @@ export default function PhotoboothPage() {
           photoboothAudio.playCountdownBeep(false);
         }
       } else if (count === 0) {
-        // Flash & Shutter
         setCountdown(0);
         if (settings.playAudioCues) {
           photoboothAudio.playShutterSound();
         }
 
-        // Snap photo
         const frameData = captureFrameFromVideo();
-        const nextPhotos = [...accumulatedShots, frameData || ''];
+        const nextPhotos = [...accPhotos, frameData || ''];
         setCapturedPhotos(nextPhotos);
+
+        // Stop Live Photo recorder
+        const liveUrl = await livePhotoRecorder.stopRecording();
+        const nextLive: LivePhotoMedia[] = [
+          ...accLive,
+          { photoIndex: shotIdx, gifUrl: liveUrl, durationSeconds: 5 },
+        ];
+        setLivePhotos(nextLive);
 
         clearInterval(interval);
 
-        // Next shot or Finish
         setTimeout(() => {
           setCountdown(null);
-          if (shotIdx + 1 < totalShots) {
+          if (shotIdx + 1 < totalShotsRequired) {
             setCurrentShotIndex(shotIdx + 1);
             setTimeout(() => {
-              runShotCountdown(shotIdx + 1, nextPhotos);
-            }, 1000); // 1 sec pause between shots
+              runShotCountdown(shotIdx + 1, nextPhotos, nextLive);
+            }, 1000);
           } else {
-            // Sequence completed
-            finishSession(nextPhotos);
+            // Sequence completed -> Move to Frame Editor
+            setIsCapturing(false);
+            setCurrentStep('FRAME_EDITOR');
           }
         }, 500);
       }
     }, 1000);
   };
 
-  // Finish session, render strip, and save to Firebase/Storage
-  const finishSession = async (photos: string[]) => {
-    setIsCapturing(false);
+  // Retake specific shot
+  const handleRetakeLastShot = () => {
+    if (capturedPhotos.length === 0) return;
+    const newPhotos = capturedPhotos.slice(0, -1);
+    const newLive = livePhotos.slice(0, -1);
+    setCapturedPhotos(newPhotos);
+    setLivePhotos(newLive);
+    const nextIdx = newPhotos.length;
+    setCurrentShotIndex(nextIdx);
+    runShotCountdown(nextIdx, newPhotos, newLive);
+  };
+
+  // Confirm Frame Adjustments & Open Consent Modal
+  const handleConfirmFrame = () => {
+    setCurrentStep('CONSENT_MODAL');
+  };
+
+  // Finalize Session, Render Strip, Trigger DNP Spooler, & Save to Cloud
+  const handleFinalizeSession = async (consent: SocialConsent) => {
+    setSocialConsent(consent);
+    setCurrentStep('RESULT_QR');
     setIsProcessing(true);
 
     try {
-      const selectedTheme = FRAME_THEMES.find((t) => t.id === settings.selectedThemeId) || FRAME_THEMES[0];
-      const compositeUrl = await renderPhotoComposite(photos, settings, selectedTheme);
+      const compositeUrl = await renderCustomFrameSlotComposite(
+        capturedPhotos,
+        selectedTemplate,
+        slotAdjustments,
+        settings.eventName,
+        settings.eventDate
+      );
 
-      const sessionId = 'snap_' + Math.random().toString(36).substring(2, 9);
+      const sessionId = 'session_' + Math.random().toString(36).substring(2, 9);
       const session: PhotoSession = {
         id: sessionId,
         createdAt: Date.now(),
         eventId: settings.eventName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-        rawPhotos: photos,
+        packageId: selectedPackage.id,
+        rawPhotos: capturedPhotos,
+        livePhotos,
         compositeUrl,
-        layout: settings.layout,
+        layout: selectedTemplate.layout,
         filter: settings.selectedFilter,
-        themeId: settings.selectedThemeId,
+        themeId: selectedTemplate.id,
+        selectedTemplateId: selectedTemplate.id,
+        payment: paymentDetails || {
+          method: 'cash_bypass',
+          amount: selectedPackage.price,
+          transactionId: 'DIRECT_' + sessionId,
+          status: 'settled',
+        },
+        consent,
+        expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+        printStatus: 'queued',
       };
 
+      // 1. Spool to local DNP printer daemon if enabled
+      if (settings.printEnabled && settings.hardwareDaemonUrl) {
+        fetch(`${settings.hardwareDaemonUrl}/printer/print`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kiosk_id: 'kiosk-01',
+            image_url_or_base64: compositeUrl,
+            copies: selectedPackage.physicalPrintsCount + extraPrintsCount,
+            layout: selectedTemplate.category === 'strip' ? 'strip-2x6' : 'photo-4x6',
+          }),
+        }).catch((e) => console.warn('Local DNP spooler unreachable:', e));
+      }
+
+      // 2. Save session to Cloud Storage & Firestore
       const result = await savePhotoSession(session);
       setCurrentSession(session);
       setGuestUrl(result.guestUrl);
@@ -168,24 +253,25 @@ export default function PhotoboothPage() {
         photoboothAudio.playSuccessChime();
       }
     } catch (err) {
-      console.error('Failed to render or save photobooth strip:', err);
+      console.error('Finalize session error:', err);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleReset = () => {
-    setCurrentSession(null);
+  const handleResetKiosk = () => {
+    setCurrentStep('WELCOME');
     setCapturedPhotos([]);
+    setLivePhotos([]);
     setCurrentShotIndex(0);
-    setIsCapturing(false);
-    setIsProcessing(false);
+    setCurrentSession(null);
+    setSlotAdjustments({});
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between p-4 md:p-6 select-none">
+    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between p-4 md:p-6 select-none relative overflow-hidden">
       
-      {/* Top Bar / Navigation */}
+      {/* Top Bar Navigation */}
       <header className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-pink-500/25">
@@ -193,10 +279,10 @@ export default function PhotoboothPage() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              QuickPic Photobooth
+              QuickPic Enterprise Photobooth
             </h1>
             <p className="text-xs text-pink-400 font-medium">
-              {settings.eventName} &bull; {settings.layout.toUpperCase()}
+              {settings.eventName} &bull; {selectedPackage.name}
             </p>
           </div>
         </div>
@@ -206,151 +292,183 @@ export default function PhotoboothPage() {
             href="/admin"
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
           >
-            Dashboard
+            Admin Dashboard
           </Link>
           <Link
-            href="/live"
+            href="/admin/devices"
             className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
           >
-            Live Wall
+            Hardware Monitor
           </Link>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            title="Booth Settings"
-            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition"
           >
             <Settings className="w-5 h-5" />
           </button>
           <button
             onClick={toggleFullscreen}
-            title="Toggle Kiosk Fullscreen"
-            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition"
           >
             <Maximize className="w-5 h-5" />
           </button>
         </div>
       </header>
 
-      {/* Main Viewfinder & Strip Progression Container */}
-      <section className="flex-1 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-center gap-6 my-4">
-        
-        {/* Viewfinder Centerpiece */}
-        <div className="relative w-full max-w-4xl aspect-4/3 flex items-center justify-center">
-          <CameraViewfinder
-            countdown={countdown}
-            isCapturing={isCapturing}
-            filter={settings.selectedFilter}
-            mirror={settings.mirrorCamera}
-            playAudio={settings.playAudioCues}
-            onToggleAudio={() => setSettings((s) => ({ ...s, playAudioCues: !s.playAudioCues }))}
-          />
-
-          {/* Sequence Progress Pill Overlay */}
-          {isCapturing && (
-            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/90 backdrop-blur-md border border-pink-500/40 text-pink-300 text-xs font-bold tracking-wide uppercase shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-pink-500 animate-ping" />
-              Shot {currentShotIndex + 1} of {totalShots}
-            </div>
-          )}
-
-          {/* Processing Loading Overlay */}
-          {isProcessing && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-md rounded-3xl">
-              <RefreshCw className="w-12 h-12 text-pink-500 animate-spin mb-4" />
-              <h3 className="text-xl font-bold text-white">Stitching Your Strip...</h3>
-              <p className="text-sm text-zinc-400 mt-1">Applying filters & generating QR code</p>
-            </div>
-          )}
-        </div>
-
-        {/* Live Shot Thumbnails Strip (Right on desktop, bottom on mobile) */}
-        <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/60 backdrop-blur-xs border border-zinc-800/80 rounded-2xl">
-          {Array.from({ length: totalShots }).map((_, idx) => {
-            const photo = capturedPhotos[idx];
-            const isCurrent = isCapturing && currentShotIndex === idx;
-
-            return (
-              <div
-                key={idx}
-                className={`relative w-20 h-16 lg:w-24 lg:h-18 rounded-xl overflow-hidden border-2 transition-all flex items-center justify-center bg-zinc-950 ${
-                  isCurrent
-                    ? 'border-pink-500 ring-4 ring-pink-500/20 scale-105'
-                    : photo
-                    ? 'border-zinc-600'
-                    : 'border-zinc-800/80'
-                }`}
-              >
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={photo} alt={`Shot ${idx + 1}`} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-semibold text-zinc-600">#{idx + 1}</span>
-                )}
+      {/* STEP 1: WELCOME SCREEN */}
+      {currentStep === 'WELCOME' && (
+        <section className="flex-1 flex flex-col items-center justify-center text-center p-6 z-10 animate-fade-in">
+          {/* Brand Logo Container */}
+          <div className="relative group mb-8">
+            <div className="w-32 h-32 rounded-3xl bg-gradient-to-tr from-pink-500 via-rose-500 to-yellow-400 p-1 shadow-2xl shadow-pink-500/30">
+              <div className="w-full h-full bg-zinc-950 rounded-[22px] flex items-center justify-center">
+                <Camera className="w-16 h-16 text-pink-500 animate-pulse" />
               </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Bottom Action & Filter Bar */}
-      <footer className="max-w-4xl mx-auto w-full flex flex-col items-center gap-4 z-10">
-        
-        {/* Filter Selection Chips */}
-        {!isCapturing && !isProcessing && (
-          <div className="flex items-center gap-2 overflow-x-auto max-w-full py-1 px-2">
-            {[
-              { id: 'none', label: 'Normal' },
-              { id: 'bw', label: 'B&W' },
-              { id: 'warm', label: 'Warm' },
-              { id: 'vintage', label: 'Vintage' },
-              { id: 'sepia', label: 'Sepia' },
-              { id: 'cyberpunk', label: 'Cyber' },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setSettings((s) => ({ ...s, selectedFilter: f.id as PhotoFilter }))}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition ${
-                  settings.selectedFilter === f.id
-                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
-                    : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+            </div>
           </div>
-        )}
 
-        {/* Big Touch-to-Start Button */}
-        <div className="flex items-center justify-center w-full">
+          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-4">
+            Capture Your Magic
+          </h2>
+          <p className="text-zinc-400 text-base md:text-lg max-w-md mb-10">
+            High-res studio DSLR snapshots, 5-second Live Photo Boomerangs, and instant DNP dye-sub prints.
+          </p>
+
           <button
-            disabled={isCapturing || isProcessing}
-            onClick={startCaptureSequence}
-            className={`group relative flex items-center justify-center gap-3 px-10 py-5 rounded-3xl font-extrabold text-xl tracking-wide uppercase transition-all duration-300 shadow-2xl active:scale-95 ${
-              isCapturing || isProcessing
-                ? 'opacity-50 cursor-not-allowed bg-zinc-800 text-zinc-500'
-                : 'bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white shadow-pink-500/30 ring-4 ring-pink-500/20 animate-pulse'
-            }`}
+            onClick={() => setCurrentStep('PACKAGE_PAYMENT')}
+            className="px-12 py-6 rounded-3xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-2xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 ring-4 ring-pink-500/20 active:scale-95 transition-all duration-300 animate-pulse flex items-center gap-3"
           >
-            <Sparkles className="w-6 h-6 text-yellow-200 group-hover:rotate-12 transition transform" />
-            {isCapturing ? `Capturing Shot ${currentShotIndex + 1}...` : 'Touch to Start'}
+            <Sparkles className="w-7 h-7 text-yellow-200" />
+            Touch Screen to Start
           </button>
-        </div>
-      </footer>
+        </section>
+      )}
 
-      {/* Settings Modal */}
+      {/* STEP 2: CAMERA SESSION */}
+      {currentStep === 'CAMERA_SESSION' && (
+        <section className="flex-1 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-center gap-6 my-4 z-10 animate-fade-in">
+          
+          <div className="relative w-full max-w-4xl aspect-4/3 flex items-center justify-center">
+            <CameraViewfinder
+              countdown={countdown}
+              isCapturing={isCapturing}
+              filter={settings.selectedFilter}
+              mirror={settings.mirrorCamera}
+              playAudio={settings.playAudioCues}
+              onToggleAudio={() => setSettings((s) => ({ ...s, playAudioCues: !s.playAudioCues }))}
+            />
+
+            {/* Mirror Toggle Button */}
+            <button
+              onClick={() => setSettings((s) => ({ ...s, mirrorCamera: !s.mirrorCamera }))}
+              className="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full bg-zinc-900/80 backdrop-blur-md border border-zinc-700 text-xs font-semibold text-zinc-300 hover:text-white transition"
+            >
+              {settings.mirrorCamera ? 'Mirror: ON' : 'Mirror: OFF'}
+            </button>
+
+            {/* Sequence Status */}
+            {isCapturing && (
+              <div className="absolute top-4 right-16 z-20 px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-black uppercase tracking-wider shadow-lg">
+                Pose {currentShotIndex + 1} of {totalShotsRequired}
+              </div>
+            )}
+          </div>
+
+          {/* Captured Photos Strip + Retake Button */}
+          <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/70 border border-zinc-800 rounded-2xl">
+            {Array.from({ length: totalShotsRequired }).map((_, idx) => {
+              const photo = capturedPhotos[idx];
+              const isCurrent = isCapturing && currentShotIndex === idx;
+
+              return (
+                <div
+                  key={idx}
+                  className={`relative w-20 h-16 lg:w-24 lg:h-18 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-zinc-950 ${
+                    isCurrent ? 'border-pink-500 ring-2 ring-pink-500' : photo ? 'border-zinc-500' : 'border-zinc-800'
+                  }`}
+                >
+                  {photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-semibold text-zinc-600">#{idx + 1}</span>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Retake Last Shot Button */}
+            {!isCapturing && capturedPhotos.length > 0 && (
+              <button
+                onClick={handleRetakeLastShot}
+                className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs flex items-center gap-1 font-semibold transition"
+              >
+                <Undo2 className="w-3.5 h-3.5 text-amber-400" /> Retake
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* STEP 2 BOTTOM BAR: START SHOOTING */}
+      {currentStep === 'CAMERA_SESSION' && !isCapturing && (
+        <footer className="max-w-md mx-auto w-full flex justify-center z-10 pb-4">
+          <button
+            onClick={startCaptureSequence}
+            className="w-full py-5 rounded-3xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-black text-xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition"
+          >
+            Start Capture ({totalShotsRequired} Poses)
+          </button>
+        </footer>
+      )}
+
+      {/* STEP 3: INTERACTIVE FRAME & PINCH-ZOOM SLOT EDITOR */}
+      {currentStep === 'FRAME_EDITOR' && (
+        <FrameSlotEditor
+          capturedPhotos={capturedPhotos}
+          selectedTemplate={selectedTemplate}
+          onSelectTemplate={setSelectedTemplate}
+          slotAdjustments={slotAdjustments}
+          onUpdateSlotAdjustment={(slotId, adj) =>
+            setSlotAdjustments((prev) => ({
+              ...prev,
+              [slotId]: { ...(prev[slotId] || { slotId, photoIndex: 0, zoom: 1, panX: 0, panY: 0, filter: 'none' }), ...adj },
+            }))
+          }
+          onConfirm={handleConfirmFrame}
+        />
+      )}
+
+      {/* PACKAGE & PAYMENT MODAL */}
+      <PackagePaymentModal
+        isOpen={currentStep === 'PACKAGE_PAYMENT'}
+        onPaymentSuccess={(pkg, payment, extraCopies) => {
+          setSelectedPackage(pkg);
+          setPaymentDetails(payment);
+          setExtraPrintsCount(extraCopies);
+          setCurrentStep('CAMERA_SESSION');
+        }}
+      />
+
+      {/* SOCIAL MEDIA CONSENT MODAL */}
+      <ConsentModal
+        isOpen={currentStep === 'CONSENT_MODAL'}
+        onConfirmConsent={handleFinalizeSession}
+      />
+
+      {/* RESULT & INSTANT QR SHARE MODAL */}
+      <ResultModal
+        session={currentSession}
+        guestUrl={guestUrl}
+        onReset={handleResetKiosk}
+      />
+
+      {/* BOOTH SETTINGS MODAL */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onUpdateSettings={(newVals) => setSettings((s) => ({ ...s, ...newVals }))}
-      />
-
-      {/* Result & Instant QR Share Modal */}
-      <ResultModal
-        session={currentSession}
-        guestUrl={guestUrl}
-        onReset={handleReset}
+        onUpdateSettings={(vals) => setSettings((s) => ({ ...s, ...vals }))}
       />
     </main>
   );
