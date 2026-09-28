@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Settings, Maximize, Sparkles, RefreshCw, Layers, ArrowLeft, Heart, Check, QrCode, Printer, Undo2 } from 'lucide-react';
+import { Camera, Settings, Maximize, Sparkles, RefreshCw, Layers, ArrowLeft, Heart, Check, QrCode, Printer, Undo2, RotateCcw } from 'lucide-react';
 import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { SettingsModal } from '@/components/SettingsModal';
 import { PackagePaymentModal } from '@/components/Payment/PackagePaymentModal';
@@ -174,16 +174,62 @@ export default function PhotoboothKioskPage() {
     }, 1000);
   };
 
-  // Retake specific shot
+  // Retake a specific prior photo (e.g. shot #2) and replace it with a new snapshot
+  const handleRetakeSpecificShot = (targetIndex: number) => {
+    if (isCapturing) return;
+    setIsCapturing(true);
+    setCurrentShotIndex(targetIndex);
+
+    let count = settings.countdownSeconds;
+    setCountdown(count);
+
+    // Start Live Photo buffer for this retake
+    const video = document.querySelector('video') as HTMLVideoElement | null;
+    if (video && video.srcObject) {
+      livePhotoRecorder.startRecording(video.srcObject as MediaStream);
+    }
+
+    if (settings.playAudioCues) {
+      photoboothAudio.playCountdownBeep(false);
+    }
+
+    const interval = setInterval(async () => {
+      count -= 1;
+      if (count > 0) {
+        setCountdown(count);
+        if (settings.playAudioCues) {
+          photoboothAudio.playCountdownBeep(false);
+        }
+      } else if (count === 0) {
+        setCountdown(0);
+        if (settings.playAudioCues) {
+          photoboothAudio.playShutterSound();
+        }
+
+        const newFrame = captureFrameFromVideo();
+        const updatedPhotos = [...capturedPhotos];
+        updatedPhotos[targetIndex] = newFrame || '';
+        setCapturedPhotos(updatedPhotos);
+
+        const liveUrl = await livePhotoRecorder.stopRecording();
+        const updatedLive = [...livePhotos];
+        updatedLive[targetIndex] = { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 };
+        setLivePhotos(updatedLive);
+
+        clearInterval(interval);
+
+        setTimeout(() => {
+          setCountdown(null);
+          setIsCapturing(false);
+        }, 500);
+      }
+    }, 1000);
+  };
+
+  // Retake last shot
   const handleRetakeLastShot = () => {
     if (capturedPhotos.length === 0) return;
-    const newPhotos = capturedPhotos.slice(0, -1);
-    const newLive = livePhotos.slice(0, -1);
-    setCapturedPhotos(newPhotos);
-    setLivePhotos(newLive);
-    const nextIdx = newPhotos.length;
-    setCurrentShotIndex(nextIdx);
-    runShotCountdown(nextIdx, newPhotos, newLive);
+    handleRetakeSpecificShot(capturedPhotos.length - 1);
   };
 
   // Confirm Frame Adjustments & Open Consent Modal
@@ -383,29 +429,40 @@ export default function PhotoboothKioskPage() {
               return (
                 <div
                   key={idx}
-                  className={`relative w-20 h-16 lg:w-24 lg:h-18 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-zinc-950 ${
-                    isCurrent ? 'border-pink-500 ring-2 ring-pink-500' : photo ? 'border-zinc-500' : 'border-zinc-800'
+                  className={`group relative w-20 h-16 lg:w-24 lg:h-18 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-zinc-950 transition ${
+                    isCurrent ? 'border-pink-500 ring-2 ring-pink-500 scale-105' : photo ? 'border-zinc-500 hover:border-pink-400' : 'border-zinc-800'
                   }`}
                 >
                   {photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
+                      
+                      {/* Pose Number Badge */}
+                      <span className="absolute bottom-1 left-1 px-1 rounded bg-black/75 text-[9px] font-bold text-white backdrop-blur-xs">
+                        #{idx + 1}
+                      </span>
+
+                      {/* Small Remove & Replace Retake Button on Prior Photo */}
+                      {!isCapturing && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRetakeSpecificShot(idx);
+                          }}
+                          title={`Retake & Replace Pose #${idx + 1}`}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600/95 hover:bg-rose-500 text-white shadow-lg flex items-center justify-center transition-all duration-200 active:scale-90 z-20 group-hover:scale-110"
+                        >
+                          <RotateCcw className="w-3 h-3 hover:rotate-180 transition-transform duration-300" />
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <span className="text-xs font-semibold text-zinc-600">#{idx + 1}</span>
                   )}
                 </div>
               );
             })}
-
-            {/* Retake Last Shot Button */}
-            {!isCapturing && capturedPhotos.length > 0 && (
-              <button
-                onClick={handleRetakeLastShot}
-                className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs flex items-center gap-1 font-semibold transition"
-              >
-                <Undo2 className="w-3.5 h-3.5 text-amber-400" /> Retake
-              </button>
-            )}
           </div>
         </section>
       )}
