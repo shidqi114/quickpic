@@ -12,6 +12,7 @@ interface FrameSlotEditorProps {
   slotAdjustments: Record<string, SlotAdjustment>;
   onUpdateSlotAdjustment: (slotId: string, adjustment: Partial<SlotAdjustment>) => void;
   onConfirm: () => void;
+  onRetakePhoto?: (photoIndex: number) => void;
 }
 
 export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
@@ -21,6 +22,7 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
   slotAdjustments,
   onUpdateSlotAdjustment,
   onConfirm,
+  onRetakePhoto,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<FrameCategory>('strip');
   const [activeSlotId, setActiveSlotId] = useState<string>(selectedTemplate.slots[0]?.id || 's1');
@@ -213,8 +215,9 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
 
           {/* Captured Photos Drawer (Draggable) */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              Your Captured Shots (Drag into slot)
+            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+              <span>Your Captured Shots</span>
+              <span className="text-[10px] text-zinc-500">Tap red icon to retake pose</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
               {capturedPhotos.map((photo, idx) => (
@@ -223,15 +226,31 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
                   draggable
                   onDragStart={() => handleDragStart(idx)}
                   onClick={() => onUpdateSlotAdjustment(activeSlotId, { photoIndex: idx })}
-                  className={`relative cursor-grab active:cursor-grabbing rounded-xl overflow-hidden aspect-4/3 border-2 transition ${
+                  className={`group/item relative cursor-grab active:cursor-grabbing rounded-xl overflow-hidden aspect-4/3 border-2 transition ${
                     currentAdj.photoIndex === idx ? 'border-pink-500 ring-2 ring-pink-500/30' : 'border-zinc-700 hover:border-zinc-500'
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-1 right-1 bg-black/70 px-1 rounded text-[9px] font-bold">
+                  
+                  {/* Pose Number */}
+                  <div className="absolute bottom-1 left-1 bg-black/80 px-1 rounded text-[9px] font-bold text-white">
                     #{idx + 1}
                   </div>
+
+                  {/* Small Retake / Replace Button */}
+                  {onRetakePhoto && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRetakePhoto(idx);
+                      }}
+                      title={`Reshoot & Replace Pose #${idx + 1}`}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center shadow-md transition active:scale-90 z-20 group-hover/item:scale-110"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

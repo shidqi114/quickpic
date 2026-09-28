@@ -165,9 +165,8 @@ export default function PhotoboothKioskPage() {
               runShotCountdown(shotIdx + 1, nextPhotos, nextLive);
             }, 1000);
           } else {
-            // Sequence completed -> Move to Frame Editor
+            // All shots captured! Stay on review screen so user can see and retake any shot
             setIsCapturing(false);
-            setCurrentStep('FRAME_EDITOR');
           }
         }, 500);
       }
@@ -420,8 +419,11 @@ export default function PhotoboothKioskPage() {
             )}
           </div>
 
-          {/* Captured Photos Strip + Retake Button */}
-          <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/70 border border-zinc-800 rounded-2xl">
+          {/* Captured Photos Strip with Retake Buttons */}
+          <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/90 border border-zinc-800 rounded-3xl shadow-xl">
+            <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center hidden lg:block mb-1">
+              Your Poses ({capturedPhotos.length}/{totalShotsRequired})
+            </div>
             {Array.from({ length: totalShotsRequired }).map((_, idx) => {
               const photo = capturedPhotos[idx];
               const isCurrent = isCapturing && currentShotIndex === idx;
@@ -429,8 +431,8 @@ export default function PhotoboothKioskPage() {
               return (
                 <div
                   key={idx}
-                  className={`group relative w-20 h-16 lg:w-24 lg:h-18 rounded-xl overflow-hidden border-2 flex items-center justify-center bg-zinc-950 transition ${
-                    isCurrent ? 'border-pink-500 ring-2 ring-pink-500 scale-105' : photo ? 'border-zinc-500 hover:border-pink-400' : 'border-zinc-800'
+                  className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${
+                    isCurrent ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105' : photo ? 'border-zinc-700 hover:border-pink-400' : 'border-zinc-800'
                   }`}
                 >
                   {photo ? (
@@ -439,8 +441,8 @@ export default function PhotoboothKioskPage() {
                       <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
                       
                       {/* Pose Number Badge */}
-                      <span className="absolute bottom-1 left-1 px-1 rounded bg-black/75 text-[9px] font-bold text-white backdrop-blur-xs">
-                        #{idx + 1}
+                      <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
+                        Pose #{idx + 1}
                       </span>
 
                       {/* Small Remove & Replace Retake Button on Prior Photo */}
@@ -450,15 +452,19 @@ export default function PhotoboothKioskPage() {
                             e.stopPropagation();
                             handleRetakeSpecificShot(idx);
                           }}
-                          title={`Retake & Replace Pose #${idx + 1}`}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600/95 hover:bg-rose-500 text-white shadow-lg flex items-center justify-center transition-all duration-200 active:scale-90 z-20 group-hover:scale-110"
+                          title={`Retake Pose #${idx + 1}`}
+                          className="absolute bottom-1 inset-x-1 py-1 rounded-lg bg-rose-600/95 hover:bg-rose-500 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-lg flex items-center justify-center gap-1 transition active:scale-95 z-20 backdrop-blur-xs"
                         >
-                          <RotateCcw className="w-3 h-3 hover:rotate-180 transition-transform duration-300" />
+                          <RotateCcw className="w-3 h-3" />
+                          Retake
                         </button>
                       )}
                     </>
                   ) : (
-                    <span className="text-xs font-semibold text-zinc-600">#{idx + 1}</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                      <Camera className="w-4 h-4 mb-1 opacity-40" />
+                      <span className="text-[11px] font-bold">Pose #{idx + 1}</span>
+                    </div>
                   )}
                 </div>
               );
@@ -467,15 +473,42 @@ export default function PhotoboothKioskPage() {
         </section>
       )}
 
-      {/* STEP 2 BOTTOM BAR: START SHOOTING */}
+      {/* STEP 2 BOTTOM BAR: START SHOOTING OR CONTINUE TO FRAME SELECTION */}
       {currentStep === 'CAMERA_SESSION' && !isCapturing && (
-        <footer className="max-w-md mx-auto w-full flex justify-center z-10 pb-4">
-          <button
-            onClick={startCaptureSequence}
-            className="w-full py-5 rounded-3xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-black text-xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition"
-          >
-            Start Capture ({totalShotsRequired} Poses)
-          </button>
+        <footer className="max-w-xl mx-auto w-full flex flex-col sm:flex-row items-center justify-center gap-3 z-10 pb-4">
+          {capturedPhotos.length === 0 ? (
+            <button
+              onClick={startCaptureSequence}
+              className="w-full py-5 rounded-3xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-black text-xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-6 h-6" />
+              Start Capture ({totalShotsRequired} Poses)
+            </button>
+          ) : capturedPhotos.length === totalShotsRequired ? (
+            <>
+              <button
+                onClick={startCaptureSequence}
+                className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-sm uppercase tracking-wider border border-zinc-700 transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Retake All
+              </button>
+              <button
+                onClick={() => setCurrentStep('FRAME_EDITOR')}
+                className="flex-1 w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-base uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                Looks Great &rarr; Choose Frame & Edit
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => runShotCountdown(capturedPhotos.length, capturedPhotos, livePhotos)}
+              className="w-full py-4 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center gap-2"
+            >
+              Take Remaining Pose #{capturedPhotos.length + 1}
+            </button>
+          )}
         </footer>
       )}
 
@@ -493,6 +526,10 @@ export default function PhotoboothKioskPage() {
             }))
           }
           onConfirm={handleConfirmFrame}
+          onRetakePhoto={(targetIdx) => {
+            setCurrentStep('CAMERA_SESSION');
+            handleRetakeSpecificShot(targetIdx);
+          }}
         />
       )}
 
