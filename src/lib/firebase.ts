@@ -63,25 +63,26 @@ export async function savePhotoSession(session: PhotoSession): Promise<{ guestUr
   const guestUrl = `${baseUrl}/gallery/${session.id}`;
 
   if (isConfigured && db && storage) {
-    try {
-      // 1. Upload composite image to Firebase Storage
-      const storageRef = ref(storage, `photos/${session.eventId}/${session.id}.jpg`);
-      const uploadResult = await uploadString(storageRef, session.compositeUrl, 'data_url');
-      const publicDownloadUrl = await getDownloadURL(uploadResult.ref);
+    // Perform upload asynchronously in background with a timeout guard so UI is instant
+    const uploadTask = async () => {
+      try {
+        const storageRef = ref(storage!, `photos/${session.eventId}/${session.id}.jpg`);
+        const uploadResult = await uploadString(storageRef, session.compositeUrl, 'data_url');
+        const publicDownloadUrl = await getDownloadURL(uploadResult.ref);
 
-      // 2. Save metadata to Firestore
-      const sessionDoc = doc(db, 'photo_sessions', session.id);
-      await setDoc(sessionDoc, {
-        ...session,
-        compositeUrl: publicDownloadUrl,
-        guestDownloadUrl: guestUrl,
-        updatedAt: Date.now(),
-      });
+        const sessionDoc = doc(db!, 'photo_sessions', session.id);
+        await setDoc(sessionDoc, {
+          ...session,
+          compositeUrl: publicDownloadUrl,
+          guestDownloadUrl: guestUrl,
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        console.warn('Background Firebase upload error (saved locally):', err);
+      }
+    };
 
-      return { guestUrl, id: session.id };
-    } catch (err) {
-      console.error('Firebase save failed, falling back to local mode:', err);
-    }
+    uploadTask();
   }
 
   return { guestUrl, id: session.id };

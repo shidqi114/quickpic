@@ -111,11 +111,41 @@ export function applyFilterToCanvas(
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    if (!src) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 900;
+      canvas.height = 675;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(0, 0, 900, 675);
+      }
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.src = canvas.toDataURL();
+      return;
+    }
+
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    if (!src.startsWith('data:')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
+    img.onerror = () => {
+      // Graceful fallback image rather than rejecting/hanging
+      const canvas = document.createElement('canvas');
+      canvas.width = 900;
+      canvas.height = 675;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#18181b';
+        ctx.fillRect(0, 0, 900, 675);
+      }
+      const fallback = new Image();
+      fallback.onload = () => resolve(fallback);
+      fallback.src = canvas.toDataURL();
+    };
     img.src = src;
   });
 }

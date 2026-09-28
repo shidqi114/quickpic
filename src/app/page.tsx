@@ -68,9 +68,11 @@ export default function PhotoboothPage() {
     const video = document.querySelector('video') as HTMLVideoElement | null;
     if (!video) return null;
 
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 960;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 960;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
@@ -78,7 +80,7 @@ export default function PhotoboothPage() {
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, width, height);
     return canvas.toDataURL('image/jpeg', 0.95);
   };
 
