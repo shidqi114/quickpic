@@ -223,8 +223,11 @@ export default function PhotoboothKioskPage() {
 
         // 3. Monotonically increasing allowed retake slot
         // Ensures only the single immediately prior image can ever have the cross button
+        // If the last picture has been taken (destinationSlot >= totalShotsRequired - 1), no picture can be removed nor retaken
         const nextAllowed =
-          allowedRetakeSlotRef.current === null
+          destinationSlot >= totalShotsRequired - 1
+            ? null
+            : allowedRetakeSlotRef.current === null
             ? destinationSlot
             : Math.max(allowedRetakeSlotRef.current, destinationSlot);
         allowedRetakeSlotRef.current = nextAllowed;
@@ -290,8 +293,13 @@ export default function PhotoboothKioskPage() {
 
   // Remove a prior photo: slot becomes empty, and the picture taking action goes on filling top empty slots
   const handleRemovePhoto = (indexToRemove: number) => {
+    // If the last picture has been taken or all shots are completed, no retake is allowed
+    if (indexToRemove >= totalShotsRequired - 1 || isAllShotsCompleted) {
+      return;
+    }
+
     // Only the allowedRetakeSlot can be removed / retaken!
-    if (allowedRetakeSlotRef.current !== indexToRemove) {
+    if (allowedRetakeSlotRef.current === null || allowedRetakeSlotRef.current !== indexToRemove) {
       return;
     }
 
@@ -544,10 +552,10 @@ export default function PhotoboothKioskPage() {
                       }
                     }}
                     className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${isHighlightSlot
-                        ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
-                        : photo
-                          ? 'border-zinc-700 hover:border-pink-400'
-                          : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
+                      ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
+                      : photo
+                        ? 'border-zinc-700 hover:border-pink-400'
+                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
                       }`}
                   >
                     {photo ? (
@@ -560,8 +568,8 @@ export default function PhotoboothKioskPage() {
                           #{idx + 1}
                         </span>
 
-                        {/* Cross button appears ONLY on the allowed retake slot (just one prior image) */}
-                        {idx === allowedRetakeSlot && (
+                        {/* Cross button appears ONLY on the allowed retake slot, and NEVER on the last picture */}
+                        {!isAllShotsCompleted && idx === allowedRetakeSlot && idx < totalShotsRequired - 1 && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -597,7 +605,7 @@ export default function PhotoboothKioskPage() {
                     title={`Start Capture (${totalShotsRequired} Poses)`}
                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white shadow-xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center cursor-pointer group"
                   >
-                    <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
                   </button>
                 ) : isAllShotsCompleted ? (
                   <button
@@ -636,10 +644,6 @@ export default function PhotoboothKioskPage() {
             }))
           }
           onConfirm={handleConfirmFrame}
-          onRetakePhoto={(targetIdx) => {
-            setCurrentStep('CAMERA_SESSION');
-            handleRemovePhoto(targetIdx);
-          }}
         />
       )}
 
