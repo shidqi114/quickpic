@@ -66,11 +66,16 @@ export default function PhotoboothKioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<(string | null)[]>(() =>
     Array(selectedPackage.shotsCount || 4).fill(null)
   );
+  const capturedPhotosRef = useRef<(string | null)[]>(Array(selectedPackage.shotsCount || 4).fill(null));
+  capturedPhotosRef.current = capturedPhotos;
+
   const [livePhotos, setLivePhotos] = useState<(LivePhotoMedia | null)[]>(() =>
     Array(selectedPackage.shotsCount || 4).fill(null)
   );
-  // Track the single prior image that was just taken (only this slot can be removed/retaken)
-  const [lastTakenSlot, setLastTakenSlot] = useState<number | null>(null);
+
+  // Monotonically increasing allowed retake slot (ensures only the single immediately prior image can be retaken)
+  const [allowedRetakeSlot, setAllowedRetakeSlot] = useState<number | null>(null);
+  const allowedRetakeSlotRef = useRef<number | null>(null);
 
   // Frame Slot Editor state
   const [selectedTemplate, setSelectedTemplate] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
@@ -94,7 +99,9 @@ export default function PhotoboothKioskPage() {
     setCapturedPhotos((prev) => {
       const next = [...prev];
       while (next.length < totalShotsRequired) next.push(null);
-      return next.slice(0, totalShotsRequired);
+      const res = next.slice(0, totalShotsRequired);
+      capturedPhotosRef.current = res;
+      return res;
     });
     setLivePhotos((prev) => {
       const next = [...prev];
@@ -202,19 +209,27 @@ export default function PhotoboothKioskPage() {
         const newFrame = captureFrameFromVideo();
         const liveUrl = await livePhotoRecorder.stopRecording();
 
-        // Place captured frame directly into the most top empty slot available
-        let destinationSlot = activeSlot;
-        setCapturedPhotos((prev) => {
-          const next = [...prev];
-          while (next.length < totalShotsRequired) next.push(null);
-          const topEmpty = next.findIndex((p) => !p);
-          destinationSlot = topEmpty !== -1 ? topEmpty : activeSlot;
-          next[destinationSlot] = newFrame || '';
-          return next;
-        });
+        // 1. Synchronously resolve destination slot from current ref state:
+        const currentPhotos = [...capturedPhotosRef.current];
+        while (currentPhotos.length < totalShotsRequired) currentPhotos.push(null);
+        const topEmpty = currentPhotos.findIndex((p) => !p);
+        const destinationSlot = topEmpty !== -1 ? topEmpty : activeSlot;
+
+        // 2. Place captured frame directly into destinationSlot
+        currentPhotos[destinationSlot] = newFrame || '';
+        capturedPhotosRef.current = currentPhotos;
+        setCapturedPhotos(currentPhotos);
 
         setCurrentShotIndex(destinationSlot);
-        setLastTakenSlot(destinationSlot);
+
+        // 3. Monotonically increasing allowed retake slot
+        // Ensures only the single immediately prior image can ever have the cross button
+        const nextAllowed =
+          allowedRetakeSlotRef.current === null
+            ? destinationSlot
+            : Math.max(allowedRetakeSlotRef.current, destinationSlot);
+        allowedRetakeSlotRef.current = nextAllowed;
+        setAllowedRetakeSlot(nextAllowed);
 
         setLivePhotos((prev) => {
           const next = [...prev];
@@ -228,23 +243,20 @@ export default function PhotoboothKioskPage() {
           setCountdown(null);
 
           if (isAutoSequenceRef.current) {
-            // Find earliest empty slot among latest photos
-            setCapturedPhotos((latestPhotos) => {
-              const nextEmpty = latestPhotos.findIndex((p) => !p);
+            const latestPhotos = [...capturedPhotosRef.current];
+            const nextEmpty = latestPhotos.findIndex((p) => !p);
 
-              if (nextEmpty !== -1 && isAutoSequenceRef.current) {
-                setCurrentShotIndex(nextEmpty);
-                sequenceTimeoutRef.current = setTimeout(() => {
-                  if (isAutoSequenceRef.current) {
-                    runUniversalCapture(nextEmpty, true);
-                  }
-                }, 1000);
-              } else {
-                isAutoSequenceRef.current = false;
-                setIsCapturing(false);
-              }
-              return latestPhotos;
-            });
+            if (nextEmpty !== -1 && isAutoSequenceRef.current) {
+              setCurrentShotIndex(nextEmpty);
+              sequenceTimeoutRef.current = setTimeout(() => {
+                if (isAutoSequenceRef.current) {
+                  runUniversalCapture(nextEmpty, true);
+                }
+              }, 1000);
+            } else {
+              isAutoSequenceRef.current = false;
+              setIsCapturing(false);
+            }
           } else {
             setIsCapturing(false);
           }
@@ -258,7 +270,7 @@ export default function PhotoboothKioskPage() {
     const target =
       typeof specificSlot === 'number' && specificSlot >= 0 && specificSlot < totalShotsRequired
         ? specificSlot
-        : capturedPhotos.findIndex((p) => !p);
+        : capturedPhotosRef.current.findIndex((p) => !p);
 
     if (target === -1) return;
     runUniversalCapture(target, true);
@@ -267,8 +279,11 @@ export default function PhotoboothKioskPage() {
   // Start complete capture sequence from earliest order
   const startCaptureSequence = () => {
     clearAllActiveTimers();
-    setLastTakenSlot(null);
-    setCapturedPhotos(Array(totalShotsRequired).fill(null));
+    allowedRetakeSlotRef.current = null;
+    setAllowedRetakeSlot(null);
+    const emptyArr = Array(totalShotsRequired).fill(null);
+    capturedPhotosRef.current = emptyArr;
+    setCapturedPhotos(emptyArr);
     setLivePhotos(Array(totalShotsRequired).fill(null));
     setCurrentShotIndex(0);
     runUniversalCapture(0, true);
@@ -276,19 +291,17 @@ export default function PhotoboothKioskPage() {
 
   // Remove a prior photo: slot becomes empty, and the picture taking action goes on filling top empty slots
   const handleRemovePhoto = (indexToRemove: number) => {
-    // Only the single immediately prior image can be removed / retaken
-    if (lastTakenSlot !== null && indexToRemove !== lastTakenSlot) {
+    // Only the allowedRetakeSlot can be removed / retaken!
+    if (allowedRetakeSlotRef.current !== indexToRemove) {
       return;
     }
-    setLastTakenSlot(null);
 
-    // 1. Clear the specific slot
-    setCapturedPhotos((prev) => {
-      const next = [...prev];
-      while (next.length < totalShotsRequired) next.push(null);
-      next[indexToRemove] = null;
-      return next;
-    });
+    // 1. Clear the specific slot in ref & state
+    const current = [...capturedPhotosRef.current];
+    while (current.length < totalShotsRequired) current.push(null);
+    current[indexToRemove] = null;
+    capturedPhotosRef.current = current;
+    setCapturedPhotos(current);
 
     setLivePhotos((prev) => {
       const next = [...prev];
@@ -303,22 +316,16 @@ export default function PhotoboothKioskPage() {
     // 3. If currently capturing/counting down, do NOT stop!
     // Simply update currentShotIndex to the top empty slot so UI highlights it
     if (countdownIntervalRef.current) {
-      setCapturedPhotos((latestPhotos) => {
-        const topEmpty = latestPhotos.findIndex((p) => !p);
-        if (topEmpty !== -1) {
-          setCurrentShotIndex(topEmpty);
-        }
-        return latestPhotos;
-      });
+      const topEmpty = current.findIndex((p) => !p);
+      if (topEmpty !== -1) {
+        setCurrentShotIndex(topEmpty);
+      }
     } else if (!isCapturing) {
       // If camera was idle / stopped, immediately start auto-taking for the top empty slot
       clearAllActiveTimers();
-      setCapturedPhotos((latestPhotos) => {
-        const topEmpty = latestPhotos.findIndex((p) => !p);
-        const slotToTake = topEmpty !== -1 ? topEmpty : indexToRemove;
-        runUniversalCapture(slotToTake, true);
-        return latestPhotos;
-      });
+      const topEmpty = current.findIndex((p) => !p);
+      const slotToTake = topEmpty !== -1 ? topEmpty : indexToRemove;
+      runUniversalCapture(slotToTake, true);
     }
   };
 
@@ -399,8 +406,11 @@ export default function PhotoboothKioskPage() {
   const handleResetKiosk = () => {
     clearAllActiveTimers();
     setCurrentStep('WELCOME');
-    setLastTakenSlot(null);
-    setCapturedPhotos(Array(totalShotsRequired).fill(null));
+    allowedRetakeSlotRef.current = null;
+    setAllowedRetakeSlot(null);
+    const emptyArr = Array(totalShotsRequired).fill(null);
+    capturedPhotosRef.current = emptyArr;
+    setCapturedPhotos(emptyArr);
     setLivePhotos(Array(totalShotsRequired).fill(null));
     setCurrentShotIndex(0);
     setIsCapturing(false);
@@ -546,8 +556,8 @@ export default function PhotoboothKioskPage() {
                         #{idx + 1}
                       </span>
 
-                      {/* Cross button appears ONLY on just one prior image */}
-                      {idx === lastTakenSlot && (
+                      {/* Cross button appears ONLY on the allowed retake slot (just one prior image) */}
+                      {idx === allowedRetakeSlot && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
