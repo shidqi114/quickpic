@@ -196,13 +196,16 @@ export default function PhotoboothKioskPage() {
     }, 1000);
   };
 
-  // Remove the just-taken picture and immediately capture a new picture to replace that slot
+  // Remove the just-taken picture and immediately capture a new picture to replace only that slot
   const handleRemoveAndRetakeJustTaken = (targetIndex: number) => {
     clearAllActiveTimers();
-    const wasFullSequenceCompleted = capturedPhotos.length >= totalShotsRequired;
 
-    const remainingPhotos = capturedPhotos.slice(0, targetIndex);
-    const remainingLive = livePhotos.slice(0, targetIndex);
+    // Remove targeted shot from the list
+    const remainingPhotos = [...capturedPhotos];
+    remainingPhotos.splice(targetIndex, 1);
+    const remainingLive = [...livePhotos];
+    remainingLive.splice(targetIndex, 1);
+
     setCapturedPhotos(remainingPhotos);
     setLivePhotos(remainingLive);
     setCurrentShotIndex(targetIndex);
@@ -234,14 +237,13 @@ export default function PhotoboothKioskPage() {
         }
 
         const newFrame = captureFrameFromVideo();
-        const nextPhotos = [...remainingPhotos, newFrame || ''];
+        const nextPhotos = [...remainingPhotos];
+        nextPhotos.splice(targetIndex, 0, newFrame || '');
         setCapturedPhotos(nextPhotos);
 
         const liveUrl = await livePhotoRecorder.stopRecording();
-        const nextLive: LivePhotoMedia[] = [
-          ...remainingLive,
-          { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 },
-        ];
+        const nextLive = [...remainingLive];
+        nextLive.splice(targetIndex, 0, { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 });
         setLivePhotos(nextLive);
 
         if (countdownIntervalRef.current) {
@@ -251,14 +253,8 @@ export default function PhotoboothKioskPage() {
 
         sequenceTimeoutRef.current = setTimeout(() => {
           setCountdown(null);
-          if (!wasFullSequenceCompleted && targetIndex + 1 < totalShotsRequired) {
-            setCurrentShotIndex(targetIndex + 1);
-            sequenceTimeoutRef.current = setTimeout(() => {
-              runShotCountdown(targetIndex + 1, nextPhotos, nextLive);
-            }, 1000);
-          } else {
-            setIsCapturing(false);
-          }
+          // Always stop capturing after retaking that single slot so it does NOT double-shoot
+          setIsCapturing(false);
         }, 500);
       }
     }, 1000);
