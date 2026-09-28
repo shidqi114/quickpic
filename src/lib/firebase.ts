@@ -55,6 +55,8 @@ function saveLocalSession(session: PhotoSession) {
   }
 }
 
+import { uploadToCloudinary } from '@/lib/cloudinary';
+
 export async function savePhotoSession(session: PhotoSession): Promise<{ guestUrl: string; id: string }> {
   // Always save local cache first for instant kiosk access
   saveLocalSession(session);
@@ -62,28 +64,42 @@ export async function savePhotoSession(session: PhotoSession): Promise<{ guestUr
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const guestUrl = `${baseUrl}/gallery/${session.id}`;
 
-  if (isConfigured && db && storage) {
-    // Perform upload asynchronously in background with a timeout guard so UI is instant
-    const uploadTask = async () => {
-      try {
-        const storageRef = ref(storage!, `photos/${session.eventId}/${session.id}.jpg`);
-        const uploadResult = await uploadString(storageRef, session.compositeUrl, 'data_url');
-        const publicDownloadUrl = await getDownloadURL(uploadResult.ref);
+  // Background Cloud Sync Task (Cloudinary for image storage + Firestore for database)
+  const syncTask = async () => {
+    try {
+      let finalImageUrl = session.compositeUrl;
 
-        const sessionDoc = doc(db!, 'photo_sessions', session.id);
+      // 1. Try uploading strip image to Cloudinary (Free high-speed CDN)
+      const cloudinaryUrl = await uploadToCloudinary(session.compositeUrl, session.eventId, session.id);
+      if (cloudinaryUrl) {
+        finalImageUrl = cloudinaryUrl;
+      } else if (storage) {
+        // Fallback to Firebase Storage if Cloudinary is not configured
+        try {
+          const storageRef = ref(storage, `photos/${session.eventId}/${session.id}.jpg`);
+          const uploadResult = await uploadString(storageRef, session.compositeUrl, 'data_url');
+          finalImageUrl = await getDownloadURL(uploadResult.ref);
+        } catch (storageErr) {
+          console.warn('Firebase Storage upload skipped/failed:', storageErr);
+        }
+      }
+
+      // 2. Save metadata to Firestore
+      if (isConfigured && db) {
+        const sessionDoc = doc(db, 'photo_sessions', session.id);
         await setDoc(sessionDoc, {
           ...session,
-          compositeUrl: publicDownloadUrl,
+          compositeUrl: finalImageUrl,
           guestDownloadUrl: guestUrl,
           updatedAt: Date.now(),
         });
-      } catch (err) {
-        console.warn('Background Firebase upload error (saved locally):', err);
       }
-    };
+    } catch (err) {
+      console.warn('Background sync error (session safely cached locally):', err);
+    }
+  };
 
-    uploadTask();
-  }
+  syncTask();
 
   return { guestUrl, id: session.id };
 }
