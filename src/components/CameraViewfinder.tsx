@@ -92,7 +92,7 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
       }
     }
 
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (typeof window !== 'undefined' && navigator.mediaDevices) {
       initCamera();
     } else {
       setCameraError('Camera API not supported by this browser');
