@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Photo sessions collection: Public read for guest download links; public create for kiosk captures
+    match /photo_sessions/{sessionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+    
+    // Event configurations
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

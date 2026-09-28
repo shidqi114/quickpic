@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Photobooth images uploaded under photos/{eventId}/{sessionId}.jpg
+    match /photos/{eventId}/{fileName} {
+      allow read: if true;
+      allow write: if request.resource.size < 15 * 1024 * 1024 // max 15MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
