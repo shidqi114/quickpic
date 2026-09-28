@@ -31,49 +31,80 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
 
   // Initialize Camera
   useEffect(() => {
+    let isCancelled = false;
     let currentStream: MediaStream | null = null;
 
     async function initCamera() {
       try {
         setCameraError(null);
-        // List media devices
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-          const allDevices = await navigator.mediaDevices.enumerateDevices();
-          const videoInputs = allDevices.filter((d) => d.kind === 'videoinput');
-          setDevices(videoInputs);
-          if (!selectedDeviceId && videoInputs.length > 0) {
-            setSelectedDeviceId(videoInputs[0].deviceId);
-          }
-        }
 
+        // Fallback camera constraints for broad webcam compatibility
         const constraints: MediaStreamConstraints = {
           audio: false,
           video: selectedDeviceId
-            ? { deviceId: { exact: selectedDeviceId }, width: { ideal: 1920 }, height: { ideal: 1440 } }
-            : { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1440 } },
+            ? { deviceId: { exact: selectedDeviceId } }
+            : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         };
 
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        if (isCancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         currentStream = stream;
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setCameraReady(true);
+        // Populate device list once permissions are granted
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          const allDevices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = allDevices.filter((d) => d.kind === 'videoinput');
+          if (!isCancelled) {
+            setDevices(videoInputs);
+          }
+        }
+
+        const video = videoRef.current;
+        if (video && !isCancelled) {
+          video.srcObject = stream;
+          video.onloadedmetadata = () => {
+            if (!isCancelled && videoRef.current) {
+              videoRef.current.play().catch((e) => {
+                // Ignore benign play interruptions on rapid re-render
+                if (e.name !== 'AbortError') {
+                  console.warn('Video playback warning:', e);
+                }
+              });
+              setCameraReady(true);
+            }
+          };
         }
       } catch (err: unknown) {
+        if (isCancelled) return;
+        const errObj = err as Error;
+        // Ignore benign AbortError during component unmount / remount
+        if (errObj?.name === 'AbortError') return;
+
         console.error('Camera stream error:', err);
-        const errMsg = err instanceof Error ? err.message : 'Unable to access camera';
+        const errMsg = errObj?.message || 'Unable to access camera';
         setCameraError(errMsg);
         setCameraReady(false);
       }
     }
 
-    initCamera();
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      initCamera();
+    } else {
+      setCameraError('Camera API not supported by this browser');
+    }
 
     return () => {
+      isCancelled = true;
       if (currentStream) {
         currentStream.getTracks().forEach((track) => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [selectedDeviceId]);
