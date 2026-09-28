@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Settings, Maximize, Sparkles, RefreshCw, Layers, ArrowLeft, Heart, Check, QrCode, Printer, Undo2, RotateCcw } from 'lucide-react';
+import { Camera, Settings, Maximize, Sparkles, RefreshCw, Layers, ArrowLeft, Heart, Check, QrCode, Printer, Undo2, RotateCcw, X } from 'lucide-react';
 import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { SettingsModal } from '@/components/SettingsModal';
 import { PackagePaymentModal } from '@/components/Payment/PackagePaymentModal';
@@ -173,16 +173,18 @@ export default function PhotoboothKioskPage() {
     }, 1000);
   };
 
-  // Retake a specific prior photo (e.g. shot #2) and replace it with a new snapshot
-  const handleRetakeSpecificShot = (targetIndex: number) => {
-    if (isCapturing) return;
-    setIsCapturing(true);
+  // Remove the just-taken picture and immediately capture a new picture to replace that slot
+  const handleRemoveAndRetakeJustTaken = (targetIndex: number) => {
+    const remainingPhotos = capturedPhotos.slice(0, targetIndex);
+    const remainingLive = livePhotos.slice(0, targetIndex);
+    setCapturedPhotos(remainingPhotos);
+    setLivePhotos(remainingLive);
     setCurrentShotIndex(targetIndex);
+    setIsCapturing(true);
 
     let count = settings.countdownSeconds;
     setCountdown(count);
 
-    // Start Live Photo buffer for this retake
     const video = document.querySelector('video') as HTMLVideoElement | null;
     if (video && video.srcObject) {
       livePhotoRecorder.startRecording(video.srcObject as MediaStream);
@@ -206,29 +208,31 @@ export default function PhotoboothKioskPage() {
         }
 
         const newFrame = captureFrameFromVideo();
-        const updatedPhotos = [...capturedPhotos];
-        updatedPhotos[targetIndex] = newFrame || '';
-        setCapturedPhotos(updatedPhotos);
+        const nextPhotos = [...remainingPhotos, newFrame || ''];
+        setCapturedPhotos(nextPhotos);
 
         const liveUrl = await livePhotoRecorder.stopRecording();
-        const updatedLive = [...livePhotos];
-        updatedLive[targetIndex] = { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 };
-        setLivePhotos(updatedLive);
+        const nextLive: LivePhotoMedia[] = [
+          ...remainingLive,
+          { photoIndex: targetIndex, gifUrl: liveUrl, durationSeconds: 5 },
+        ];
+        setLivePhotos(nextLive);
 
         clearInterval(interval);
 
         setTimeout(() => {
           setCountdown(null);
-          setIsCapturing(false);
+          if (targetIndex + 1 < totalShotsRequired) {
+            setCurrentShotIndex(targetIndex + 1);
+            setTimeout(() => {
+              runShotCountdown(targetIndex + 1, nextPhotos, nextLive);
+            }, 1000);
+          } else {
+            setIsCapturing(false);
+          }
         }, 500);
       }
     }, 1000);
-  };
-
-  // Retake last shot
-  const handleRetakeLastShot = () => {
-    if (capturedPhotos.length === 0) return;
-    handleRetakeSpecificShot(capturedPhotos.length - 1);
   };
 
   // Confirm Frame Adjustments & Open Consent Modal
@@ -441,22 +445,21 @@ export default function PhotoboothKioskPage() {
                       <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
                       
                       {/* Pose Number Badge */}
-                      <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
-                        Pose #{idx + 1}
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
+                        #{idx + 1}
                       </span>
 
-                      {/* Small Remove & Replace Retake Button on Prior Photo */}
-                      {!isCapturing && (
+                      {/* Small "x" circle button appearing ONLY on the one image prior that had just been taken */}
+                      {idx === capturedPhotos.length - 1 && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRetakeSpecificShot(idx);
+                            handleRemoveAndRetakeJustTaken(idx);
                           }}
-                          title={`Retake Pose #${idx + 1}`}
-                          className="absolute bottom-1 inset-x-1 py-1 rounded-lg bg-rose-600/95 hover:bg-rose-500 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-lg flex items-center justify-center gap-1 transition active:scale-95 z-20 backdrop-blur-xs"
+                          title={`Remove Pose #${idx + 1} and retake`}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
                         >
-                          <RotateCcw className="w-3 h-3" />
-                          Retake
+                          <X className="w-3.5 h-3.5 stroke-[3]" />
                         </button>
                       )}
                     </>
@@ -528,7 +531,7 @@ export default function PhotoboothKioskPage() {
           onConfirm={handleConfirmFrame}
           onRetakePhoto={(targetIdx) => {
             setCurrentStep('CAMERA_SESSION');
-            handleRetakeSpecificShot(targetIdx);
+            handleRemoveAndRetakeJustTaken(targetIdx);
           }}
         />
       )}
