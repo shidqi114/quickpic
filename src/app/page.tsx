@@ -168,11 +168,10 @@ export default function PhotoboothKioskPage() {
     setIsCapturing(true);
 
     // Resolve target slot to the most top empty slot available
-    let activeSlot = preferredSlot;
-    const initialTopEmpty = capturedPhotos.findIndex((p) => !p);
-    if (initialTopEmpty !== -1) {
-      activeSlot = initialTopEmpty;
-    }
+    const currentRefPhotos = [...capturedPhotosRef.current];
+    while (currentRefPhotos.length < totalShotsRequired) currentRefPhotos.push(null);
+    const topEmpty = currentRefPhotos.findIndex((p) => !p);
+    const activeSlot = topEmpty !== -1 ? topEmpty : preferredSlot;
     setCurrentShotIndex(activeSlot);
 
     let count = settings.countdownSeconds;
@@ -520,7 +519,7 @@ export default function PhotoboothKioskPage() {
             {/* Sequence Status */}
             {isCapturing && (
               <div className="absolute top-4 right-16 z-20 px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-black uppercase tracking-wider shadow-lg">
-                Pose {currentShotIndex + 1} of {totalShotsRequired}
+                Pose {(earliestEmptySlot !== -1 ? earliestEmptySlot : currentShotIndex) + 1} of {totalShotsRequired}
               </div>
             )}
           </div>
@@ -532,7 +531,8 @@ export default function PhotoboothKioskPage() {
             </div>
             {Array.from({ length: totalShotsRequired }).map((_, idx) => {
               const photo = capturedPhotos[idx];
-              const isCurrent = isCapturing && currentShotIndex === idx;
+              // Highlight glow is on the earliest order of the empty slot!
+              const isHighlightSlot = isCapturing && earliestEmptySlot === idx;
 
               return (
                 <div
@@ -543,7 +543,11 @@ export default function PhotoboothKioskPage() {
                     }
                   }}
                   className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${
-                    isCurrent ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105' : photo ? 'border-zinc-700 hover:border-pink-400' : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
+                    isHighlightSlot
+                      ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
+                      : photo
+                      ? 'border-zinc-700 hover:border-pink-400'
+                      : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
                   }`}
                 >
                   {photo ? (
@@ -572,9 +576,11 @@ export default function PhotoboothKioskPage() {
                     </>
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
-                      <Camera className="w-4 h-4 mb-1 opacity-40 group-hover:opacity-80 transition-opacity" />
-                      <span className="text-[11px] font-bold">Pose #{idx + 1}</span>
-                      <span className="text-[9px] text-zinc-500 font-medium">Empty</span>
+                      <Camera className={`w-4 h-4 mb-1 transition-all ${isHighlightSlot ? 'text-pink-400 animate-bounce' : 'opacity-40 group-hover:opacity-80 transition-opacity'}`} />
+                      <span className={`text-[11px] font-bold ${isHighlightSlot ? 'text-pink-300' : ''}`}>Pose #{idx + 1}</span>
+                      <span className={`text-[9px] font-medium ${isHighlightSlot ? 'text-pink-400 font-bold' : 'text-zinc-500'}`}>
+                        {isHighlightSlot ? 'Shooting...' : 'Empty'}
+                      </span>
                     </div>
                   )}
                 </div>
