@@ -78,6 +78,24 @@ export default function PhotoboothKioskPage() {
 
   const totalShotsRequired = selectedPackage.shotsCount || 4;
 
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sequenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearAllActiveTimers = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (sequenceTimeoutRef.current) {
+      clearTimeout(sequenceTimeoutRef.current);
+      sequenceTimeoutRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => clearAllActiveTimers();
+  }, []);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -109,6 +127,7 @@ export default function PhotoboothKioskPage() {
 
   // Start capture sequence
   const startCaptureSequence = () => {
+    clearAllActiveTimers();
     setCapturedPhotos([]);
     setLivePhotos([]);
     setCurrentShotIndex(0);
@@ -117,6 +136,7 @@ export default function PhotoboothKioskPage() {
   };
 
   const runShotCountdown = (shotIdx: number, accPhotos: string[], accLive: LivePhotoMedia[]) => {
+    clearAllActiveTimers();
     let count = settings.countdownSeconds;
     setCountdown(count);
 
@@ -130,7 +150,7 @@ export default function PhotoboothKioskPage() {
       photoboothAudio.playCountdownBeep(false);
     }
 
-    const interval = setInterval(async () => {
+    countdownIntervalRef.current = setInterval(async () => {
       count -= 1;
       if (count > 0) {
         setCountdown(count);
@@ -155,13 +175,16 @@ export default function PhotoboothKioskPage() {
         ];
         setLivePhotos(nextLive);
 
-        clearInterval(interval);
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
 
-        setTimeout(() => {
+        sequenceTimeoutRef.current = setTimeout(() => {
           setCountdown(null);
           if (shotIdx + 1 < totalShotsRequired) {
             setCurrentShotIndex(shotIdx + 1);
-            setTimeout(() => {
+            sequenceTimeoutRef.current = setTimeout(() => {
               runShotCountdown(shotIdx + 1, nextPhotos, nextLive);
             }, 1000);
           } else {
@@ -175,6 +198,9 @@ export default function PhotoboothKioskPage() {
 
   // Remove the just-taken picture and immediately capture a new picture to replace that slot
   const handleRemoveAndRetakeJustTaken = (targetIndex: number) => {
+    clearAllActiveTimers();
+    const wasFullSequenceCompleted = capturedPhotos.length >= totalShotsRequired;
+
     const remainingPhotos = capturedPhotos.slice(0, targetIndex);
     const remainingLive = livePhotos.slice(0, targetIndex);
     setCapturedPhotos(remainingPhotos);
@@ -194,7 +220,7 @@ export default function PhotoboothKioskPage() {
       photoboothAudio.playCountdownBeep(false);
     }
 
-    const interval = setInterval(async () => {
+    countdownIntervalRef.current = setInterval(async () => {
       count -= 1;
       if (count > 0) {
         setCountdown(count);
@@ -218,13 +244,16 @@ export default function PhotoboothKioskPage() {
         ];
         setLivePhotos(nextLive);
 
-        clearInterval(interval);
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
 
-        setTimeout(() => {
+        sequenceTimeoutRef.current = setTimeout(() => {
           setCountdown(null);
-          if (targetIndex + 1 < totalShotsRequired) {
+          if (!wasFullSequenceCompleted && targetIndex + 1 < totalShotsRequired) {
             setCurrentShotIndex(targetIndex + 1);
-            setTimeout(() => {
+            sequenceTimeoutRef.current = setTimeout(() => {
               runShotCountdown(targetIndex + 1, nextPhotos, nextLive);
             }, 1000);
           } else {
