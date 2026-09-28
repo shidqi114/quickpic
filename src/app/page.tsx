@@ -26,7 +26,7 @@ import { savePhotoSession } from '@/lib/firebase';
 import { livePhotoRecorder } from '@/lib/livephoto';
 import Link from 'next/link';
 
-type KioskStep = 
+type KioskStep =
   | 'WELCOME'
   | 'PACKAGE_PAYMENT'
   | 'CAMERA_SESSION'
@@ -127,9 +127,9 @@ export default function PhotoboothKioskPage() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => { });
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
   };
 
@@ -420,7 +420,7 @@ export default function PhotoboothKioskPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between p-4 md:p-6 select-none relative overflow-hidden">
-      
+
       {/* Top Bar Navigation */}
       <header className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full z-10">
         <div className="flex items-center gap-3">
@@ -497,7 +497,7 @@ export default function PhotoboothKioskPage() {
       {/* STEP 2: CAMERA SESSION */}
       {currentStep === 'CAMERA_SESSION' && (
         <section className="flex-1 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-center gap-6 my-4 z-10 animate-fade-in">
-          
+
           <div className="relative w-full max-w-4xl aspect-4/3 flex items-center justify-center">
             <CameraViewfinder
               countdown={countdown}
@@ -524,110 +524,102 @@ export default function PhotoboothKioskPage() {
             )}
           </div>
 
-          {/* Captured Photos Strip with Retake Buttons */}
-          <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/90 border border-zinc-800 rounded-3xl shadow-xl">
-            <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center hidden lg:block mb-1">
-              Your Poses ({filledPhotosCount}/{totalShotsRequired})
+          {/* Captured Photos Strip & Action Control Column */}
+          <div className="flex flex-col items-center gap-3 w-full lg:w-auto">
+            <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/90 border border-zinc-800 rounded-3xl shadow-xl">
+              <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center hidden lg:block mb-1">
+                Your Poses ({filledPhotosCount}/{totalShotsRequired})
+              </div>
+              {Array.from({ length: totalShotsRequired }).map((_, idx) => {
+                const photo = capturedPhotos[idx];
+                // Highlight glow is on the earliest order of the empty slot!
+                const isHighlightSlot = isCapturing && earliestEmptySlot === idx;
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      if (!photo && !isCapturing) {
+                        triggerUniversalCapture(idx);
+                      }
+                    }}
+                    className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${isHighlightSlot
+                        ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
+                        : photo
+                          ? 'border-zinc-700 hover:border-pink-400'
+                          : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
+                      }`}
+                  >
+                    {photo ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
+
+                        {/* Pose Number Badge */}
+                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
+                          #{idx + 1}
+                        </span>
+
+                        {/* Cross button appears ONLY on the allowed retake slot (just one prior image) */}
+                        {idx === allowedRetakeSlot && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePhoto(idx);
+                            }}
+                            title={`Remove Pose #${idx + 1} and retake`}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5 stroke-[3]" />
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
+                        <Camera className={`w-4 h-4 mb-1 transition-all ${isHighlightSlot ? 'text-pink-400 animate-bounce' : 'opacity-40 group-hover:opacity-80 transition-opacity'}`} />
+                        <span className={`text-[11px] font-bold ${isHighlightSlot ? 'text-pink-300' : ''}`}>Pose #{idx + 1}</span>
+                        <span className={`text-[9px] font-medium ${isHighlightSlot ? 'text-pink-400 font-bold' : 'text-zinc-500'}`}>
+                          {isHighlightSlot ? 'Shooting...' : 'Empty'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            {Array.from({ length: totalShotsRequired }).map((_, idx) => {
-              const photo = capturedPhotos[idx];
-              // Highlight glow is on the earliest order of the empty slot!
-              const isHighlightSlot = isCapturing && earliestEmptySlot === idx;
 
-              return (
-                <div
-                  key={idx}
-                  onClick={() => {
-                    if (!photo && !isCapturing) {
-                      triggerUniversalCapture(idx);
-                    }
-                  }}
-                  className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${
-                    isHighlightSlot
-                      ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
-                      : photo
-                      ? 'border-zinc-700 hover:border-pink-400'
-                      : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
-                  }`}
-                >
-                  {photo ? (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
-                      
-                      {/* Pose Number Badge */}
-                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
-                        #{idx + 1}
-                      </span>
-
-                      {/* Cross button appears ONLY on the allowed retake slot (just one prior image) */}
-                      {idx === allowedRetakeSlot && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePhoto(idx);
-                          }}
-                          title={`Remove Pose #${idx + 1} and retake`}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5 stroke-[3]" />
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
-                      <Camera className={`w-4 h-4 mb-1 transition-all ${isHighlightSlot ? 'text-pink-400 animate-bounce' : 'opacity-40 group-hover:opacity-80 transition-opacity'}`} />
-                      <span className={`text-[11px] font-bold ${isHighlightSlot ? 'text-pink-300' : ''}`}>Pose #{idx + 1}</span>
-                      <span className={`text-[9px] font-medium ${isHighlightSlot ? 'text-pink-400 font-bold' : 'text-zinc-500'}`}>
-                        {isHighlightSlot ? 'Shooting...' : 'Empty'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* Action button just below the image strip (simplified to icon) */}
+            {!isCapturing && (
+              <div className="w-full flex items-center justify-center">
+                {filledPhotosCount === 0 ? (
+                  <button
+                    onClick={startCaptureSequence}
+                    title={`Start Capture (${totalShotsRequired} Poses)`}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white shadow-xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center cursor-pointer group"
+                  >
+                    <Sparkles className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  </button>
+                ) : isAllShotsCompleted ? (
+                  <button
+                    onClick={() => setCurrentStep('FRAME_EDITOR')}
+                    title="Proceed to Frame Selection & Edit"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white shadow-xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center cursor-pointer group"
+                  >
+                    <Check className="w-6 h-6 stroke-[3] group-hover:scale-110 transition-transform" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => triggerUniversalCapture()}
+                    title={`Take Pose #${earliestEmptySlot + 1}`}
+                    className="w-full py-4 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white shadow-lg shadow-pink-500/25 active:scale-95 transition flex items-center justify-center cursor-pointer group"
+                  >
+                    <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </section>
-      )}
-
-      {/* STEP 2 BOTTOM BAR: START SHOOTING OR CONTINUE TO FRAME SELECTION */}
-      {currentStep === 'CAMERA_SESSION' && !isCapturing && (
-        <footer className="max-w-xl mx-auto w-full flex flex-col sm:flex-row items-center justify-center gap-3 z-10 pb-4">
-          {filledPhotosCount === 0 ? (
-            <button
-              onClick={startCaptureSequence}
-              className="w-full py-5 rounded-3xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-black text-xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-6 h-6" />
-              Start Capture ({totalShotsRequired} Poses)
-            </button>
-          ) : isAllShotsCompleted ? (
-            <>
-              <button
-                onClick={startCaptureSequence}
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-sm uppercase tracking-wider border border-zinc-700 transition active:scale-95 flex items-center justify-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Retake All
-              </button>
-              <button
-                onClick={() => setCurrentStep('FRAME_EDITOR')}
-                className="flex-1 w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-base uppercase tracking-wider shadow-2xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center gap-2"
-              >
-                <Check className="w-5 h-5" />
-                Looks Great &rarr; Choose Frame & Edit
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={() => triggerUniversalCapture()}
-              className="w-full py-4 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm uppercase tracking-wider shadow-lg active:scale-95 transition flex items-center justify-center gap-2"
-            >
-              <Camera className="w-5 h-5" />
-              Take Empty Pose #{earliestEmptySlot + 1}
-            </button>
-          )}
-        </footer>
       )}
 
       {/* STEP 3: INTERACTIVE FRAME & PINCH-ZOOM SLOT EDITOR */}
