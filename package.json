@@ -2,11 +2,16 @@
   "name": "quickpic",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron:dev": "concurrently -k \"next dev\" \"wait-on tcp:3000 && electron .\"",
+    "electron:dist": "next build && electron-builder",
+    "electron:dist:win": "next build && electron-builder --win",
+    "electron:dist:mac": "next build && electron-builder --mac"
   },
   "dependencies": {
     "@types/canvas-confetti": "^1.9.0",
@@ -25,9 +30,43 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.5",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.5.1"
+  },
+  "build": {
+    "appId": "com.quickpic.photobooth",
+    "productName": "QuickPic Photobooth",
+    "mac": {
+      "category": "public.app-category.photography",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "QuickPic Photobooth"
+    },
+    "files": [
+      "electron/**/*",
+      "hardware-daemon/**/*",
+      "public/**/*"
+    ]
   }
 }

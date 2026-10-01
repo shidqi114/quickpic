@@ -42,6 +42,8 @@ def index():
         "timestamp": time.time()
     }
 
+from fastapi.responses import StreamingResponse, Response
+
 # ----------------- CAMERA ENDPOINTS -----------------
 
 @app.get("/camera/status")
@@ -52,6 +54,26 @@ def get_camera_status():
         "liveview_config": canon_camera.liveview_config,
         "flash_capture_config": canon_camera.flash_capture_config
     }
+
+@app.get("/camera/stream")
+def stream_camera():
+    """Stream live preview from Canon camera as MJPEG stream"""
+    def frame_generator():
+        while True:
+            frame = canon_camera.get_preview_frame()
+            if frame:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(0.04) # ~25 FPS
+    return StreamingResponse(frame_generator(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@app.get("/camera/preview")
+def get_preview_jpeg():
+    """Single JPEG live preview frame"""
+    frame = canon_camera.get_preview_frame()
+    if frame:
+        return Response(content=frame, media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Preview frame unavailable")
 
 @app.post("/camera/settings")
 def update_camera_settings(req: CameraSettingsRequest):

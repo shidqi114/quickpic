@@ -28,6 +28,39 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [flash, setFlash] = useState(false);
+  const [dslrAvailable, setDslrAvailable] = useState(false);
+  const [dslrModel, setDslrModel] = useState<string>('Canon DSLR');
+  const [useDslrStream, setUseDslrStream] = useState(false);
+
+  // Poll for local hardware companion daemon Canon DSLR connection
+  useEffect(() => {
+    let active = true;
+    async function checkDSLR() {
+      try {
+        const res = await fetch('http://localhost:8000/camera/status', { signal: AbortSignal.timeout(1500) });
+        if (res.ok) {
+          const data = await res.json();
+          if (active && data.connected) {
+            setDslrAvailable(true);
+            setDslrModel(data.model || 'Canon DSLR');
+            return;
+          }
+        }
+      } catch {
+        // Daemon offline or no DSLR
+      }
+      if (active) {
+        setDslrAvailable(false);
+      }
+    }
+
+    checkDSLR();
+    const interval = setInterval(checkDSLR, 4000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Initialize Camera
   useEffect(() => {
@@ -147,18 +180,32 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black/90 overflow-hidden rounded-3xl border border-zinc-800 shadow-2xl">
-      {/* Live Video Element */}
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        autoPlay
-        className="w-full h-full object-cover transition-all duration-300"
-        style={{
-          transform: mirror ? 'scaleX(-1)' : 'none',
-          ...getFilterStyle(filter),
-        }}
-      />
+      {/* Live Video Element or DSLR Stream */}
+      {useDslrStream ? (
+        <img
+          id="dslr-liveview-stream"
+          src="http://localhost:8000/camera/stream"
+          alt="Canon DSLR Liveview"
+          className="w-full h-full object-cover transition-all duration-300"
+          style={{
+            transform: mirror ? 'scaleX(-1)' : 'none',
+            ...getFilterStyle(filter),
+          }}
+          onError={() => setUseDslrStream(false)}
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          autoPlay
+          className="w-full h-full object-cover transition-all duration-300"
+          style={{
+            transform: mirror ? 'scaleX(-1)' : 'none',
+            ...getFilterStyle(filter),
+          }}
+        />
+      )}
 
       {/* Screen Flash Overlay */}
       {flash && <div className="absolute inset-0 bg-white z-50 animate-flash pointer-events-none" />}
@@ -175,29 +222,58 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
         </div>
       )}
 
-      {/* Camera Error Fallback */}
-      {cameraError && (
+      {/* Camera Error Fallback (Only shown if webcam fails and DSLR is not streaming) */}
+      {cameraError && !useDslrStream && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center z-30">
           <VideoOff className="w-16 h-16 text-rose-500 mb-4" />
           <h3 className="text-xl font-bold text-white mb-2">Camera Unavailable</h3>
           <p className="text-zinc-400 max-w-md text-sm mb-6">
-            Please allow camera permissions in your browser or connect a webcam / capture card.
+            Please allow camera permissions in your browser, or switch to your connected Canon DSLR.
           </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedDeviceId('')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-medium transition"
+            >
+              <RefreshCw className="w-4 h-4" /> Retry Webcam
+            </button>
+            {dslrAvailable && (
+              <button
+                onClick={() => setUseDslrStream(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-medium transition"
+              >
+                <Camera className="w-4 h-4" /> Use Canon DSLR
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Top Left: DSLR Status Indicator */}
+      {dslrAvailable && (
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
           <button
-            onClick={() => setSelectedDeviceId('')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-medium transition"
+            onClick={() => setUseDslrStream((prev) => !prev)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md transition shadow-lg border ${
+              useDslrStream
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
+                : 'bg-zinc-900/80 text-zinc-300 border-zinc-700/50 hover:bg-zinc-800'
+            }`}
+            title="Click to toggle between Canon DSLR and Webcam"
           >
-            <RefreshCw className="w-4 h-4" /> Retry Camera
+            <span className={`w-2 h-2 rounded-full ${useDslrStream ? 'bg-emerald-400 animate-ping' : 'bg-zinc-400'}`} />
+            <Camera className="w-3.5 h-3.5" />
+            {useDslrStream ? `${dslrModel} (Active)` : `Switch to ${dslrModel}`}
           </button>
         </div>
       )}
 
       {/* Top Camera Controls Overlay */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
-        {devices.length > 1 && (
+        {!useDslrStream && devices.length > 1 && (
           <button
             onClick={switchCamera}
-            title="Switch Camera"
+            title="Switch Webcam"
             className="p-3 rounded-full bg-zinc-900/80 backdrop-blur-md text-zinc-300 hover:text-white hover:bg-zinc-800 transition shadow-lg border border-zinc-700/50"
           >
             <RefreshCw className="w-5 h-5" />

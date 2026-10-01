@@ -133,8 +133,26 @@ export default function PhotoboothKioskPage() {
     }
   };
 
-  // Helper to capture single frame from viewfinder
+  // Helper to capture single frame from viewfinder (supports standard webcam video and DSLR image stream)
   const captureFrameFromVideo = (): string | null => {
+    const dslrImg = document.getElementById('dslr-liveview-stream') as HTMLImageElement | null;
+    if (dslrImg && dslrImg.complete && dslrImg.naturalWidth > 0) {
+      const width = dslrImg.naturalWidth;
+      const height = dslrImg.naturalHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+
+      if (settings.mirrorCamera) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(dslrImg, 0, 0, width, height);
+      return canvas.toDataURL('image/jpeg', 0.95);
+    }
+
     const video = document.querySelector('video') as HTMLVideoElement | null;
     if (!video) return null;
 

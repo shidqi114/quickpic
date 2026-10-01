@@ -82,6 +82,21 @@ class CanonCameraController:
         cfg = self.liveview_config
         self.set_camera_hardware_config(cfg["iso"], cfg["shutter_speed"], cfg["white_balance"])
 
+    def get_preview_frame(self) -> Optional[bytes]:
+        """Capture single live preview frame from camera sensor"""
+        if self.use_gphoto and self.is_connected:
+            try:
+                res = subprocess.run(
+                    ["gphoto2", "--capture-preview", "--stdout"],
+                    capture_output=True,
+                    timeout=2
+                )
+                if res.returncode == 0 and len(res.stdout) > 100:
+                    return res.stdout
+            except Exception as e:
+                pass
+        return None
+
     def trigger_flash_capture(self, save_path: Optional[str] = None) -> Dict[str, Any]:
         """
         1. Switch camera to Flash Capture parameters (Low ISO, 1/125s Flash Sync)
@@ -93,6 +108,7 @@ class CanonCameraController:
         self.set_camera_hardware_config(flash_cfg["iso"], flash_cfg["shutter_speed"], flash_cfg["white_balance"])
 
         output_file = save_path or f"/tmp/capture_{int(time.time()*1000)}.jpg"
+        image_base64 = None
 
         if self.use_gphoto and self.is_connected:
             try:
@@ -104,12 +120,21 @@ class CanonCameraController:
             except Exception as e:
                 print(f"[Camera] Hardware shutter trigger error: {e}")
 
+        if os.path.exists(output_file):
+            try:
+                import base64
+                with open(output_file, "rb") as f:
+                    image_base64 = f"data:image/jpeg;base64,{base64.b64encode(f.read()).decode('utf-8')}"
+            except Exception as e:
+                print(f"[Camera] Failed to encode captured image: {e}")
+
         # Switch back to live preview mode immediately
         self.prepare_for_liveview()
 
         return {
             "status": "success",
             "file_path": output_file,
+            "base64": image_base64,
             "flash_settings_applied": flash_cfg
         }
 
