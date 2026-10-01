@@ -1,6 +1,6 @@
 {
   "name": "quickpic",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "QuickPic Desktop Photobooth with Canon DSLR & DNP Printer support",
   "author": "QuickPic",
   "private": true,
@@ -78,6 +78,9 @@
       "electron/**/*",
       "hardware-daemon/**/*",
       "public/**/*"
+    ],
+    "asarUnpack": [
+      "hardware-daemon/**/*"
     ]
   }
 }

@@ -2,10 +2,25 @@ const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn, execSync } = require('child_process');
-const http = require('http');
+
+// Prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
 
 let mainWindow = null;
 let daemonProcess = null;
+
+// Catch unexpected exceptions to prevent crash/force-close
+process.on('uncaughtException', (err) => {
+  console.error('[Electron] Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Electron] Unhandled Rejection:', reason);
+});
 
 // Config file management
 function getConfigPath() {
@@ -74,23 +89,28 @@ function checkUrlRunning(url, timeoutMs = 800) {
   });
 }
 
-// Start companion hardware daemon
+// Start companion hardware daemon (non-blocking, crash-guarded)
 async function startHardwareDaemon() {
-  releaseApplePTPLock();
-  const isRunning = await checkUrlRunning('http://127.0.0.1:8000/', 1000);
-  if (isRunning) {
-    console.log('[Electron] Hardware daemon already running on port 8000');
-    return;
-  }
-
-  const daemonDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'hardware-daemon')
-    : path.join(__dirname, '../hardware-daemon');
-
-  const appScript = path.join(daemonDir, 'app.py');
-  const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
-
   try {
+    releaseApplePTPLock();
+    const isRunning = await checkUrlRunning('http://127.0.0.1:8000/', 1000);
+    if (isRunning) {
+      console.log('[Electron] Hardware daemon already running on port 8000');
+      return;
+    }
+
+    const daemonDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'hardware-daemon')
+      : path.join(__dirname, '../hardware-daemon');
+
+    const appScript = path.join(daemonDir, 'app.py');
+    if (!fs.existsSync(appScript)) {
+      console.warn('[Electron] Hardware daemon script not found at:', appScript);
+      return;
+    }
+
+    const pythonBin = process.platform === 'win32' ? 'python' : 'python3';
+
     daemonProcess = spawn(pythonBin, [appScript], {
       cwd: daemonDir,
       stdio: 'pipe',
@@ -107,10 +127,11 @@ async function startHardwareDaemon() {
     });
 
     daemonProcess.on('error', (err) => {
-      console.warn('[Electron] Could not launch hardware daemon:', err.message);
+      // Benign fallback if Python is not installed on client machine
+      console.warn('[Electron] Python companion not available on this machine (running in standard web mode):', err.message);
     });
   } catch (err) {
-    console.warn('[Electron] Failed to start daemon process:', err);
+    console.warn('[Electron] Hardware daemon initialization skipped:', err.message);
   }
 }
 
@@ -241,18 +262,18 @@ function renderSetupPage(errorMessage = null) {
           </svg>
         </div>
         <h1>QuickPic Photobooth</h1>
-        <p>Connect this desktop kiosk to your QuickPic production site to start capturing photos with your Canon DSLR.</p>
+        <p>Connect this desktop kiosk to your QuickPic production site to start capturing photos.</p>
         
         ${errorMessage ? `<div class="error">${errorMessage}</div>` : ''}
 
         <div class="input-group">
           <label>QuickPic Vercel / Web URL</label>
-          <input id="urlInput" type="text" placeholder="https://your-booth.vercel.app" value="${savedUrl}" />
+          <input id="urlInput" type="text" placeholder="https://quickpic-olive.vercel.app" value="${savedUrl}" />
         </div>
 
         <button id="connectBtn" onclick="handleConnect()">Launch Photobooth</button>
 
-        <p class="hint">Local hardware companion daemon (port 8000) is running and ready for Canon DSLR & DNP printer.</p>
+        <p class="hint">Canon DSLR companion daemon runs locally on port 8000 when Python is installed.</p>
       </div>
 
       <script>
@@ -290,7 +311,7 @@ async function loadPhotobooth() {
     return;
   }
 
-  // 2. Check for configured production / Vercel URL
+  // 2. Default to production Vercel URL
   const DEFAULT_PRODUCTION_URL = 'https://quickpic-olive.vercel.app';
   const targetUrl = process.env.APP_URL || getSavedAppUrl() || DEFAULT_PRODUCTION_URL;
 
@@ -311,6 +332,7 @@ function createWindow() {
     minHeight: 700,
     title: 'QuickPic Photobooth',
     backgroundColor: '#09090b',
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -378,14 +400,23 @@ function setupApplicationMenu() {
 }
 
 // App lifecycle
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   setupApplicationMenu();
-  await startHardwareDaemon();
-  createWindow();
+  createWindow(); // Create window IMMEDIATELY to prevent Windows closing on launch
+  startHardwareDaemon().catch((err) => {
+    console.warn('[Electron] Background daemon launch error:', err);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -396,7 +427,9 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   if (daemonProcess) {
-    daemonProcess.kill('SIGTERM');
+    try {
+      daemonProcess.kill('SIGTERM');
+    } catch {}
   }
 });
 
