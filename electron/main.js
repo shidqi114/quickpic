@@ -116,7 +116,7 @@ async function startHardwareDaemon() {
 
 // Render connection setup page if no URL is set or site cannot be reached
 function renderSetupPage(errorMessage = null) {
-  const savedUrl = getSavedAppUrl() || '';
+  const savedUrl = getSavedAppUrl() || 'https://quickpic-olive.vercel.app';
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -291,20 +291,16 @@ async function loadPhotobooth() {
   }
 
   // 2. Check for configured production / Vercel URL
-  const savedUrl = process.env.APP_URL || getSavedAppUrl();
-  if (savedUrl) {
-    console.log(`[Electron] Loading production photobooth at ${savedUrl}`);
-    mainWindow.loadURL(savedUrl).catch((err) => {
-      console.warn(`[Electron] Failed to load ${savedUrl}:`, err);
-      mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(
-        renderSetupPage(`Could not connect to <b>${savedUrl}</b>. Please check your internet connection or update the URL.`)
-      )}`);
-    });
-    return;
-  }
+  const DEFAULT_PRODUCTION_URL = 'https://quickpic-olive.vercel.app';
+  const targetUrl = process.env.APP_URL || getSavedAppUrl() || DEFAULT_PRODUCTION_URL;
 
-  // 3. Fallback to setup page if no URL is configured yet
-  mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(renderSetupPage())}`);
+  console.log(`[Electron] Loading photobooth at ${targetUrl}`);
+  mainWindow.loadURL(targetUrl).catch((err) => {
+    console.warn(`[Electron] Failed to load ${targetUrl}:`, err);
+    mainWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(
+      renderSetupPage(`Could not connect to <b>${targetUrl}</b>. Please check your internet connection or update the URL.`)
+    )}`);
+  });
 }
 
 function createWindow() {
