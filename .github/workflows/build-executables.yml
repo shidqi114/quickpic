@@ -1,10 +1,13 @@
-name: Build & Package Desktop Installers
+name: Build & Publish Desktop Installers
 
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -31,7 +34,7 @@ jobs:
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: quickpic-windows-exe
+          name: quickpic-windows
           path: dist/*.exe
 
   build-mac:
@@ -58,5 +61,53 @@ jobs:
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: quickpic-mac-dmg
+          name: quickpic-mac
           path: dist/*.dmg
+
+  publish-release:
+    name: Publish Public GitHub Release
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create release directory
+        run: mkdir -p release-files
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: quickpic-windows
+          path: release-files
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: quickpic-mac
+          path: release-files
+
+      - name: Determine Tag Name
+        id: release_info
+        shell: bash
+        run: |
+          if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v0.1.0"
+          fi
+          echo "tag_name=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          name: "QuickPic Photobooth ${{ steps.release_info.outputs.tag_name }}"
+          body: |
+            ## QuickPic Photobooth Desktop
+            
+            Instant download links for QuickPic desktop app:
+            - **Windows**: Download the `.exe` installer below.
+            - **macOS**: Download the `.dmg` installer below.
+            
+            Includes native Canon DSLR direct USB control & DNP dye-sub printer spooling.
+          files: release-files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

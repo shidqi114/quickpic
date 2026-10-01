@@ -1,6 +1,8 @@
 {
   "name": "quickpic",
   "version": "0.1.0",
+  "description": "QuickPic Desktop Photobooth with Canon DSLR & DNP Printer support",
+  "author": "QuickPic",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
