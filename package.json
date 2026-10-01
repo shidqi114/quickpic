@@ -46,6 +46,9 @@
     "productName": "QuickPic Photobooth",
     "mac": {
       "category": "public.app-category.photography",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
       "target": [
         "dmg",
         "zip"
