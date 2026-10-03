@@ -35,7 +35,8 @@ import {
   OperatingMode,
 } from '@/components/ux/OperatorSetupWizard';
 import { PhotoPickSlots } from '@/components/ux/PhotoPickSlots';
-import { SplitFrameEditor, PlacedSticker } from '@/components/ux/SplitFrameEditor';
+import { SplitFrameEditor } from '@/components/ux/SplitFrameEditor';
+import { StickerItem } from '@/components/ui/StickerCanvasLayer';
 import {
   BoothSettings,
   PhotoFilter,
@@ -116,7 +117,7 @@ export default function PhotoboothKioskPage() {
   // Frame Template & Slot Editor state
   const [selectedTemplate, setSelectedTemplate] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
   const [slotAdjustments, setSlotAdjustments] = useState<Record<string, SlotAdjustment>>({});
-  const [stickersBySlot, setStickersBySlot] = useState<Record<string, PlacedSticker[]>>({});
+  const [stickersBySlot, setStickersBySlot] = useState<Record<string, StickerItem[]>>({});
 
   // Camera session state
   const [isCapturing, setIsCapturing] = useState(false);
@@ -501,10 +502,35 @@ export default function PhotoboothKioskPage() {
 
     try {
       const validPhotos = capturedPhotos.map((p) => p || '');
+      // Merge per-slot stickers into slotAdjustments so compositor prints all placed stickers
+      const mergedAdjustments: Record<string, SlotAdjustment> = {};
+      selectedTemplate.slots.forEach((slot, idx) => {
+        const adj = slotAdjustments[slot.id] || {
+          slotId: slot.id,
+          photoIndex: idx,
+          zoom: 1.0,
+          panX: 0,
+          panY: 0,
+          filter: 'none',
+        };
+        const slotStkList = stickersBySlot[slot.id] || [];
+        mergedAdjustments[slot.id] = {
+          ...adj,
+          stickers: slotStkList.map((s) => ({
+            id: s.id,
+            emojiOrUrl: s.content || '',
+            x: s.x,
+            y: s.y,
+            scale: s.scale,
+            rotation: s.rotation,
+          })),
+        };
+      });
+
       const compositeUrl = await renderCustomFrameSlotComposite(
         validPhotos,
         selectedTemplate,
-        slotAdjustments,
+        mergedAdjustments,
         operatorSettings.eventName,
         operatorSettings.eventDate
       );
@@ -933,9 +959,12 @@ export default function PhotoboothKioskPage() {
         <PhotoPickSlots
           capturedPhotos={capturedPhotos.map((p) => p || '')}
           template={selectedTemplate}
+          onSelectTemplate={setSelectedTemplate}
           slotAdjustments={slotAdjustments}
           onUpdateSlotPhoto={handleUpdateSlotPhoto}
           onAutoFillInOrder={handleAutoFillInOrder}
+          eventName={operatorSettings.eventName}
+          eventDate={operatorSettings.eventDate}
           onProceedToEditor={() => setCurrentStep('SPLIT_FRAME_EDITOR')}
           onBackToCamera={() => setCurrentStep('CAMERA_SESSION')}
         />
@@ -948,7 +977,6 @@ export default function PhotoboothKioskPage() {
         <SplitFrameEditor
           capturedPhotos={capturedPhotos.map((p) => p || '')}
           selectedTemplate={selectedTemplate}
-          onSelectTemplate={setSelectedTemplate}
           slotAdjustments={slotAdjustments}
           onUpdateSlotAdjustment={(slotId, adj) =>
             setSlotAdjustments((prev) => ({
@@ -970,6 +998,8 @@ export default function PhotoboothKioskPage() {
           onUpdateSlotStickers={(slotId, stickers) =>
             setStickersBySlot((prev) => ({ ...prev, [slotId]: stickers }))
           }
+          eventName={operatorSettings.eventName}
+          eventDate={operatorSettings.eventDate}
           onBackToStep1={() => setCurrentStep('PHOTO_PICK_SLOTS')}
           onConfirm={() => setCurrentStep('CONSENT_MODAL')}
         />

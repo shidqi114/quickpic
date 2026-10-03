@@ -2,26 +2,33 @@
 
 import React, { useState } from 'react';
 import { FrameTemplate, SlotAdjustment } from '@/types/photobooth';
-import { Sparkles, ArrowRight, RotateCcw, Check, Wand2, Layers, RefreshCw } from 'lucide-react';
+import { FRAME_THEMES } from '@/lib/compositor';
+import { Sparkles, ArrowRight, RotateCcw, Check, Wand2, Layers, RefreshCw, Palette } from 'lucide-react';
 
 interface PhotoPickSlotsProps {
   capturedPhotos: string[];
   template: FrameTemplate;
+  onSelectTemplate?: (template: FrameTemplate) => void;
   slotAdjustments: Record<string, SlotAdjustment>;
   onUpdateSlotPhoto: (slotId: string, photoIndex: number) => void;
   onAutoFillInOrder: () => void;
   onProceedToEditor: () => void;
   onBackToCamera: () => void;
+  eventName?: string;
+  eventDate?: string;
 }
 
 export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
   capturedPhotos,
   template,
+  onSelectTemplate,
   slotAdjustments,
   onUpdateSlotPhoto,
   onAutoFillInOrder,
   onProceedToEditor,
   onBackToCamera,
+  eventName = 'QUICKPIC PHOTOBOOTH',
+  eventDate = 'SEP 2026',
 }) => {
   const [selectedSlotId, setSelectedSlotId] = useState<string>(template.slots[0]?.id || 's1');
   const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null);
@@ -144,14 +151,55 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
               );
             })}
 
-            {/* Footer Text */}
+            {/* Template Footer Branding */}
             <div
-              className="absolute bottom-2 inset-x-0 text-center font-bold text-[9px] tracking-wider uppercase opacity-80"
+              className="absolute bottom-2 inset-x-0 text-center font-mono select-none px-2"
               style={{ color: template.textColor }}
             >
-              ⚡ QUICKPIC PHOTOBOOTH
+              <div className="font-black text-[10px] tracking-widest uppercase truncate leading-tight">
+                {eventName.toUpperCase()}
+              </div>
+              <div className="text-[8px] font-semibold tracking-wider opacity-75 leading-tight mt-0.5">
+                ★ {eventDate} ★
+              </div>
             </div>
           </div>
+
+          {/* Theme Switcher Quick Bar */}
+          {onSelectTemplate && (
+            <div className="w-full mt-4 pt-3 border-t border-zinc-800 space-y-2">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+                Frame Theme
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {FRAME_THEMES.map((th) => (
+                  <button
+                    key={th.id}
+                    type="button"
+                    onClick={() =>
+                      onSelectTemplate({
+                        ...template,
+                        backgroundColor: th.backgroundColor,
+                        textColor: th.textColor,
+                        accentColor: th.accentColor,
+                      })
+                    }
+                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold whitespace-nowrap transition flex items-center gap-1.5 border ${
+                      template.backgroundColor === th.backgroundColor
+                        ? 'border-pink-500 bg-pink-500/20 text-pink-300'
+                        : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/20"
+                      style={{ backgroundColor: th.backgroundColor }}
+                    />
+                    {th.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Captured Raw Photos Palette & Quick Controls (7 cols) */}

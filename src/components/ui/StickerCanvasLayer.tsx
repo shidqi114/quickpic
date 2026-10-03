@@ -359,8 +359,9 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
   return (
     <div
       ref={containerRef}
+      style={{ containerType: 'inline-size' }}
       onClick={() => !readOnly && setActiveStickerId(null)}
-      className={`absolute inset-0 overflow-hidden pointer-events-auto select-none ${className}`}
+      className={`@container absolute inset-0 overflow-hidden pointer-events-auto select-none ${className}`}
     >
       {stickers.map((sticker) => {
         const isSelected = activeStickerId === sticker.id && !readOnly;
@@ -370,6 +371,12 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
             key={sticker.id}
             data-sticker-wrapper="true"
             onPointerDown={(e) => handleStickerPointerDown(e, sticker)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!readOnly) {
+                setActiveStickerId(sticker.id);
+              }
+            }}
             style={{
               left: `${sticker.x}%`,
               top: `${sticker.y}%`,
@@ -386,22 +393,31 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
               <div className="absolute -inset-3 border-2 border-pink-500 rounded-xl ring-2 ring-pink-500/30 bg-pink-500/5 pointer-events-none shadow-lg shadow-pink-500/20" />
             )}
 
-            {/* Sticker Visual Content */}
-            <div className="relative flex items-center justify-center p-1.5">
+            {/* Sticker Visual Content with proportional cqw sizing */}
+            <div className="relative flex items-center justify-center p-1">
               {sticker.type === 'emoji' && (
-                <span className="text-4xl md:text-5xl filter drop-shadow-md select-none transition-transform">
+                <span
+                  style={{ fontSize: '24cqw' }}
+                  className="filter drop-shadow-md select-none transition-transform leading-none inline-block"
+                >
                   {sticker.content}
                 </span>
               )}
 
               {sticker.type === 'stamp' && (
-                <div className="px-3 py-1.5 bg-black/70 backdrop-blur-md border-2 border-pink-400 text-pink-300 font-black text-xs md:text-sm tracking-widest uppercase rounded-lg shadow-xl shadow-pink-500/30 whitespace-nowrap">
+                <div
+                  style={{ fontSize: '7.5cqw', padding: '0.8cqw 1.8cqw' }}
+                  className="bg-black/70 backdrop-blur-md border-2 border-pink-400 text-pink-300 font-black tracking-widest uppercase rounded-lg shadow-xl shadow-pink-500/30 whitespace-nowrap leading-tight"
+                >
                   {sticker.content}
                 </div>
               )}
 
               {sticker.type === 'badge' && (
-                <div className="px-3 py-1 bg-amber-500/20 border-2 border-amber-400 text-amber-300 font-extrabold text-xs tracking-wider rounded-full shadow-lg shadow-amber-500/20 whitespace-nowrap">
+                <div
+                  style={{ fontSize: '7cqw', padding: '0.8cqw 1.6cqw' }}
+                  className="bg-amber-500/20 border-2 border-amber-400 text-amber-300 font-extrabold tracking-wider rounded-full shadow-lg shadow-amber-500/20 whitespace-nowrap leading-tight"
+                >
                   {sticker.content}
                 </div>
               )}
@@ -410,50 +426,88 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
             {/* Canva-Style Interactive Transformation Controls (Visible when active) */}
             {isSelected && (
               <>
-                {/* 4 Corner Resize Handles */}
+                {/* 4 Corner Resize Handles - Constant size regardless of sticker scale */}
                 {/* Top-Left */}
                 <div
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -top-5 -left-5 w-5 h-5 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
-                  style={{ touchAction: 'none' }}
+                  className="absolute -top-3 -left-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(-50%, -50%) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'center center',
+                    touchAction: 'none',
+                  }}
                 />
                 {/* Top-Right */}
                 <div
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -top-5 -right-5 w-5 h-5 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
-                  style={{ touchAction: 'none' }}
+                  className="absolute -top-3 -right-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(50%, -50%) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'center center',
+                    touchAction: 'none',
+                  }}
                 />
                 {/* Bottom-Left */}
                 <div
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -bottom-5 -left-5 w-5 h-5 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
-                  style={{ touchAction: 'none' }}
+                  className="absolute -bottom-3 -left-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(-50%, 50%) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'center center',
+                    touchAction: 'none',
+                  }}
                 />
                 {/* Bottom-Right */}
                 <div
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -bottom-5 -right-5 w-5 h-5 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
-                  style={{ touchAction: 'none' }}
+                  className="absolute -bottom-3 -right-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(50%, 50%) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'center center',
+                    touchAction: 'none',
+                  }}
                 />
 
-                {/* Canva Rotate Handle (Stem & Circular Pill) */}
-                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-0.5 h-4 bg-pink-500 pointer-events-none" />
+                {/* Canva Rotate Handle (Stem & Circular Button) - Constant size */}
+                <div
+                  className="absolute -bottom-3 left-1/2 w-0.5 h-4 bg-pink-500 pointer-events-none"
+                  style={{
+                    transform: `translateX(-50%) scaleY(${1 / sticker.scale})`,
+                    transformOrigin: 'top center',
+                  }}
+                />
                 <button
                   type="button"
                   onPointerDown={(e) => handleRotatePointerDown(e, sticker)}
+                  onClick={(e) => e.stopPropagation()}
                   title="Drag to rotate 360° / Tap to rotate +45°"
-                  className="absolute -bottom-12 left-1/2 -translate-x-1/2 bg-pink-500 text-white rounded-full p-1.5 shadow-lg cursor-grab hover:scale-110 active:cursor-grabbing flex items-center justify-center transition-transform z-30 pointer-events-auto"
-                  style={{ touchAction: 'none' }}
+                  className="absolute -bottom-3 left-1/2 bg-pink-500 text-white rounded-full p-1.5 shadow-lg cursor-grab hover:scale-110 active:cursor-grabbing flex items-center justify-center transition-transform z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(-50%, calc(16px * ${1 / sticker.scale})) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'top center',
+                    touchAction: 'none',
+                  }}
                 >
                   <RotateCw className="w-3.5 h-3.5" />
                 </button>
 
-                {/* Quick Action Buttons (Duplicate & Delete Pill on Top) */}
-                <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-zinc-950/90 border border-pink-500/40 rounded-full p-1 shadow-xl backdrop-blur-md z-30 pointer-events-auto">
+                {/* Quick Action Buttons (Duplicate & Delete Pill on Top) - Constant size */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute -top-3 left-1/2 flex items-center gap-1 bg-zinc-950/95 border border-pink-500/40 rounded-full p-1 shadow-xl backdrop-blur-md z-30 pointer-events-auto"
+                  style={{
+                    transform: `translate(-50%, calc(-100% - 10px * ${1 / sticker.scale})) scale(${1 / sticker.scale})`,
+                    transformOrigin: 'bottom center',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={(e) => {
