@@ -4,23 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Release Tag Name (e.g. v0.1.5, leave blank to use package.json version)'
+        description: "Release Tag Name (e.g. v0.1.5, leave blank to use package.json version)"
         required: false
         type: string
-        default: ''
+        default: ""
       draft:
-        description: 'Publish as Draft'
+        description: "Publish as Draft"
         required: false
         type: boolean
         default: false
       prerelease:
-        description: 'Publish as Pre-release'
+        description: "Publish as Pre-release"
         required: false
         type: boolean
         default: false
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
@@ -37,15 +37,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install Dependencies
         run: npm ci
 
       - name: Build Windows Executable (.exe)
         run: npm run electron:dist:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -67,15 +65,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install Dependencies
         run: npm ci
 
       - name: Build macOS Installer (.dmg)
         run: npm run electron:dist:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
@@ -121,7 +117,7 @@ jobs:
       - name: Download All Build Artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: 'quickpic-*'
+          pattern: "quickpic-*"
           path: release-files
           merge-multiple: true
 
@@ -145,7 +141,7 @@ jobs:
             Official desktop application release for QuickPic Photobooth:
             - **Windows**: Download the `.exe` installer (NSIS setup) or portable `.exe` below.
             - **macOS**: Download the `.dmg` installer below (if available).
-            
+
             ### Included Features
             - Native Canon DSLR direct USB tethering & live viewfinder control
             - DNP dye-sublimation printer spooling

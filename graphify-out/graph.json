@@ -92490,7 +92490,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/ux/SplitFrameEditor.tsx",
-      "source_location": "L469",
+      "source_location": "L411",
       "weight": 1.0
     },
     {
@@ -92502,7 +92502,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/ux/SplitFrameEditor.tsx",
-      "source_location": "L495",
+      "source_location": "L437",
       "weight": 1.0
     },
     {
@@ -170816,5 +170816,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "fc912d38f2b8a333216a6c512357aef864c850c4"
+  "built_at_commit": "f2e53c0e075afbd91c7f57a80ceffd73aad50676"
 }

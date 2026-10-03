@@ -17,7 +17,7 @@ import {
 import { WelcomeScreenTheme, BoothOperatingMode } from '@/types/photobooth';
 
 export interface WelcomeScreenProps {
-  /** Selected visual theme (1 of 5 styles) */
+  /** Selected visual theme (1 of 5 styles or custom) */
   theme?: WelcomeScreenTheme;
   /** Operating mode (event = free, regular = paywall) */
   operatingMode?: BoothOperatingMode;
@@ -27,6 +27,10 @@ export interface WelcomeScreenProps {
   eventDate?: string;
   /** Event hashtag */
   eventHashtag?: string;
+  /** Optional custom background image uploaded by operator */
+  customWelcomeImageUrl?: string;
+  /** Optional custom headline override */
+  customHeadline?: string;
   /** Callback triggered when customer taps the touch screen */
   onStart: () => void;
   /** Optional custom class name */
@@ -77,6 +81,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   eventName = 'Summer Gala 2026',
   eventDate = 'OCT 2026',
   eventHashtag = '#QuickPicBooth',
+  customWelcomeImageUrl,
+  customHeadline,
   onStart,
   className = '',
 }) => {
@@ -85,43 +91,64 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       onClick={onStart}
       className={`w-full h-full flex-1 flex flex-col items-center justify-between p-6 md:p-12 text-center select-none cursor-pointer transition-all duration-500 relative overflow-hidden ${className}`}
     >
-      {/* Background Ambience Layers based on Theme */}
-      {theme === 'neon_cyber' && (
+      {/* Background Ambience Layers: Custom Image Backdrop or Theme Presets */}
+      {customWelcomeImageUrl ? (
         <>
-          <div className="absolute inset-0 bg-radial from-purple-900/40 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
-          <div className="absolute top-1/4 -left-32 w-96 h-96 bg-pink-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
-          <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+          <img
+            src={customWelcomeImageUrl}
+            alt="Custom Welcome Screen Backdrop"
+            className="absolute inset-0 w-full h-full object-cover -z-20 pointer-events-none transition-all duration-700"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-zinc-950/40 -z-10 pointer-events-none" />
+          <div className="absolute inset-0 backdrop-blur-[1px] -z-10 pointer-events-none" />
         </>
-      )}
-
-      {theme === 'luxury_gold' && (
+      ) : (
         <>
-          <div className="absolute inset-0 bg-radial from-amber-950/30 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
-          <div className="absolute inset-8 border border-amber-500/20 rounded-3xl pointer-events-none" />
-          <div className="absolute inset-10 border border-amber-500/10 rounded-2xl pointer-events-none" />
-        </>
-      )}
+          {theme === 'neon_cyber' && (
+            <>
+              <div className="absolute inset-0 bg-radial from-purple-900/40 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute top-1/4 -left-32 w-96 h-96 bg-pink-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+              <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            </>
+          )}
 
-      {theme === 'retro_y2k' && (
-        <>
-          <div className="absolute inset-0 bg-radial from-yellow-950/25 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
-          <div className="absolute top-10 right-10 w-24 h-24 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute bottom-10 left-10 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
-        </>
-      )}
+          {theme === 'luxury_gold' && (
+            <>
+              <div className="absolute inset-0 bg-radial from-amber-950/30 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute inset-8 border border-amber-500/20 rounded-3xl pointer-events-none" />
+              <div className="absolute inset-10 border border-amber-500/10 rounded-2xl pointer-events-none" />
+            </>
+          )}
 
-      {theme === 'clean_studio' && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/50 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-zinc-500/5 rounded-full blur-3xl pointer-events-none" />
-        </>
-      )}
+          {theme === 'retro_y2k' && (
+            <>
+              <div className="absolute inset-0 bg-radial from-yellow-950/25 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute top-10 right-10 w-24 h-24 bg-yellow-400/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute bottom-10 left-10 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none" />
+            </>
+          )}
 
-      {theme === 'pastel_romance' && (
-        <>
-          <div className="absolute inset-0 bg-radial from-pink-950/30 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
-          <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-pink-400/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
+          {theme === 'clean_studio' && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/50 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-zinc-500/5 rounded-full blur-3xl pointer-events-none" />
+            </>
+          )}
+
+          {theme === 'pastel_romance' && (
+            <>
+              <div className="absolute inset-0 bg-radial from-pink-950/30 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-pink-400/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
+            </>
+          )}
+
+          {theme === 'custom' && (
+            <>
+              <div className="absolute inset-0 bg-radial from-purple-900/30 via-zinc-950 to-zinc-950 -z-10 pointer-events-none" />
+              <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            </>
+          )}
         </>
       )}
 
@@ -133,6 +160,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           {theme === 'retro_y2k' && <Star className="w-4 h-4 text-yellow-400" />}
           {theme === 'pastel_romance' && <Heart className="w-4 h-4 text-pink-400 fill-pink-400/30" />}
           {theme === 'clean_studio' && <Radio className="w-3.5 h-3.5 text-zinc-400 animate-pulse" />}
+          {theme === 'custom' && <Sparkles className="w-4 h-4 text-pink-400 animate-pulse" />}
 
           <span
             className={`text-xs font-bold uppercase tracking-widest ${
@@ -160,14 +188,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <div className="flex flex-col items-center justify-center my-auto z-10 animate-fade-in">
         {/* Animated Badge Icon */}
         <div className="relative group mb-8 transform transition duration-500 group-hover:scale-105">
-          {theme === 'neon_cyber' && (
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-gradient-to-tr from-pink-500 via-purple-600 to-cyan-400 p-1 shadow-2xl shadow-pink-500/30 animate-pulse">
-              <div className="w-full h-full bg-zinc-950 rounded-[22px] flex items-center justify-center">
-                <Camera className="w-16 h-16 md:w-20 md:h-20 text-pink-500" />
-              </div>
-            </div>
-          )}
-
           {theme === 'luxury_gold' && (
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-amber-400/60 p-2 shadow-2xl shadow-amber-500/20">
               <div className="w-full h-full rounded-full bg-gradient-to-tr from-amber-950/60 to-zinc-900 border border-amber-400/30 flex items-center justify-center">
@@ -196,6 +216,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-tr from-pink-300 via-rose-300 to-indigo-300 p-1.5 shadow-2xl shadow-pink-500/20">
               <div className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center">
                 <Heart className="w-16 h-16 md:w-18 md:h-18 text-pink-300 fill-pink-300/40 animate-pulse" />
+              </div>
+            </div>
+          )}
+
+          {(theme === 'neon_cyber' || theme === 'custom' || !['luxury_gold', 'retro_y2k', 'clean_studio', 'pastel_romance'].includes(theme || '')) && (
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-gradient-to-tr from-pink-500 via-purple-600 to-cyan-400 p-1 shadow-2xl shadow-pink-500/30 animate-pulse">
+              <div className="w-full h-full bg-zinc-950 rounded-[22px] flex items-center justify-center">
+                <Camera className="w-16 h-16 md:w-20 md:h-20 text-pink-500" />
               </div>
             </div>
           )}
@@ -236,18 +264,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               : 'text-transparent bg-clip-text bg-gradient-to-r from-white via-pink-200 to-purple-300'
           }`}
         >
-          {theme === 'luxury_gold'
-            ? 'Cherish Every Moment'
-            : theme === 'retro_y2k'
-            ? 'Strike A Rad Pose!'
-            : theme === 'pastel_romance'
-            ? 'Create Sweet Memories'
-            : theme === 'clean_studio'
-            ? 'Studio Photobooth'
-            : 'Capture Your Magic'}
+          {customHeadline ||
+            (theme === 'luxury_gold'
+              ? 'Cherish Every Moment'
+              : theme === 'retro_y2k'
+              ? 'Strike A Rad Pose!'
+              : theme === 'pastel_romance'
+              ? 'Create Sweet Memories'
+              : theme === 'clean_studio'
+              ? 'Studio Photobooth'
+              : 'Capture Your Magic')}
         </h2>
 
-        <p className="text-zinc-400 text-sm md:text-base max-w-lg mb-10 leading-relaxed">
+        <p className="text-zinc-400 text-sm md:text-base max-w-lg mb-10 leading-relaxed drop-shadow-md">
           High-res studio DSLR snapshots, 5-second Live Photo Boomerangs, free-transform Canva stickers, and instant DNP prints.
         </p>
 

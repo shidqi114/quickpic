@@ -678,9 +678,9 @@
     "semantic_hash": "c131cc3bc98987230ef9be26372b973d"
   },
   "src/app/page.tsx": {
-    "mtime": 1791038314.2243798,
-    "seen": 1791043932.648445,
-    "ast_hash": "27cf936a35adeaa8332b6993dede76a0",
+    "mtime": 1791044903.0832531,
+    "seen": 1791044929.712621,
+    "ast_hash": "5c8989f067734387f5d5100706522e78",
     "semantic_hash": ""
   },
   "src/components/CameraViewfinder.tsx": {
@@ -1788,15 +1788,15 @@
     "semantic_hash": ""
   },
   "src/components/ux/PhotoPickSlots.tsx": {
-    "mtime": 1791035075.562175,
-    "seen": 1791043932.6484532,
-    "ast_hash": "6e32ce844352b0332b97ab9a900b6a8b",
+    "mtime": 1791044908.70131,
+    "seen": 1791044929.7128599,
+    "ast_hash": "95d97b6e7156c0d74bd3394ce51cc8d4",
     "semantic_hash": ""
   },
   "src/components/ux/SplitFrameEditor.tsx": {
-    "mtime": 1791035111.8679056,
-    "seen": 1791043932.648454,
-    "ast_hash": "fb48f9ea1a12ab1f1dbe0bbc641749dd",
+    "mtime": 1791044914.763982,
+    "seen": 1791044929.7128599,
+    "ast_hash": "88f7cc23213b983868fae2d4d7501948",
     "semantic_hash": ""
   },
   "tests/e2e/lumabooth-flow-simulation.ts": {

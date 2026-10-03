@@ -655,8 +655,8 @@ export default function PhotoboothKioskPage() {
 
   return (
     <main className="h-screen w-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between select-none relative overflow-hidden">
-      {/* Minimal Single Top-Left Back Arrow */}
-      {currentStep !== 'OPERATOR_SETUP' && (
+      {/* Minimal Single Top-Left Back Arrow (only shown on Welcome Screen to access Operator Setup) */}
+      {currentStep === 'WELCOME' && (
         <button
           onClick={handleGoBack}
           aria-label="Back"
@@ -693,6 +693,8 @@ export default function PhotoboothKioskPage() {
           eventName={operatorSettings.eventName}
           eventDate={operatorSettings.eventDate}
           eventHashtag={operatorSettings.eventHashtag}
+          customWelcomeImageUrl={operatorSettings.customWelcomeImageUrl}
+          customHeadline={operatorSettings.customWelcomeHeadline}
           onStart={handleStartFromWelcome}
         />
       )}

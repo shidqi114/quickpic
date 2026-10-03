@@ -7,7 +7,8 @@ export type WelcomeScreenTheme =
   | 'luxury_gold'
   | 'retro_y2k'
   | 'clean_studio'
-  | 'pastel_romance';
+  | 'pastel_romance'
+  | 'custom';
 
 export type StripLayout = 'strip-3' | 'strip-4' | 'grid-2x2' | 'single' | '4r-classic' | 'a4-collage';
 
@@ -82,6 +83,11 @@ export interface FrameTemplate {
   accentColor: string;
   overlayPngUrl?: string; // Optional custom PNG border
   previewThumbnailUrl?: string;
+  isCustom?: boolean;
+  customImageUrl?: string;
+  aspectRatio?: number; // width / height
+  includeText?: boolean; // Whether to render footer event text/branding
+  customText?: string;
 }
 
 export interface SlotAdjustment {
@@ -218,8 +224,12 @@ export interface BoothSettings {
   selectedFilter: PhotoFilter;
   selectedThemeId: string;
   welcomeTheme?: WelcomeScreenTheme;
+  customWelcomeImageUrl?: string;
+  customWelcomeHeadline?: string;
   customOverlayUrl?: string;
   mirrorCamera: boolean;
   printEnabled: boolean;
   hardwareDaemonUrl?: string; // e.g. http://localhost:8000
+  cameraDeviceId?: string;
+  useDslr?: boolean;
 }
