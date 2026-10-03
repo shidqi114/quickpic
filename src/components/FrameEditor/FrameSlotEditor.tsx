@@ -262,12 +262,12 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
               <span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                 <ZoomIn className="w-3.5 h-3.5 text-pink-400" /> Zoom / Face Framing
               </span>
-              <span className="text-xs font-mono text-pink-400">{Math.round(currentAdj.zoom * 100)}%</span>
+              <span className="text-xs font-mono text-pink-400">{Math.round((currentAdj.zoom ?? 1.0) * 100)}%</span>
             </div>
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => handleZoomChange(currentAdj.zoom - 0.15)}
+                onClick={() => handleZoomChange((currentAdj.zoom ?? 1.0) - 0.15)}
                 className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
               >
                 <ZoomOut className="w-4 h-4" />
@@ -277,12 +277,12 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
                 min="1.0"
                 max="2.5"
                 step="0.05"
-                value={currentAdj.zoom}
+                value={currentAdj.zoom ?? 1.0}
                 onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
                 className="w-full accent-pink-500 cursor-pointer"
               />
               <button
-                onClick={() => handleZoomChange(currentAdj.zoom + 0.15)}
+                onClick={() => handleZoomChange((currentAdj.zoom ?? 1.0) + 0.15)}
                 className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300"
               >
                 <ZoomIn className="w-4 h-4" />
@@ -294,13 +294,13 @@ export const FrameSlotEditor: React.FC<FrameSlotEditorProps> = ({
               <span>Reposition Face:</span>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => onUpdateSlotAdjustment(activeSlotId, { panY: currentAdj.panY - 10 })}
+                  onClick={() => onUpdateSlotAdjustment(activeSlotId, { panY: (currentAdj.panY ?? 0) - 10 })}
                   className="px-2 py-1 bg-zinc-800 rounded hover:bg-zinc-700 text-[10px]"
                 >
                   &uarr; Up
                 </button>
                 <button
-                  onClick={() => onUpdateSlotAdjustment(activeSlotId, { panY: currentAdj.panY + 10 })}
+                  onClick={() => onUpdateSlotAdjustment(activeSlotId, { panY: (currentAdj.panY ?? 0) + 10 })}
                   className="px-2 py-1 bg-zinc-800 rounded hover:bg-zinc-700 text-[10px]"
                 >
                   &darr; Down

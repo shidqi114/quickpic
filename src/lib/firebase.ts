@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, orderBy, limit, Firestore } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, FirebaseStorage } from 'firebase/storage';
 import { PhotoSession } from '@/types/photobooth';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -55,14 +56,17 @@ function saveLocalSession(session: PhotoSession) {
   }
 }
 
-import { uploadToCloudinary } from '@/lib/cloudinary';
+const PUBLIC_GALLERY_ORIGIN = (
+  process.env.NEXT_PUBLIC_PUBLIC_GALLERY_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://quickpic-olive.vercel.app'
+).replace(/\/+$/, '');
 
 export async function savePhotoSession(session: PhotoSession): Promise<{ guestUrl: string; id: string }> {
   // Always save local cache first for instant kiosk access
   saveLocalSession(session);
 
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const guestUrl = `${baseUrl}/gallery/${session.id}`;
+  const guestUrl = `${PUBLIC_GALLERY_ORIGIN}/gallery/${session.id}`;
 
   // Background Cloud Sync Task (Cloudinary for image storage + Firestore for database)
   const syncTask = async () => {

@@ -1,3 +1,7 @@
+export type BoothOperatingMode = 'event' | 'regular';
+
+export type CaptureModeType = 'photo' | 'gif' | 'boomerang' | 'video';
+
 export type StripLayout = 'strip-3' | 'strip-4' | 'grid-2x2' | 'single' | '4r-classic' | 'a4-collage';
 
 export type FrameCategory = 'strip' | '4r' | 'a4' | 'square';
@@ -10,6 +14,15 @@ export type PhotoFilter =
   | 'warm' 
   | 'cyberpunk' 
   | 'cold';
+
+export interface StickerItem {
+  id: string;
+  emojiOrUrl: string;
+  x: number;          // Position (0-100% or px)
+  y: number;          // Position (0-100% or px)
+  scale: number;      // Scale multiplier (e.g. 1.0)
+  rotation: number;   // Rotation in degrees (0-360)
+}
 
 export interface FrameTheme {
   id: string;
@@ -30,6 +43,26 @@ export interface FrameSlot {
   aspectRatio: number; // e.g. 4/3 or 1/1
 }
 
+export interface PrintLayoutConfig {
+  paperSize: 'strip-2x6' | 'photo-4x6' | 'poster-a4' | 'custom';
+  widthMm: number;
+  heightMm: number;
+  slots: FrameSlot[];
+  backgroundColor: string;
+  themeId: string;
+}
+
+export interface LumaBoothConfig {
+  operatingMode: BoothOperatingMode;
+  activeCaptureModes: CaptureModeType[];
+  selectedCaptureMode: CaptureModeType;
+  printLayout: PrintLayoutConfig;
+  countdownSeconds: number;
+  delayBetweenShots: number;
+  photoReviewDurationSeconds: number;
+  autoPrint: boolean;
+}
+
 export interface FrameTemplate {
   id: string;
   name: string;
@@ -47,10 +80,11 @@ export interface FrameTemplate {
 export interface SlotAdjustment {
   slotId: string;
   photoIndex: number;
-  zoom: number;       // 1.0 to 3.0
-  panX: number;       // -100 to +100 px
-  panY: number;
+  zoom?: number;       // 1.0 to 3.0 (default 1.0)
+  panX?: number;       // -100 to +100 px (default 0)
+  panY?: number;       // -100 to +100 px (default 0)
   filter: PhotoFilter;
+  stickers?: StickerItem[];
 }
 
 export interface PhotoboothPackage {

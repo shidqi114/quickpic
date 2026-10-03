@@ -1,4 +1,13 @@
-import { StripLayout, PhotoFilter, FrameTheme, BoothSettings, FrameTemplate, SlotAdjustment } from '@/types/photobooth';
+import {
+  StripLayout,
+  PhotoFilter,
+  FrameTheme,
+  BoothSettings,
+  FrameTemplate,
+  SlotAdjustment,
+  StickerItem,
+  PrintLayoutConfig,
+} from '@/types/photobooth';
 
 export const FRAME_THEMES: FrameTheme[] = [
   {
@@ -314,7 +323,7 @@ export async function renderPhotoComposite(
 
 export async function renderCustomFrameSlotComposite(
   photoUrls: string[],
-  template: FrameTemplate,
+  template: FrameTemplate | PrintLayoutConfig | any,
   slotAdjustments: Record<string, SlotAdjustment>,
   eventName = 'QUICKPIC PHOTOBOOTH',
   eventDate = 'SEP 2026'
@@ -324,30 +333,79 @@ export async function renderCustomFrameSlotComposite(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context not supported');
 
-  // Set high-res print canvas dimensions based on template category
-  if (template.category === 'strip') {
+  // Collect all sticker image URLs across all slot adjustments to preload them
+  const stickerUrlsToPreload: string[] = [];
+  Object.values(slotAdjustments).forEach((adj) => {
+    if (adj?.stickers && Array.isArray(adj.stickers)) {
+      adj.stickers.forEach((st) => {
+        if (
+          st.emojiOrUrl &&
+          (st.emojiOrUrl.startsWith('data:') ||
+            st.emojiOrUrl.startsWith('http://') ||
+            st.emojiOrUrl.startsWith('https://') ||
+            st.emojiOrUrl.startsWith('/') ||
+            st.emojiOrUrl.startsWith('blob:'))
+        ) {
+          if (!stickerUrlsToPreload.includes(st.emojiOrUrl)) {
+            stickerUrlsToPreload.push(st.emojiOrUrl);
+          }
+        }
+      });
+    }
+  });
+
+  // Preload sticker images
+  const loadedStickerImages = await Promise.all(
+    stickerUrlsToPreload.map(async (url) => {
+      try {
+        const img = await loadImage(url);
+        return { url, img };
+      } catch {
+        return { url, img: null };
+      }
+    })
+  );
+  const stickerImageMap = new Map<string, HTMLImageElement>();
+  loadedStickerImages.forEach(({ url, img }) => {
+    if (img) stickerImageMap.set(url, img);
+  });
+
+  // Determine category / paper size
+  const category = template.category || (template.paperSize === 'strip-2x6' ? 'strip' : template.paperSize === 'photo-4x6' ? '4r' : template.paperSize === 'poster-a4' ? 'a4' : 'strip');
+
+  // Set high-res print canvas dimensions
+  if (category === 'strip') {
     canvas.width = 1200;
     canvas.height = 3600; // Standard 2x6 inch @ 600 DPI
-  } else if (template.category === '4r') {
+  } else if (category === '4r') {
     canvas.width = 2400;
     canvas.height = 3600; // Standard 4x6 inch @ 600 DPI
+  } else if (category === 'square') {
+    canvas.width = 2400;
+    canvas.height = 2400;
   } else {
     canvas.width = 2480;
     canvas.height = 3508; // Standard A4 @ 300 DPI
   }
 
   // Draw frame background
-  ctx.fillStyle = template.backgroundColor;
+  const bgColor = template.backgroundColor || '#FFFFFF';
+  const accentColor = template.accentColor || '#E5E7EB';
+  const textColor = template.textColor || '#1A1A1A';
+
+  ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Subtle border accent
-  ctx.strokeStyle = template.accentColor;
+  ctx.strokeStyle = accentColor;
   ctx.lineWidth = 12;
   ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
-  // Render each slot with its zoom, pan, and filter adjustments
-  for (let i = 0; i < template.slots.length; i++) {
-    const slot = template.slots[i];
+  const slots = template.slots || [];
+
+  // Render each slot with its zoom, pan, aspect ratio, filter overlays, and stickers
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
     const adj = slotAdjustments[slot.id] || {
       slotId: slot.id,
       photoIndex: i % images.length,
@@ -355,6 +413,7 @@ export async function renderCustomFrameSlotComposite(
       panX: 0,
       panY: 0,
       filter: 'none',
+      stickers: [],
     };
 
     const img = images[adj.photoIndex] || images[0];
@@ -367,36 +426,145 @@ export async function renderCustomFrameSlotComposite(
 
     // Create offscreen slot canvas
     const slotCanvas = document.createElement('canvas');
-    slotCanvas.width = slotPixelW;
-    slotCanvas.height = slotPixelH;
+    slotCanvas.width = Math.max(1, Math.round(slotPixelW));
+    slotCanvas.height = Math.max(1, Math.round(slotPixelH));
     const slotCtx = slotCanvas.getContext('2d');
 
     if (slotCtx) {
       slotCtx.save();
-      // Apply zoom & pan translation from center
-      const centerX = slotPixelW / 2;
-      const centerY = slotPixelH / 2;
-      slotCtx.translate(centerX + adj.panX * 2, centerY + adj.panY * 2);
-      slotCtx.scale(adj.zoom, adj.zoom);
-      slotCtx.drawImage(img, -centerX, -centerY, slotPixelW, slotPixelH);
+      // Clip to slot bounds
+      slotCtx.beginPath();
+      slotCtx.rect(0, 0, slotCanvas.width, slotCanvas.height);
+      slotCtx.clip();
+
+      // Fit image preserving aspect ratio (object-fit: cover)
+      const imgNaturalW = img.naturalWidth || img.width || 4;
+      const imgNaturalH = img.naturalHeight || img.height || 3;
+      const imgAspect = imgNaturalW / imgNaturalH;
+      const slotAspect = slotCanvas.width / slotCanvas.height;
+
+      let drawW = slotCanvas.width;
+      let drawH = slotCanvas.height;
+      if (imgAspect > slotAspect) {
+        drawH = slotCanvas.height;
+        drawW = slotCanvas.height * imgAspect;
+      } else {
+        drawW = slotCanvas.width;
+        drawH = slotCanvas.width / imgAspect;
+      }
+
+      // Apply zoom & pan translation from slot center
+      const zoom = adj.zoom ?? 1.0;
+      const panX = adj.panX ?? 0;
+      const panY = adj.panY ?? 0;
+
+      const centerX = slotCanvas.width / 2;
+      const centerY = slotCanvas.height / 2;
+      slotCtx.translate(centerX + panX * 2, centerY + panY * 2);
+      slotCtx.scale(zoom, zoom);
+      slotCtx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
       slotCtx.restore();
 
-      // Apply per-slot filter
-      applyFilterToCanvas(slotCtx, slotPixelW, slotPixelH, adj.filter);
+      // Apply per-slot filter overlay
+      if (adj.filter && adj.filter !== 'none') {
+        applyFilterToCanvas(slotCtx, slotCanvas.width, slotCanvas.height, adj.filter);
+      }
 
-      // Draw slot onto master canvas
-      ctx.drawImage(slotCanvas, slotPixelX, slotPixelY);
+      // Render stickers on top of the slot photo
+      if (adj.stickers && Array.isArray(adj.stickers) && adj.stickers.length > 0) {
+        for (const sticker of adj.stickers) {
+          if (!sticker.emojiOrUrl) continue;
 
-      // Slot border
-      ctx.strokeStyle = template.accentColor;
-      ctx.lineWidth = 6;
-      ctx.strokeRect(slotPixelX, slotPixelY, slotPixelW, slotPixelH);
+          // Compute sticker position inside slot
+          let posX = sticker.x;
+          let posY = sticker.y;
+          if (posX >= 0 && posX <= 1) {
+            posX = posX * slotCanvas.width;
+          } else if (posX > 1 && posX <= 100) {
+            posX = (posX / 100) * slotCanvas.width;
+          }
+
+          if (posY >= 0 && posY <= 1) {
+            posY = posY * slotCanvas.height;
+          } else if (posY > 1 && posY <= 100) {
+            posY = (posY / 100) * slotCanvas.height;
+          }
+
+          const scale = sticker.scale ?? 1.0;
+          const rotationRad = ((sticker.rotation || 0) * Math.PI) / 180;
+
+          const isImgUrl =
+            sticker.emojiOrUrl.startsWith('data:') ||
+            sticker.emojiOrUrl.startsWith('http://') ||
+            sticker.emojiOrUrl.startsWith('https://') ||
+            sticker.emojiOrUrl.startsWith('/') ||
+            sticker.emojiOrUrl.startsWith('blob:');
+
+          if (isImgUrl && stickerImageMap.has(sticker.emojiOrUrl)) {
+            const stImg = stickerImageMap.get(sticker.emojiOrUrl)!;
+            const stAspect = (stImg.naturalWidth || stImg.width || 1) / (stImg.naturalHeight || stImg.height || 1);
+            const baseSize = slotCanvas.width * 0.28 * scale;
+            const sW = baseSize;
+            const sH = baseSize / stAspect;
+
+            slotCtx.save();
+            slotCtx.translate(posX, posY);
+            slotCtx.rotate(rotationRad);
+            slotCtx.drawImage(stImg, -sW / 2, -sH / 2, sW, sH);
+            slotCtx.restore();
+          } else {
+            // Render emoji sticker
+            slotCtx.save();
+            slotCtx.translate(posX, posY);
+            slotCtx.rotate(rotationRad);
+            const fontSize = Math.max(24, Math.round(slotCanvas.width * 0.22 * scale));
+            slotCtx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+            slotCtx.textAlign = 'center';
+            slotCtx.textBaseline = 'middle';
+            slotCtx.fillText(sticker.emojiOrUrl, 0, 0);
+            slotCtx.restore();
+          }
+        }
+      }
+
+      // Draw slot onto master canvas with optional rotation
+      ctx.save();
+      if (slot.rotation) {
+        const slotCenterX = slotPixelX + slotPixelW / 2;
+        const slotCenterY = slotPixelY + slotPixelH / 2;
+        ctx.translate(slotCenterX, slotCenterY);
+        ctx.rotate((slot.rotation * Math.PI) / 180);
+        ctx.drawImage(slotCanvas, -slotPixelW / 2, -slotPixelH / 2, slotPixelW, slotPixelH);
+
+        // Slot border
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(-slotPixelW / 2, -slotPixelH / 2, slotPixelW, slotPixelH);
+      } else {
+        ctx.drawImage(slotCanvas, slotPixelX, slotPixelY, slotPixelW, slotPixelH);
+
+        // Slot border
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(slotPixelX, slotPixelY, slotPixelW, slotPixelH);
+      }
+      ctx.restore();
+    }
+  }
+
+  // Draw optional custom PNG overlay if configured
+  if (template.overlayPngUrl) {
+    try {
+      const overlayImg = await loadImage(template.overlayPngUrl);
+      ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+    } catch (e) {
+      console.warn('Failed to load frame overlay PNG:', e);
     }
   }
 
   // Draw branding footer
   const footerY = canvas.height - 180;
-  ctx.fillStyle = template.textColor;
+  ctx.fillStyle = textColor;
   ctx.textAlign = 'center';
 
   ctx.font = 'bold 54px sans-serif';

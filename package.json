@@ -16,6 +16,8 @@
     "electron:dist:mac": "next build && electron-builder --mac"
   },
   "dependencies": {
+    "@supabase/server": "^1.9.0",
+    "@supabase/supabase-js": "^2.48.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/qrcode.react": "^1.0.5",
     "canvas-confetti": "^1.9.4",
@@ -58,26 +60,34 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
-      ]
+      ],
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "QuickPic Photobooth"
+      "shortcutName": "QuickPic Photobooth",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": true
     },
     "files": [
       "electron/**/*",
       "hardware-daemon/**/*",
-      "public/**/*"
+      "public/**/*",
+      "package.json"
     ],
     "asarUnpack": [
       "hardware-daemon/**/*"

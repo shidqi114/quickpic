@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "graphify": {
+      "source": "Graphify-Labs/graphify",
+      "sourceType": "github",
+      "skillPath": "graphify/SKILL.md",
+      "computedHash": "281164e4696d64ae97a3a7fb6b660fc29b4ad996e94ba77eee06b3bdd06383ec"
+    },
+    "supabase-server": {
+      "source": "supabase/server",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-server/SKILL.md",
+      "computedHash": "5a5cda5bf2f2c645876db9326e4ce71f0938adac8ca9ca8b73cf62e119e743b6"
+    }
+  }
+}
