@@ -1788,9 +1788,9 @@
     "semantic_hash": ""
   },
   "src/components/ux/OperatorSetupWizard.tsx": {
-    "mtime": 1791037623.0938551,
-    "seen": 1791037649.459162,
-    "ast_hash": "9945695edbee47377c19aad1ec367341",
+    "mtime": 1791038105.7639923,
+    "seen": 1791038137.666317,
+    "ast_hash": "028fc059bb84cfd10ec387dae41e3631",
     "semantic_hash": ""
   },
   "src/components/ux/PhotoPickSlots.tsx": {

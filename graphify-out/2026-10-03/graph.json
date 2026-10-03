@@ -989,7 +989,7 @@
       "file_type": "code",
       "norm_label": "extendedoperatorsettings",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L48"
+      "source_location": "L52"
     },
     {
       "id": "src_lib_livephoto_livephotorecorder",
@@ -1574,7 +1574,7 @@
       "file_type": "code",
       "norm_label": "capturemodetype",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L35"
+      "source_location": "L39"
     },
     {
       "id": "src_components_ux_operatorsetupwizard_eventprofile",
@@ -1587,7 +1587,7 @@
       "file_type": "code",
       "norm_label": "eventprofile",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L37"
+      "source_location": "L41"
     },
     {
       "id": "src_components_ux_operatorsetupwizard_operatingmode",
@@ -1600,7 +1600,7 @@
       "file_type": "code",
       "norm_label": "operatingmode",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L34"
+      "source_location": "L38"
     },
     {
       "id": "src_components_ux_operatorsetupwizard_operatorsetupwizardprops",
@@ -1613,7 +1613,7 @@
       "file_type": "code",
       "norm_label": "operatorsetupwizardprops",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L55"
+      "source_location": "L59"
     },
     {
       "id": "src_components_ux_photopickslots_photopickslotsprops",
@@ -12318,7 +12318,7 @@
       "file_type": "code",
       "norm_label": "operatorsetupwizard()",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L97"
+      "source_location": "L103"
     },
     {
       "id": "src_components_ux_photopickslots_photopickslots",
@@ -51353,7 +51353,7 @@
       "file_type": "code",
       "norm_label": "default_event_profiles",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L62"
+      "source_location": "L68"
     },
     {
       "id": "src_components_ux_photopickslots",
@@ -98346,7 +98346,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L44",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -98358,7 +98358,7 @@
       "confidence_score": 1.0,
       "context": "field",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L57",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -111919,7 +111919,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -111931,7 +111931,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -111943,7 +111943,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -111955,7 +111955,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -111967,7 +111967,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -111979,7 +111979,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L31",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -111991,7 +111991,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L32",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -117849,7 +117849,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L30",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -117861,7 +117861,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L31",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -117873,7 +117873,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L32",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -124450,7 +124450,7 @@
       "confidence_score": 1.0,
       "context": "type",
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L48",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -151218,13 +151218,24 @@
     },
     {
       "source": "src_components_ux_operatorsetupwizard",
+      "target": "src_components_ux_operatorsetupwizard_operatorsetupwizard",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/components/ux/OperatorSetupWizard.tsx",
+      "source_location": "L103",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_ux_operatorsetupwizard",
       "target": "src_components_ux_operatorsetupwizard_operatingmode",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L34",
+      "source_location": "L38",
       "weight": 1.0
     },
     {
@@ -151235,7 +151246,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L35",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -151246,7 +151257,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L37",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -151257,7 +151268,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L48",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -151268,7 +151279,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L55",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
@@ -151279,18 +151290,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "src_components_ux_operatorsetupwizard",
-      "target": "src_components_ux_operatorsetupwizard_operatorsetupwizard",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/components/ux/OperatorSetupWizard.tsx",
-      "source_location": "L97",
+      "source_location": "L68",
       "weight": 1.0
     },
     {

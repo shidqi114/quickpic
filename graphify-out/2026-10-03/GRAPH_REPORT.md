@@ -1,7 +1,7 @@
 # Graph Report - daily_task_reporting  (2026-10-03)
 
 ## Corpus Check
-- 303 files · ~601,101 words
+- 303 files · ~601,532 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 2, .rules 2, .example 1)
 
