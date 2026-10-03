@@ -2,6 +2,13 @@ export type BoothOperatingMode = 'event' | 'regular';
 
 export type CaptureModeType = 'photo' | 'gif' | 'boomerang' | 'video';
 
+export type WelcomeScreenTheme =
+  | 'neon_cyber'
+  | 'luxury_gold'
+  | 'retro_y2k'
+  | 'clean_studio'
+  | 'pastel_romance';
+
 export type StripLayout = 'strip-3' | 'strip-4' | 'grid-2x2' | 'single' | '4r-classic' | 'a4-collage';
 
 export type FrameCategory = 'strip' | '4r' | 'a4' | 'square';
@@ -210,6 +217,7 @@ export interface BoothSettings {
   playAudioCues: boolean;
   selectedFilter: PhotoFilter;
   selectedThemeId: string;
+  welcomeTheme?: WelcomeScreenTheme;
   customOverlayUrl?: string;
   mirrorCamera: boolean;
   printEnabled: boolean;

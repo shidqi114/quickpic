@@ -678,9 +678,9 @@
     "semantic_hash": "c131cc3bc98987230ef9be26372b973d"
   },
   "src/app/page.tsx": {
-    "mtime": 1791029386.0014036,
-    "seen": 1791029457.310456,
-    "ast_hash": "d78f5138528a7d02c5429c5ba2f50b8a",
+    "mtime": 1791035963.5753787,
+    "seen": 1791035995.025475,
+    "ast_hash": "d8223d992eb0852dfa8e31421b4f4f8b",
     "semantic_hash": ""
   },
   "src/components/CameraViewfinder.tsx": {
@@ -792,9 +792,9 @@
     "semantic_hash": "ace191bc4df96c4d6746483c214a1c39"
   },
   "src/types/photobooth.ts": {
-    "mtime": 1791028182.4646869,
-    "seen": 1791028526.463984,
-    "ast_hash": "24b995aba79d8744edd213a7dab89e91",
+    "mtime": 1791035816.3284345,
+    "seen": 1791035995.0261161,
+    "ast_hash": "7e52c95f9be3f725baa2004df0dd17f5",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -1776,9 +1776,9 @@
     "semantic_hash": ""
   },
   "src/components/ui/SplitScreenFrameEditor.tsx": {
-    "mtime": 1791032254.3940818,
-    "seen": 1791032272.678764,
-    "ast_hash": "ece92906c68d1b2ede3e466118b5e95d",
+    "mtime": 1791036723.3366694,
+    "seen": 1791036762.534424,
+    "ast_hash": "1c3532cc56d8390895d4b98a38e86680",
     "semantic_hash": ""
   },
   "src/components/ui/StickerCanvasLayer.tsx": {
@@ -1788,9 +1788,9 @@
     "semantic_hash": ""
   },
   "src/components/ux/OperatorSetupWizard.tsx": {
-    "mtime": 1791028230.70505,
-    "seen": 1791028526.4638422,
-    "ast_hash": "a4bcac38cdd47e6f28c536b0fd10437d",
+    "mtime": 1791038105.7639923,
+    "seen": 1791038137.666317,
+    "ast_hash": "028fc059bb84cfd10ec387dae41e3631",
     "semantic_hash": ""
   },
   "src/components/ux/PhotoPickSlots.tsx": {
@@ -1800,9 +1800,9 @@
     "semantic_hash": ""
   },
   "src/components/ux/SplitFrameEditor.tsx": {
-    "mtime": 1791028256.0120168,
-    "seen": 1791028526.463844,
-    "ast_hash": "f6420771a7ba42fd93b2e1cc1f280f3a",
+    "mtime": 1791036739.7484868,
+    "seen": 1791036762.5344808,
+    "ast_hash": "852dc51ed2eca7d32f9a522ab8890938",
     "semantic_hash": ""
   },
   "tests/e2e/lumabooth-flow-simulation.ts": {
@@ -1839,6 +1839,12 @@
     "mtime": 1791028893.1654766,
     "seen": 1791029047.535647,
     "ast_hash": "68102e19428c68ff43c89ab29fc4f744",
+    "semantic_hash": ""
+  },
+  "src/components/ux/WelcomeScreen.tsx": {
+    "mtime": 1791035829.866039,
+    "seen": 1791035995.025839,
+    "ast_hash": "588e8462c1b7725747396ec50bd889e3",
     "semantic_hash": ""
   }
 }

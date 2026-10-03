@@ -21,7 +21,8 @@ import {
   Gift,
   CreditCard,
   Eye,
-  Clock
+  Clock,
+  ChevronLeft
 } from 'lucide-react';
 import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { SettingsModal } from '@/components/SettingsModal';
@@ -34,6 +35,7 @@ import {
   ExtendedOperatorSettings,
   OperatingMode,
 } from '@/components/ux/OperatorSetupWizard';
+import { WelcomeScreen } from '@/components/ux/WelcomeScreen';
 import { PhotoPickSlots } from '@/components/ux/PhotoPickSlots';
 import { SplitFrameEditor, PlacedSticker } from '@/components/ux/SplitFrameEditor';
 import {
@@ -75,6 +77,7 @@ const DEFAULT_OPERATOR_SETTINGS: ExtendedOperatorSettings = {
   playAudioCues: true,
   selectedFilter: 'none',
   selectedThemeId: 'classic-white',
+  welcomeTheme: 'neon_cyber',
   mirrorCamera: true,
   printEnabled: true,
   hardwareDaemonUrl: 'http://localhost:8000',
@@ -85,7 +88,7 @@ const DEFAULT_OPERATOR_SETTINGS: ExtendedOperatorSettings = {
 };
 
 export default function PhotoboothKioskPage() {
-  const [currentStep, setCurrentStep] = useState<KioskStep>('WELCOME');
+  const [currentStep, setCurrentStep] = useState<KioskStep>('OPERATOR_SETUP');
   const [operatorSettings, setOperatorSettings] =
     useState<ExtendedOperatorSettings>(DEFAULT_OPERATOR_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -603,79 +606,42 @@ export default function PhotoboothKioskPage() {
     setStickersBySlot({});
   };
 
+  const handleGoBack = () => {
+    if (currentStep === 'WELCOME') {
+      setCurrentStep('OPERATOR_SETUP');
+    } else if (currentStep === 'PACKAGE_PAYMENT') {
+      setCurrentStep('WELCOME');
+    } else if (currentStep === 'CAMERA_SESSION') {
+      clearAllActiveTimers();
+      handleResetKiosk();
+      setCurrentStep('WELCOME');
+    } else if (currentStep === 'PHOTO_PICK_SLOTS') {
+      setCurrentStep('CAMERA_SESSION');
+    } else if (currentStep === 'SPLIT_FRAME_EDITOR') {
+      setCurrentStep('PHOTO_PICK_SLOTS');
+    } else if (currentStep === 'CONSENT_MODAL') {
+      setCurrentStep('SPLIT_FRAME_EDITOR');
+    } else if (currentStep === 'RESULT_QR') {
+      handleResetKiosk();
+      setCurrentStep('WELCOME');
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between p-3 md:p-6 select-none relative overflow-hidden">
-      
-      {/* Top Bar Navigation */}
-      <header className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-pink-500/25">
-            <Camera className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base md:text-lg font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              QuickPic Photobooth
-            </h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-pink-400 font-medium">
-                {operatorSettings.eventName}
-              </span>
-              <span
-                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
-                  operatorSettings.operatingMode === 'event'
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                    : 'bg-pink-500/15 border-pink-500/30 text-pink-300'
-                }`}
-              >
-                {operatorSettings.operatingMode === 'event' ? 'Event Mode' : 'Regular Paywall'}
-              </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 hidden sm:inline-block">
-                Station: {boothId}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentStep('OPERATOR_SETUP')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-          >
-            <Sliders className="w-4 h-4 text-pink-400" />
-            <span className="hidden sm:inline">Operator Setup</span>
-          </button>
-          <Link
-            href="/admin"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-          >
-            Admin
-          </Link>
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
-          <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition"
-          >
-            <Maximize className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Hardware Daemon Health & Telemetry Bar */}
-      <div className="w-full max-w-7xl mx-auto z-10 my-1">
-        <HardwareStatusBar
-          hardwareDaemonUrl={operatorSettings.hardwareDaemonUrl || 'http://localhost:8000'}
-          autoPoll={true}
-          pollIntervalMs={4000}
-        />
-      </div>
+    <main className="h-screen w-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between select-none relative overflow-hidden">
+      {/* Minimal Single Top-Left Back Arrow */}
+      {currentStep !== 'OPERATOR_SETUP' && (
+        <button
+          onClick={handleGoBack}
+          aria-label="Back"
+          className="absolute top-4 left-4 z-40 p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center cursor-pointer group"
+        >
+          <ChevronLeft className="w-6 h-6 group-hover:-translate-x-0.5 transition-transform" />
+        </button>
+      )}
 
       {/* ========================================================================= */}
-      {/* 1. OPERATOR SETUP WIZARD */}
+      {/* 1. OPERATOR SETUP WIZARD (Admin Interface before Welcome Screen) */}
       {/* ========================================================================= */}
       {currentStep === 'OPERATOR_SETUP' && (
         <OperatorSetupWizard
@@ -692,53 +658,17 @@ export default function PhotoboothKioskPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. WELCOME SCREEN */}
+      {/* 2. WELCOME SCREEN (Discrete UX Component with 5 Visual Themes) */}
       {/* ========================================================================= */}
       {currentStep === 'WELCOME' && (
-        <section className="flex-1 flex flex-col items-center justify-center text-center p-6 z-10 animate-fade-in">
-          <div className="relative group mb-8">
-            <div className="w-32 h-32 md:w-36 md:h-36 rounded-3xl bg-gradient-to-tr from-pink-500 via-rose-500 to-yellow-400 p-1 shadow-2xl shadow-pink-500/30">
-              <div className="w-full h-full bg-zinc-950 rounded-[22px] flex items-center justify-center">
-                <Camera className="w-16 h-16 text-pink-500 animate-pulse" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <span
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border mb-3 ${
-                operatorSettings.operatingMode === 'event'
-                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                  : 'bg-pink-500/15 border-pink-500/30 text-pink-300'
-              }`}
-            >
-              {operatorSettings.operatingMode === 'event' ? (
-                <>
-                  <Gift className="w-4 h-4" /> Event Mode: Unlimited Free Captures
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" /> Regular Mode: Pay & Print
-                </>
-              )}
-            </span>
-            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight">
-              Capture Your Magic
-            </h2>
-          </div>
-
-          <p className="text-zinc-400 text-sm md:text-base max-w-md mb-10">
-            High-res studio DSLR snapshots, 5-second Live Photo Boomerangs, free-transform stickers, and instant DNP dye-sub prints.
-          </p>
-
-          <button
-            onClick={handleStartFromWelcome}
-            className="px-12 py-6 rounded-3xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-2xl uppercase tracking-wider shadow-2xl shadow-pink-500/30 ring-4 ring-pink-500/20 active:scale-95 transition-all duration-300 animate-pulse flex items-center gap-3 cursor-pointer"
-          >
-            <Sparkles className="w-7 h-7 text-yellow-200" />
-            Touch Screen to Start
-          </button>
-        </section>
+        <WelcomeScreen
+          theme={operatorSettings.welcomeTheme || 'neon_cyber'}
+          operatingMode={operatorSettings.operatingMode}
+          eventName={operatorSettings.eventName}
+          eventDate={operatorSettings.eventDate}
+          eventHashtag={operatorSettings.eventHashtag}
+          onStart={handleStartFromWelcome}
+        />
       )}
 
       {/* ========================================================================= */}

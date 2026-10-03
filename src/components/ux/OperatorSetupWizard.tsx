@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Settings,
-  Sparkles,
   Camera,
   Video,
   Film,
@@ -15,23 +13,41 @@ import {
   RotateCcw,
   Sliders,
   Volume2,
-  VolumeX,
   Printer,
   Eye,
   ArrowRight,
+  ArrowLeft,
   Move,
-  Layers,
-  HelpCircle,
   Clock,
   ShieldCheck,
   CreditCard,
-  Gift
+  Gift,
+  Palette,
+  Sparkles,
+  FileText,
+  X,
+  User,
+  Store,
+  LogOut,
+  ChevronDown
 } from 'lucide-react';
-import { BoothSettings, FrameTemplate, FrameSlot, StripLayout } from '@/types/photobooth';
+import { BoothSettings, FrameTemplate, FrameSlot, StripLayout, WelcomeScreenTheme } from '@/types/photobooth';
 import { FRAME_TEMPLATES } from '@/lib/constants';
+import { WELCOME_THEME_PRESETS } from './WelcomeScreen';
 
 export type OperatingMode = 'regular' | 'event';
 export type CaptureModeType = 'photo' | 'gif' | 'boomerang' | 'video';
+
+export interface EventProfile {
+  id: string;
+  name: string;
+  date: string;
+  hashtag: string;
+  stripFooterText?: string;
+  operatingMode?: OperatingMode;
+  welcomeTheme?: WelcomeScreenTheme;
+  createdAt: number;
+}
 
 export interface ExtendedOperatorSettings extends BoothSettings {
   operatingMode: OperatingMode;
@@ -45,20 +61,165 @@ interface OperatorSetupWizardProps {
   currentTemplate: FrameTemplate;
   onSaveAndLaunch: (settings: ExtendedOperatorSettings, template: FrameTemplate) => void;
   onClose?: () => void;
+  userAccountName?: string;
+  outletName?: string;
 }
 
-type WizardTab = 'mode' | 'capture_modes' | 'canvas_builder' | 'timers';
+const DEFAULT_EVENT_PROFILES: EventProfile[] = [
+  {
+    id: 'ev-1',
+    name: 'Summer Gala 2026',
+    date: 'OCT 2026',
+    hashtag: '#QuickPicSummer',
+    stripFooterText: '⚡ SUMMER GALA 2026',
+    createdAt: 1,
+  },
+  {
+    id: 'ev-2',
+    name: 'Wedding Maya & Alex',
+    date: '12.10.2026',
+    hashtag: '#MayaAlexWedding',
+    stripFooterText: '💍 MAYA & ALEX 2026',
+    createdAt: 2,
+  },
+  {
+    id: 'ev-3',
+    name: 'Tech Summit 2026',
+    date: 'NOV 2026',
+    hashtag: '#TechSummit26',
+    stripFooterText: '🚀 TECH SUMMIT 2026',
+    createdAt: 3,
+  },
+  {
+    id: 'ev-4',
+    name: 'VIP Birthday Bash',
+    date: '2026',
+    hashtag: '#VIPBirthday',
+    stripFooterText: '🎉 HAPPY BIRTHDAY VIP',
+    createdAt: 4,
+  },
+];
 
 export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   initialSettings,
   currentTemplate,
   onSaveAndLaunch,
-  onClose,
+  userAccountName = 'Alex Pratama (Operator)',
+  outletName = 'QuickPic Central Mall - Grand Indonesia',
 }) => {
-  const [activeTab, setActiveTab] = useState<WizardTab>('mode');
+  // Page 1 vs Page 2 navigation state
+  const [currentPage, setCurrentPage] = useState<1 | 2>(1);
+
+  // Event profiles state
+  const [events, setEvents] = useState<EventProfile[]>(DEFAULT_EVENT_PROFILES);
+  const [activeEventId, setActiveEventId] = useState<string>('ev-1');
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+
+  // New event modal form fields
+  const [newEventName, setNewEventName] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventHashtag, setNewEventHashtag] = useState('');
+  const [newEventFooterText, setNewEventFooterText] = useState('');
+
+  // Settings & Template state
   const [settings, setSettings] = useState<ExtendedOperatorSettings>(initialSettings);
   const [template, setTemplate] = useState<FrameTemplate>(currentTemplate);
   const [selectedSlotId, setSelectedSlotId] = useState<string>(template.slots[0]?.id || 's1');
+
+  // Page 2 single template dropdown open/close state
+  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
+  const templateDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
+        setIsTemplateDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Load saved event profiles from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEvents = localStorage.getItem('quickpic_event_profiles');
+      if (savedEvents) {
+        try {
+          const parsed = JSON.parse(savedEvents);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setEvents(parsed);
+            setActiveEventId(parsed[0].id);
+            setSettings((s) => ({
+              ...s,
+              eventName: parsed[0].name,
+              eventDate: parsed[0].date,
+              eventHashtag: parsed[0].hashtag,
+            }));
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved events:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Save event profiles to localStorage whenever they change
+  const saveEventsToStorage = (updatedEvents: EventProfile[]) => {
+    setEvents(updatedEvents);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('quickpic_event_profiles', JSON.stringify(updatedEvents));
+    }
+  };
+
+  // Handle Event selection
+  const handleSelectEvent = (event: EventProfile) => {
+    setActiveEventId(event.id);
+    setSettings((prev) => ({
+      ...prev,
+      eventName: event.name,
+      eventDate: event.date,
+      eventHashtag: event.hashtag,
+    }));
+  };
+
+  // Handle Add New Event Profile
+  const handleCreateEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventName.trim()) return;
+
+    const newEvent: EventProfile = {
+      id: `ev_${Date.now()}`,
+      name: newEventName.trim(),
+      date: newEventDate.trim() || '2026',
+      hashtag: newEventHashtag.trim() || '#QuickPicBooth',
+      stripFooterText: newEventFooterText.trim() || `⚡ ${newEventName.trim().toUpperCase()}`,
+      createdAt: Date.now(),
+    };
+
+    const updated = [newEvent, ...events];
+    saveEventsToStorage(updated);
+    handleSelectEvent(newEvent);
+
+    // Reset and close modal
+    setNewEventName('');
+    setNewEventDate('');
+    setNewEventHashtag('');
+    setNewEventFooterText('');
+    setIsAddEventModalOpen(false);
+  };
+
+  // Handle Delete Event Profile
+  const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
+    e.stopPropagation();
+    if (events.length <= 1) return;
+    const updated = events.filter((ev) => ev.id !== eventId);
+    saveEventsToStorage(updated);
+    if (activeEventId === eventId && updated.length > 0) {
+      handleSelectEvent(updated[0]);
+    }
+  };
 
   // Snapping visual indicators
   const [activeSnapGuides, setActiveSnapGuides] = useState<{
@@ -70,7 +231,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     rightEdge?: boolean;
   }>({});
 
-  // Canvas builder helper functions
+  // Canvas builder slot position & snapping handler
   const handleSlotPositionChange = (slotId: string, changes: Partial<FrameSlot>) => {
     setTemplate((prev) => {
       const updatedSlots = prev.slots.map((s) => {
@@ -80,7 +241,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         let newWidth = changes.width !== undefined ? changes.width : s.width;
         let newHeight = changes.height !== undefined ? changes.height : s.height;
 
-        // Snapping calculations (5% tolerance)
         const snapTolerance = 3;
         const guides = {
           verticalCenter: false,
@@ -104,7 +264,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
           guides.horizontalCenter = true;
         }
 
-        // Snap to edges (10% standard margin)
+        // Snap to edges (8% standard margin)
         if (Math.abs(newX - 8) < snapTolerance) {
           newX = 8;
           guides.leftEdge = true;
@@ -168,7 +328,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const toggleCaptureMode = (mode: CaptureModeType) => {
     setSettings((prev) => {
       const exists = prev.activeCaptureModes.includes(mode);
-      if (exists && prev.activeCaptureModes.length <= 1) return prev; // Keep at least one
+      if (exists && prev.activeCaptureModes.length <= 1) return prev;
       const updated = exists
         ? prev.activeCaptureModes.filter((m) => m !== mode)
         : [...prev.activeCaptureModes, mode];
@@ -181,714 +341,744 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     if (t.slots.length > 0) {
       setSelectedSlotId(t.slots[0].id);
     }
+    setIsTemplateDropdownOpen(false);
   };
 
   const currentSlot = template.slots.find((s) => s.id === selectedSlotId) || template.slots[0];
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-950/95 backdrop-blur-md text-zinc-100 flex flex-col select-none overflow-y-auto">
-      {/* Top Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/80 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-pink-500/20">
-            <Sliders className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-              LumaBooth Operator Wizard
-              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                Setup & Print Builder
-              </span>
-            </h1>
-            <p className="text-xs text-zinc-400">Configure kiosk experience, layout canvas & capture timers</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            onClick={() => onSaveAndLaunch(settings, template)}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-pink-500/25 active:scale-95 transition flex items-center gap-2"
-          >
-            <Check className="w-4 h-4 stroke-[3]" />
-            Save & Launch Kiosk
-          </button>
-        </div>
-      </header>
-
-      {/* Navigation Tabs */}
-      <div className="border-b border-zinc-800 bg-zinc-900/50 px-6 py-2 flex items-center gap-2 overflow-x-auto">
-        {[
-          { id: 'mode' as WizardTab, label: '1. Operating Mode', icon: ShieldCheck },
-          { id: 'capture_modes' as WizardTab, label: '2. Capture Modes', icon: Camera },
-          { id: 'canvas_builder' as WizardTab, label: '3. Print Layout Canvas', icon: Layout },
-          { id: 'timers' as WizardTab, label: '4. Capture Timers & Audio', icon: Clock },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-                isActive
-                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30 ring-1 ring-pink-400'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab Content Body */}
-      <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
-        {/* TAB 1: OPERATING MODE */}
-        {activeTab === 'mode' && (
-          <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
-            <div>
-              <h2 className="text-2xl font-black text-white mb-2">Select Photobooth Operating Mode</h2>
-              <p className="text-zinc-400 text-sm">
-                Choose how guests interact with the kiosk. Event mode skips all payment gates for private parties.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Event Mode */}
-              <div
-                onClick={() => setSettings((s) => ({ ...s, operatingMode: 'event' }))}
-                className={`p-6 rounded-3xl border-2 cursor-pointer transition-all duration-300 flex flex-col justify-between ${
-                  settings.operatingMode === 'event'
-                    ? 'bg-pink-500/10 border-pink-500 ring-4 ring-pink-500/20 shadow-2xl shadow-pink-500/20'
-                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
-                    <Gift className="w-6 h-6" />
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xl font-bold text-white">Event Mode (No Paywall)</h3>
-                    {settings.operatingMode === 'event' && (
-                      <span className="px-2.5 py-1 rounded-full bg-pink-500 text-white text-[10px] font-black uppercase">
-                        Selected
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-                    Optimized for weddings, corporate brand activations, birthday bashes, and private parties.
-                    Guests bypass the payment screen completely and start taking photos immediately upon touching the screen.
-                  </p>
-                  <ul className="text-xs text-zinc-300 space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-400" /> Instant capture flow without gatekeeping
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-400" /> Unlimited free sessions for event guests
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-400" /> Direct QR sharing & instant DNP printing
-                    </li>
-                  </ul>
-                </div>
+    <div className="fixed inset-0 z-50 bg-zinc-950 text-zinc-100 flex flex-col select-none overflow-hidden h-screen w-screen p-3 md:p-4">
+      
+      {/* ========================================================================= */}
+      {/* PAGE 1: EVENT FILES, OPERATING MODE, CAPTURE CAPABILITIES & THEMES        */}
+      {/* ========================================================================= */}
+      {currentPage === 1 && (
+        <div className="grid grid-cols-12 gap-3.5 flex-1 h-full min-h-0 overflow-hidden animate-fade-in">
+          
+          {/* LEFT SIDE: Event Files Tray with Independent Auto-Scroll (col-span-3) */}
+          <div className="col-span-12 lg:col-span-3 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-4 flex flex-col h-full min-h-0 overflow-hidden shadow-xl">
+            {/* Header with '+' button */}
+            <div className="flex items-center justify-between pb-3 mb-2 border-b border-zinc-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-pink-400" />
+                <span className="text-xs font-black uppercase tracking-wider text-white">
+                  Event Files ({events.length})
+                </span>
               </div>
-
-              {/* Regular Mode */}
-              <div
-                onClick={() => setSettings((s) => ({ ...s, operatingMode: 'regular' }))}
-                className={`p-6 rounded-3xl border-2 cursor-pointer transition-all duration-300 flex flex-col justify-between ${
-                  settings.operatingMode === 'regular'
-                    ? 'bg-pink-500/10 border-pink-500 ring-4 ring-pink-500/20 shadow-2xl shadow-pink-500/20'
-                    : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
-                }`}
-              >
-                <div>
-                  <div className="w-12 h-12 rounded-2xl bg-pink-500/20 text-pink-400 flex items-center justify-center mb-4">
-                    <CreditCard className="w-6 h-6" />
-                  </div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xl font-bold text-white">Regular Mode (Paywall)</h3>
-                    {settings.operatingMode === 'regular' && (
-                      <span className="px-2.5 py-1 rounded-full bg-pink-500 text-white text-[10px] font-black uppercase">
-                        Selected
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-                    For public retail venues, malls, and tourist spots. Guests choose their package, purchase extra prints, and scan dynamic QRIS payment before capturing.
-                  </p>
-                  <ul className="text-xs text-zinc-300 space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-pink-400" /> Monetized package checkout & extra copy sales
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-pink-400" /> Dynamic QRIS simulation & promo vouchers
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-pink-400" /> Staff override PIN bypass (PIN 1144)
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Branding Details */}
-            <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-4 mt-6">
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-yellow-400" /> Event Branding & Title
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs text-zinc-400 mb-1 block">Event / Booth Name</label>
-                  <input
-                    type="text"
-                    value={settings.eventName}
-                    onChange={(e) => setSettings((s) => ({ ...s, eventName: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-pink-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-zinc-400 mb-1 block">Event Date / Subtitle</label>
-                  <input
-                    type="text"
-                    value={settings.eventDate}
-                    onChange={(e) => setSettings((s) => ({ ...s, eventDate: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-pink-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-zinc-400 mb-1 block">Hashtag / Social</label>
-                  <input
-                    type="text"
-                    value={settings.eventHashtag}
-                    onChange={(e) => setSettings((s) => ({ ...s, eventHashtag: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-pink-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4">
               <button
-                onClick={() => setActiveTab('capture_modes')}
-                className="px-6 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition"
+                type="button"
+                onClick={() => setIsAddEventModalOpen(true)}
+                title="Add New Event Profile"
+                className="p-1.5 rounded-xl bg-pink-500 hover:bg-pink-600 text-white shadow-md shadow-pink-500/25 active:scale-90 transition flex items-center justify-center cursor-pointer"
               >
-                Next: Capture Modes <ArrowRight className="w-4 h-4" />
+                <Plus className="w-4 h-4 stroke-[3]" />
               </button>
             </div>
-          </div>
-        )}
 
-        {/* TAB 2: CAPTURE MODES */}
-        {activeTab === 'capture_modes' && (
-          <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
-            <div>
-              <h2 className="text-2xl font-black text-white mb-2">Active Capture Capabilities</h2>
-              <p className="text-zinc-400 text-sm">
-                Enable or disable media types for this event. QuickPic dynamically adapts the capture engine.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                {
-                  id: 'photo' as CaptureModeType,
-                  name: 'DSLR Studio Photo',
-                  desc: 'High-res Canon DSLR snapshot series for physical print strips.',
-                  icon: Camera,
-                },
-                {
-                  id: 'boomerang' as CaptureModeType,
-                  name: 'Boomerang Live Photo',
-                  desc: '5-second looped animated MP4/GIF accompanying each snapshot.',
-                  icon: Film,
-                },
-                {
-                  id: 'gif' as CaptureModeType,
-                  name: 'Animated Multi-Shot GIF',
-                  desc: 'Stitched animated sequence of all taken poses for instant TikTok/IG reels.',
-                  icon: Zap,
-                },
-                {
-                  id: 'video' as CaptureModeType,
-                  name: 'Video Guestbook',
-                  desc: '10-second audio/video message recording for the event host.',
-                  icon: Video,
-                },
-              ].map((mode) => {
-                const Icon = mode.icon;
-                const isSelected = settings.activeCaptureModes.includes(mode.id);
+            {/* Event Cards Tray with Independent Auto-Scroll */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0 divide-y-0">
+              {events.map((ev) => {
+                const isSelected = activeEventId === ev.id;
                 return (
                   <div
-                    key={mode.id}
-                    onClick={() => toggleCaptureMode(mode.id)}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-start gap-4 ${
+                    key={ev.id}
+                    onClick={() => handleSelectEvent(ev)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
                       isSelected
-                        ? 'bg-pink-500/10 border-pink-500 ring-2 ring-pink-500/30'
-                        : 'bg-zinc-900 border-zinc-800 opacity-60 hover:opacity-100'
+                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30 text-white'
+                        : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
                     }`}
                   >
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isSelected ? 'bg-pink-500 text-white' : 'bg-zinc-800 text-zinc-400'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-white">{mode.name}</h3>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          className="accent-pink-500 w-4 h-4 rounded cursor-pointer"
-                        />
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="text-xs font-bold truncate text-white mb-0.5">
+                        {ev.name}
                       </div>
-                      <p className="text-xs text-zinc-400 mt-1">{mode.desc}</p>
+                      <div className="text-[10px] text-zinc-400 truncate">
+                        {ev.date} • {ev.hashtag}
+                      </div>
                     </div>
+
+                    {/* Trash Delete Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteEvent(e, ev.id)}
+                      disabled={events.length <= 1}
+                      title={events.length <= 1 ? 'Cannot delete last event' : `Delete ${ev.name}`}
+                      className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-20 transition cursor-pointer shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex justify-between pt-4">
-              <button
-                onClick={() => setActiveTab('mode')}
-                className="px-6 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider transition"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => setActiveTab('canvas_builder')}
-                className="px-6 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition"
-              >
-                Next: Print Layout Canvas <ArrowRight className="w-4 h-4" />
-              </button>
+            {/* Active Event Branding Snippet (Pinned at bottom of tray) */}
+            <div className="mt-3 pt-2.5 border-t border-zinc-800/80 shrink-0 bg-zinc-950/80 p-2.5 rounded-2xl border border-zinc-800/60 text-[10px] text-zinc-400">
+              <span className="uppercase font-bold text-pink-400 block mb-0.5">
+                Active Print Title:
+              </span>
+              <span className="font-bold text-white block truncate">{settings.eventName}</span>
+              <span className="text-zinc-500 block truncate">{settings.eventDate} • {settings.eventHashtag}</span>
             </div>
           </div>
-        )}
 
-        {/* TAB 3: PRINT LAYOUT CANVAS BUILDER */}
-        {activeTab === 'canvas_builder' && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-black text-white mb-1">Print Layout Canvas Builder</h2>
-                <p className="text-zinc-400 text-xs">
-                  Drag, resize, and snap photo slots on the physical paper canvas. Snapping guides show automatically.
-                </p>
+          {/* RIGHT 9 COLUMNS: Account Header Tray + Middle Config + Next Action */}
+          <div className="col-span-12 lg:col-span-9 flex flex-col gap-3.5 h-full min-h-0 overflow-hidden justify-between">
+            
+            {/* NEW TOP TRAY: User Account Name, Outlet Name & Sign Out Button */}
+            <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-4 text-xs">
+                {/* User Account */}
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider leading-none">Operator Account</span>
+                    <span className="font-bold text-white text-xs">{userAccountName}</span>
+                  </div>
+                </div>
+
+                <div className="h-6 w-px bg-zinc-800 hidden sm:block" />
+
+                {/* Outlet Name */}
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider leading-none">Outlet Location</span>
+                    <span className="font-bold text-zinc-200 text-xs">{outletName}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Template Presets */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {FRAME_TEMPLATES.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleSelectPreset(t)}
-                    className={`px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition ${
-                      template.id === t.id
-                        ? 'border-pink-500 bg-pink-500/20 text-pink-300'
-                        : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {t.name}
-                  </button>
-                ))}
-              </div>
+              {/* Sign Out Dummy Button */}
+              <button
+                type="button"
+                onClick={() => {}}
+                title="Sign out of operator session (Placeholder)"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/40 border border-zinc-700/70 hover:border-rose-800/50 text-zinc-300 hover:text-rose-300 text-xs font-semibold transition active:scale-95 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Canvas Viewport (7 cols) */}
-              <div className="lg:col-span-7 bg-zinc-900/90 border border-zinc-800 rounded-3xl p-6 flex flex-col items-center justify-center relative min-h-[520px]">
-                {/* Paper Canvas */}
-                <div
-                  className="relative shadow-2xl rounded-xl overflow-hidden border-2 transition-all"
-                  style={{
-                    backgroundColor: template.backgroundColor,
-                    borderColor: template.accentColor,
-                    width: template.category === 'strip' ? '220px' : '340px',
-                    aspectRatio: template.category === 'strip' ? '1/3' : '2/3',
-                  }}
+            {/* Main Middle & Next Layout Grid (2 Columns: Config col-span-8 + Next Action col-span-4) */}
+            <div className="grid grid-cols-12 gap-3.5 flex-1 min-h-0 overflow-hidden">
+              
+              {/* Middle Configuration Section (col-span-8) */}
+              <div className="col-span-12 lg:col-span-8 flex flex-col gap-3 h-full min-h-0 justify-between">
+                
+                {/* Operating Mode */}
+                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-pink-400" /> 1. Operating Mode
+                  </span>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setSettings((s) => ({ ...s, operatingMode: 'event' }))}
+                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${
+                        settings.operatingMode === 'event'
+                          ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
+                          : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <Gift className="w-4 h-4 text-emerald-400" />
+                        {settings.operatingMode === 'event' && (
+                          <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-black uppercase">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-bold text-white">Event Mode</div>
+                      <div className="text-[10px] text-zinc-400">No Paywall • Free Sessions</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSettings((s) => ({ ...s, operatingMode: 'regular' }))}
+                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${
+                        settings.operatingMode === 'regular'
+                          ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
+                          : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <CreditCard className="w-4 h-4 text-pink-400" />
+                        {settings.operatingMode === 'regular' && (
+                          <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-black uppercase">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs font-bold text-white">Regular Mode</div>
+                      <div className="text-[10px] text-zinc-400">With Paywall • Monetized Prints</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Capture Capabilities */}
+                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-pink-400" /> 2. Capture Capabilities
+                  </span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { id: 'photo' as CaptureModeType, name: 'DSLR Photo', icon: Camera },
+                      { id: 'boomerang' as CaptureModeType, name: 'Boomerang', icon: Film },
+                      { id: 'gif' as CaptureModeType, name: 'Multi-GIF', icon: Zap },
+                      { id: 'video' as CaptureModeType, name: 'Video Book', icon: Video },
+                    ].map((mode) => {
+                      const Icon = mode.icon;
+                      const isSelected = settings.activeCaptureModes.includes(mode.id);
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => toggleCaptureMode(mode.id)}
+                          className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-pink-500/20 border-pink-500 text-white shadow-md'
+                              : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                          }`}
+                        >
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-pink-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-[10px] font-bold truncate">{mode.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Welcoming Screen Themes (5 Themes) */}
+                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2 flex-1 min-h-0 justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-pink-400" /> 3. Welcoming Screen Theme (5 Presets)
+                  </span>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {WELCOME_THEME_PRESETS.map((t) => {
+                      const isSelected = (settings.welcomeTheme || 'neon_cyber') === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setSettings((s) => ({ ...s, welcomeTheme: t.id }))}
+                          title={`${t.name} - ${t.subtitle}`}
+                          className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${
+                            isSelected
+                              ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
+                              : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
+                          }`}
+                        >
+                          <div className={`w-full h-9 rounded-lg bg-gradient-to-tr ${t.previewGradient} shadow-md mb-1 flex items-center justify-center`}>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow stroke-[3]" />}
+                          </div>
+                          <span className="text-[9px] font-bold text-zinc-200 truncate w-full text-center leading-tight">
+                            {t.name.split(' ')[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Summary & Next Step Action (col-span-4) */}
+              <div className="col-span-12 lg:col-span-4 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-between h-full min-h-0">
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-[10px] font-bold uppercase">
+                    <Sparkles className="w-3 h-3" /> Step 1 of 2
+                  </div>
+                  <h3 className="text-base font-black text-white">Event Configuration</h3>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Select your active event file on the left, operating mode, media capture modes, and welcome theme.
+                  </p>
+
+                  <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80 space-y-1.5 text-[11px]">
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Event:</span>
+                      <span className="font-bold text-white truncate max-w-[120px]">{settings.eventName}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Mode:</span>
+                      <span className="font-bold text-emerald-400 uppercase text-[9px]">
+                        {settings.operatingMode === 'event' ? 'Event Mode' : 'Regular Mode'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-zinc-400">
+                      <span>Theme:</span>
+                      <span className="font-bold text-pink-400 uppercase text-[9px]">
+                        {settings.welcomeTheme || 'neon_cyber'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Next Button */}
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(2)}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-pink-500/25 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {/* Visual Snapping Guides (Dotted alignment lines) */}
-                  {activeSnapGuides.verticalCenter && (
-                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-cyan-400 z-30 pointer-events-none" />
-                  )}
-                  {activeSnapGuides.horizontalCenter && (
-                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 border-t-2 border-dashed border-cyan-400 z-30 pointer-events-none" />
-                  )}
-                  {activeSnapGuides.leftEdge && (
-                    <div className="absolute inset-y-0 left-[8%] w-0.5 border-l-2 border-dotted border-pink-400 z-30 pointer-events-none" />
-                  )}
-                  {activeSnapGuides.rightEdge && (
-                    <div className="absolute inset-y-0 right-[8%] w-0.5 border-r-2 border-dotted border-pink-400 z-30 pointer-events-none" />
-                  )}
-                  {activeSnapGuides.topEdge && (
-                    <div className="absolute inset-x-0 top-[5%] h-0.5 border-t-2 border-dotted border-pink-400 z-30 pointer-events-none" />
-                  )}
-
-                  {/* Photo Slots */}
-                  {template.slots.map((slot, idx) => {
-                    const isSelected = selectedSlotId === slot.id;
-                    return (
-                      <div
-                        key={slot.id}
-                        onClick={() => setSelectedSlotId(slot.id)}
-                        className={`absolute rounded-md cursor-pointer transition-all flex flex-col items-center justify-center ${
-                          isSelected
-                            ? 'ring-2 ring-pink-500 bg-pink-500/30 z-20 shadow-lg'
-                            : 'ring-1 ring-zinc-500/50 bg-zinc-800/80 hover:bg-zinc-700/80 z-10'
-                        }`}
-                        style={{
-                          left: `${slot.x}%`,
-                          top: `${slot.y}%`,
-                          width: `${slot.width}%`,
-                          height: `${slot.height}%`,
-                        }}
-                      >
-                        <span className="text-[10px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded">
-                          Slot #{idx + 1}
-                        </span>
-                        <span className="text-[8px] text-zinc-300 mt-0.5 font-mono">
-                          {Math.round(slot.width)}% × {Math.round(slot.height)}%
-                        </span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Canvas Footer Text */}
-                  <div
-                    className="absolute bottom-2 inset-x-0 text-center font-bold text-[9px] uppercase tracking-wider"
-                    style={{ color: template.textColor }}
-                  >
-                    ⚡ {settings.eventName || 'QUICKPIC PHOTOBOOTH'}
-                  </div>
-                </div>
-
-                {/* Snapping info badge */}
-                <div className="mt-4 flex items-center gap-2 text-xs text-zinc-400">
-                  <Move className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Dotted guides appear automatically when aligned to canvas center or edge margins</span>
-                </div>
+                  <span>Next: Layout & Timers</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </button>
               </div>
 
-              {/* Right Slot Adjustments Panel (5 cols) */}
-              <div className="lg:col-span-5 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 space-y-6 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
-                      <Layout className="w-4 h-4 text-pink-400" /> Slot Controls ({template.slots.length} Slots)
-                    </h3>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={handleAddSlot}
-                        disabled={template.slots.length >= 6}
-                        className="p-2 rounded-xl bg-pink-500 hover:bg-pink-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1 transition"
-                      >
-                        <Plus className="w-3.5 h-3.5" /> Add Slot
-                      </button>
-                      <button
-                        onClick={() => handleRemoveSlot(selectedSlotId)}
-                        disabled={template.slots.length <= 1}
-                        className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-900/60 disabled:opacity-40 text-zinc-300 hover:text-rose-300 text-xs transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+            </div>
 
-                  {/* Slot Selector Pills */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                    {template.slots.map((s, idx) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedSlotId(s.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase transition ${
-                          selectedSlotId === s.id
-                            ? 'bg-pink-500 text-white'
-                            : 'bg-zinc-800 text-zinc-400 hover:text-white'
-                        }`}
-                      >
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* PAGE 2: PRINT LAYOUT TEMPLATE, SLOT CUSTOMIZATION, TIMERS & HARDWARE      */}
+      {/* ========================================================================= */}
+      {currentPage === 2 && (
+        <div className="grid grid-cols-12 gap-3.5 flex-1 h-full min-h-0 overflow-hidden animate-fade-in">
+          
+          {/* LEFT SIDE: Strip Choosing Single Dropdown Box & Live Canvas Viewport (col-span-6) */}
+          <div className="col-span-12 lg:col-span-6 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-4 flex flex-col justify-between h-full min-h-0 overflow-hidden">
+            
+            {/* Single Dropdown Box for Template Selection (Fixed Size & Auto-Scroll) */}
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-800 relative z-30">
+              
+              {/* Dropdown Container */}
+              <div ref={templateDropdownRef} className="relative flex-1 max-w-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateDropdownOpen((prev) => !prev)}
+                  className="w-full h-10 px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700/80 hover:border-pink-500 text-xs font-bold text-white flex items-center justify-between gap-2 transition cursor-pointer shadow-sm"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Layout className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                    <span className="truncate">{template.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 uppercase">
+                      {template.slotCount} Slots
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform ${isTemplateDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Fixed-Size Auto-Scrolling Dropdown Menu */}
+                {isTemplateDropdownOpen && (
+                  <div className="absolute top-12 left-0 w-full max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 animate-fade-in">
+                    {FRAME_TEMPLATES.map((t) => {
+                      const isSelected = template.id === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleSelectPreset(t)}
+                          className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-left flex items-center justify-between transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
+                              : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="truncate">{t.name}</span>
+                            <span className="text-[9px] uppercase px-1 rounded bg-zinc-800 text-zinc-400 font-mono">
+                              {t.category}
+                            </span>
+                          </div>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-pink-400 shrink-0 stroke-[3]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Add / Remove Slot Controls */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleAddSlot}
+                  disabled={template.slots.length >= 6}
+                  className="px-2.5 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Slot
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSlot(selectedSlotId)}
+                  disabled={template.slots.length <= 1}
+                  className="p-2 rounded-xl bg-zinc-800 hover:bg-rose-900/60 disabled:opacity-40 text-zinc-300 hover:text-rose-300 text-xs transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Paper Canvas Viewport with Dotted Alignment Guidelines */}
+            <div className="flex-1 flex items-center justify-center my-2 relative min-h-0 overflow-hidden">
+              <div
+                className="relative shadow-2xl rounded-xl overflow-hidden border-2 transition-all shrink-0"
+                style={{
+                  backgroundColor: template.backgroundColor,
+                  borderColor: template.accentColor,
+                  height: '84%',
+                  aspectRatio: template.category === 'strip' ? '1/3' : '2/3',
+                }}
+              >
+                {/* Visual Dotted Snapping Guides */}
+                {activeSnapGuides.verticalCenter && (
+                  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-cyan-400 z-30 pointer-events-none" />
+                )}
+                {activeSnapGuides.horizontalCenter && (
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-0.5 border-t-2 border-dashed border-cyan-400 z-30 pointer-events-none" />
+                )}
+                {activeSnapGuides.leftEdge && (
+                  <div className="absolute inset-y-0 left-[8%] w-0.5 border-l-2 border-dotted border-pink-400 z-30 pointer-events-none" />
+                )}
+                {activeSnapGuides.rightEdge && (
+                  <div className="absolute inset-y-0 right-[8%] w-0.5 border-r-2 border-dotted border-pink-400 z-30 pointer-events-none" />
+                )}
+                {activeSnapGuides.topEdge && (
+                  <div className="absolute inset-x-0 top-[5%] h-0.5 border-t-2 border-dotted border-pink-400 z-30 pointer-events-none" />
+                )}
+
+                {/* Photo Slots */}
+                {template.slots.map((slot, idx) => {
+                  const isSelected = selectedSlotId === slot.id;
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => setSelectedSlotId(slot.id)}
+                      className={`absolute rounded cursor-pointer transition-all flex flex-col items-center justify-center ${
+                        isSelected
+                          ? 'ring-2 ring-pink-500 bg-pink-500/30 z-20 shadow-lg'
+                          : 'ring-1 ring-zinc-500/50 bg-zinc-800/80 hover:bg-zinc-700/80 z-10'
+                      }`}
+                      style={{
+                        left: `${slot.x}%`,
+                        top: `${slot.y}%`,
+                        width: `${slot.width}%`,
+                        height: `${slot.height}%`,
+                      }}
+                    >
+                      <span className="text-[10px] font-bold text-white bg-black/70 px-1.5 py-0.5 rounded">
                         Slot #{idx + 1}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Dimension Sliders for Selected Slot */}
-                  {currentSlot && (
-                    <div className="space-y-3 bg-zinc-950/60 p-4 rounded-2xl border border-zinc-800 text-xs">
-                      <div>
-                        <div className="flex justify-between mb-1 text-zinc-300 font-semibold">
-                          <span>Horizontal Position (X)</span>
-                          <span className="font-mono text-pink-400">{Math.round(currentSlot.x)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max={100 - currentSlot.width}
-                          value={currentSlot.x}
-                          onChange={(e) =>
-                            handleSlotPositionChange(currentSlot.id, { x: parseFloat(e.target.value) })
-                          }
-                          className="w-full accent-pink-500 cursor-pointer"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-1 text-zinc-300 font-semibold">
-                          <span>Vertical Position (Y)</span>
-                          <span className="font-mono text-pink-400">{Math.round(currentSlot.y)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max={100 - currentSlot.height}
-                          value={currentSlot.y}
-                          onChange={(e) =>
-                            handleSlotPositionChange(currentSlot.id, { y: parseFloat(e.target.value) })
-                          }
-                          className="w-full accent-pink-500 cursor-pointer"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-1 text-zinc-300 font-semibold">
-                          <span>Slot Width</span>
-                          <span className="font-mono text-pink-400">{Math.round(currentSlot.width)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="20"
-                          max="96"
-                          value={currentSlot.width}
-                          onChange={(e) =>
-                            handleSlotPositionChange(currentSlot.id, { width: parseFloat(e.target.value) })
-                          }
-                          className="w-full accent-pink-500 cursor-pointer"
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between mb-1 text-zinc-300 font-semibold">
-                          <span>Slot Height</span>
-                          <span className="font-mono text-pink-400">{Math.round(currentSlot.height)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="12"
-                          max="60"
-                          value={currentSlot.height}
-                          onChange={(e) =>
-                            handleSlotPositionChange(currentSlot.id, { height: parseFloat(e.target.value) })
-                          }
-                          className="w-full accent-pink-500 cursor-pointer"
-                        />
-                      </div>
+                      </span>
                     </div>
-                  )}
+                  );
+                })}
 
-                  {/* Frame Theme Color Customization */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                      Canvas Frame Colors
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Background</span>
-                        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 p-1.5 rounded-xl">
-                          <input
-                            type="color"
-                            value={template.backgroundColor}
-                            onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))}
-                            className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
-                          />
-                          <span className="text-xs font-mono text-zinc-300">{template.backgroundColor}</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-[11px] text-zinc-400 block mb-1">Accent / Border</span>
-                        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 p-1.5 rounded-xl">
-                          <input
-                            type="color"
-                            value={template.accentColor}
-                            onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))}
-                            className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent"
-                          />
-                          <span className="text-xs font-mono text-zinc-300">{template.accentColor}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-4 border-t border-zinc-800">
-                  <button
-                    onClick={() => setActiveTab('capture_modes')}
-                    className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider transition"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('timers')}
-                    className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition"
-                  >
-                    Next: Timers & Audio <ArrowRight className="w-4 h-4" />
-                  </button>
+                {/* Footer Event Title */}
+                <div
+                  className="absolute bottom-1.5 inset-x-0 text-center font-bold text-[8px] uppercase tracking-wider truncate px-1"
+                  style={{ color: template.textColor }}
+                >
+                  ⚡ {settings.eventName || 'QUICKPIC PHOTOBOOTH'}
                 </div>
               </div>
+            </div>
+
+            {/* Helper Tag */}
+            <div className="text-[10px] text-zinc-500 text-center">
+              Tap any slot above to adjust position & dimensions on the right.
             </div>
           </div>
-        )}
 
-        {/* TAB 4: CAPTURE TIMERS & HARDWARE */}
-        {activeTab === 'timers' && (
-          <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
-            <div>
-              <h2 className="text-2xl font-black text-white mb-2">Capture Timers, Audio & Hardware</h2>
-              <p className="text-zinc-400 text-sm">
-                Fine-tune countdown pacing, review display duration, and hardware peripherals.
-              </p>
+          {/* RIGHT SIDE: Slot Customization, Timers & Launch Action (col-span-6) */}
+          <div className="col-span-12 lg:col-span-6 flex flex-col gap-3 h-full min-h-0 overflow-hidden justify-between">
+            
+            {/* Top Right: Customization of Selected Slot */}
+            <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                  <Layout className="w-3.5 h-3.5 text-pink-400" /> Slot Customization (Slot #{template.slots.findIndex((s) => s.id === currentSlot?.id) + 1})
+                </span>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-zinc-400 text-[10px]">Colors:</span>
+                  <input
+                    type="color"
+                    value={template.backgroundColor}
+                    onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))}
+                    title="Canvas Background"
+                    className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
+                  />
+                  <input
+                    type="color"
+                    value={template.accentColor}
+                    onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))}
+                    title="Border Accent"
+                    className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
+                  />
+                </div>
+              </div>
+
+              {currentSlot && (
+                <div className="grid grid-cols-2 gap-2.5 text-xs bg-zinc-950/80 p-2.5 rounded-2xl border border-zinc-800/80">
+                  <div>
+                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                      <span>Position X</span>
+                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.x)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max={100 - currentSlot.width}
+                      value={currentSlot.x}
+                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { x: parseFloat(e.target.value) })}
+                      className="w-full accent-pink-500 cursor-pointer h-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                      <span>Position Y</span>
+                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.y)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max={100 - currentSlot.height}
+                      value={currentSlot.y}
+                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { y: parseFloat(e.target.value) })}
+                      className="w-full accent-pink-500 cursor-pointer h-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                      <span>Width</span>
+                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.width)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="20"
+                      max="96"
+                      value={currentSlot.width}
+                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { width: parseFloat(e.target.value) })}
+                      className="w-full accent-pink-500 cursor-pointer h-1.5"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                      <span>Height</span>
+                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.height)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="12"
+                      max="60"
+                      value={currentSlot.height}
+                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { height: parseFloat(e.target.value) })}
+                      className="w-full accent-pink-500 cursor-pointer h-1.5"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Countdown Seconds */}
-              <div className="p-5 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-white flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-pink-400" /> Pose Countdown
-                  </span>
-                  <span className="text-sm font-mono text-pink-400 font-bold">
-                    {settings.countdownSeconds} Seconds
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="2"
-                  max="10"
-                  step="1"
-                  value={settings.countdownSeconds}
-                  onChange={(e) => setSettings((s) => ({ ...s, countdownSeconds: parseInt(e.target.value) }))}
-                  className="w-full accent-pink-500 cursor-pointer"
-                />
-                <p className="text-[11px] text-zinc-400">
-                  Time guests have to strike a pose before the DSLR shutter fires.
-                </p>
-              </div>
+            {/* Bottom Right: Timers, Audio & Hardware Settings */}
+            <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl flex flex-col gap-2 flex-1 min-h-0 justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-yellow-400" /> Capture Timers & Hardware
+              </span>
 
-              {/* Review Duration Countdown */}
-              <div className="p-5 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-white flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-yellow-400" /> Post-Capture Review Duration
-                  </span>
-                  <span className="text-sm font-mono text-yellow-400 font-bold">
-                    {settings.reviewDurationSeconds || 5} Seconds
-                  </span>
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div>
+                  <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                    <span>Pose Countdown</span>
+                    <span className="font-mono text-pink-400 font-bold">{settings.countdownSeconds}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="2"
+                    max="10"
+                    step="1"
+                    value={settings.countdownSeconds}
+                    onChange={(e) => setSettings((s) => ({ ...s, countdownSeconds: parseInt(e.target.value) }))}
+                    className="w-full accent-pink-500 cursor-pointer h-1.5"
+                  />
                 </div>
-                <input
-                  type="range"
-                  min="3"
-                  max="12"
-                  step="1"
-                  value={settings.reviewDurationSeconds || 5}
-                  onChange={(e) => setSettings((s) => ({ ...s, reviewDurationSeconds: parseInt(e.target.value) }))}
-                  className="w-full accent-yellow-400 cursor-pointer"
-                />
-                <p className="text-[11px] text-zinc-400">
-                  Countdown displayed right after the final shot, allowing guests to review or tap &apos;X&apos; to retake before slot mapping.
-                </p>
-              </div>
 
-              {/* Audio & Visual FX */}
-              <div className="p-5 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-purple-400" /> Audio & Visual Cues
-                </h3>
-                <div className="space-y-2">
-                  <label className="flex items-center justify-between p-2.5 bg-zinc-950 rounded-xl cursor-pointer">
-                    <span className="text-xs text-zinc-300">Audible Beeps & Shutter Chime</span>
-                    <input
-                      type="checkbox"
-                      checked={settings.playAudioCues}
-                      onChange={(e) => setSettings((s) => ({ ...s, playAudioCues: e.target.checked }))}
-                      className="accent-pink-500 w-4 h-4 rounded cursor-pointer"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-2.5 bg-zinc-950 rounded-xl cursor-pointer">
-                    <span className="text-xs text-zinc-300">Flash Screen Animation</span>
-                    <input
-                      type="checkbox"
-                      checked={settings.showFlashEffect}
-                      onChange={(e) => setSettings((s) => ({ ...s, showFlashEffect: e.target.checked }))}
-                      className="accent-pink-500 w-4 h-4 rounded cursor-pointer"
-                    />
-                  </label>
-                  <label className="flex items-center justify-between p-2.5 bg-zinc-950 rounded-xl cursor-pointer">
-                    <span className="text-xs text-zinc-300">Mirror Live View Camera</span>
-                    <input
-                      type="checkbox"
-                      checked={settings.mirrorCamera}
-                      onChange={(e) => setSettings((s) => ({ ...s, mirrorCamera: e.target.checked }))}
-                      className="accent-pink-500 w-4 h-4 rounded cursor-pointer"
-                    />
-                  </label>
+                <div>
+                  <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                    <span>Review Duration</span>
+                    <span className="font-mono text-yellow-400 font-bold">{settings.reviewDurationSeconds || 5}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="3"
+                    max="12"
+                    step="1"
+                    value={settings.reviewDurationSeconds || 5}
+                    onChange={(e) => setSettings((s) => ({ ...s, reviewDurationSeconds: parseInt(e.target.value) }))}
+                    className="w-full accent-yellow-400 cursor-pointer h-1.5"
+                  />
                 </div>
               </div>
 
-              {/* Hardware Daemon & Printer */}
-              <div className="p-5 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-3">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Printer className="w-4 h-4 text-emerald-400" /> DNP Hardware Printer
-                </h3>
-                <label className="flex items-center justify-between p-2.5 bg-zinc-950 rounded-xl cursor-pointer">
-                  <span className="text-xs text-zinc-300">Auto-Spool to Local DNP Daemon</span>
+              {/* Toggles */}
+              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                <label className="flex items-center justify-between p-2 bg-zinc-950/80 border border-zinc-800/60 rounded-xl cursor-pointer">
+                  <span className="text-zinc-300">Audible Beeps</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.playAudioCues}
+                    onChange={(e) => setSettings((s) => ({ ...s, playAudioCues: e.target.checked }))}
+                    className="accent-pink-500 w-3.5 h-3.5 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2 bg-zinc-950/80 border border-zinc-800/60 rounded-xl cursor-pointer">
+                  <span className="text-zinc-300">Flash Screen</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.showFlashEffect}
+                    onChange={(e) => setSettings((s) => ({ ...s, showFlashEffect: e.target.checked }))}
+                    className="accent-pink-500 w-3.5 h-3.5 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2 bg-zinc-950/80 border border-zinc-800/60 rounded-xl cursor-pointer">
+                  <span className="text-zinc-300">Mirror Camera</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.mirrorCamera}
+                    onChange={(e) => setSettings((s) => ({ ...s, mirrorCamera: e.target.checked }))}
+                    className="accent-pink-500 w-3.5 h-3.5 rounded cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2 bg-zinc-950/80 border border-zinc-800/60 rounded-xl cursor-pointer">
+                  <span className="text-zinc-300">DNP Spooler</span>
                   <input
                     type="checkbox"
                     checked={settings.printEnabled}
                     onChange={(e) => setSettings((s) => ({ ...s, printEnabled: e.target.checked }))}
-                    className="accent-pink-500 w-4 h-4 rounded cursor-pointer"
+                    className="accent-pink-500 w-3.5 h-3.5 rounded cursor-pointer"
                   />
                 </label>
-                <div>
-                  <label className="text-[11px] text-zinc-400 block mb-1">Local Daemon Endpoint</label>
-                  <input
-                    type="text"
-                    value={settings.hardwareDaemonUrl || 'http://localhost:8000'}
-                    onChange={(e) => setSettings((s) => ({ ...s, hardwareDaemonUrl: e.target.value }))}
-                    className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-pink-500"
-                  />
-                </div>
               </div>
             </div>
 
-            <div className="flex justify-between pt-6">
+            {/* Bottom Action Buttons: Back to Page 1 & Launch Photobooth */}
+            <div className="flex items-center gap-2.5">
               <button
-                onClick={() => setActiveTab('canvas_builder')}
-                className="px-6 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold uppercase tracking-wider transition"
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                className="px-4 py-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold text-xs uppercase tracking-wider transition flex items-center gap-1.5 cursor-pointer"
               >
-                Back
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back</span>
               </button>
+
               <button
+                type="button"
                 onClick={() => onSaveAndLaunch(settings, template)}
-                className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-pink-500/25 active:scale-95 transition flex items-center gap-2"
+                className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-pink-500/25 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Check className="w-5 h-5 stroke-[3]" />
-                Launch Photobooth
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Launch Photobooth</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+
           </div>
-        )}
-      </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DISCRETE MODAL: ADD NEW EVENT PROFILE                                     */}
+      {/* ========================================================================= */}
+      {isAddEventModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-pink-400" /> Create New Event File
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddEventModalOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateEvent} className="space-y-3 text-xs">
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Event Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Summer Gala 2026"
+                  value={newEventName}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Subtitle / Date</label>
+                <input
+                  type="text"
+                  placeholder="e.g. OCT 2026"
+                  value={newEventDate}
+                  onChange={(e) => setNewEventDate(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Social Hashtag</label>
+                <input
+                  type="text"
+                  placeholder="e.g. #QuickPicSummer"
+                  value={newEventHashtag}
+                  onChange={(e) => setNewEventHashtag(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Strip Bottom Text (Printed on Photo)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. ⚡ QUICKPIC SUMMER GALA"
+                  value={newEventFooterText}
+                  onChange={(e) => setNewEventFooterText(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddEventModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-pink-500/25 transition cursor-pointer"
+                >
+                  Save & Select Event
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
