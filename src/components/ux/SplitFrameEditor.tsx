@@ -1,23 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Sparkles,
+  ArrowLeft,
+  Check,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Image as ImageIcon,
+  Palette,
+  Sliders,
+  Smile,
+} from 'lucide-react';
 import {
   FrameTemplate,
   PhotoFilter,
   SlotAdjustment,
-  FrameTheme,
 } from '@/types/photobooth';
-import { FRAME_THEMES } from '@/lib/compositor';
-import {
-  Sparkles,
-  Palette,
-  Check,
-  ArrowLeft,
-  Smile,
-  Layers,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
 import {
   StickerCanvasLayer,
   StickerItem,
@@ -25,52 +26,70 @@ import {
   StickerLibraryItem,
 } from '@/components/ui/StickerCanvasLayer';
 
-export interface PlacedSticker {
-  id: string;
-  emoji: string;
-  x: number; // 0 - 100 percentage
-  y: number; // 0 - 100 percentage
-  scale: number; // 0.6 - 2.5
-  rotation: number; // 0 - 360 deg
-}
+export interface PlacedSticker extends StickerItem { }
 
-interface SplitFrameEditorProps {
+export interface SplitFrameEditorProps {
+  /** Array of raw captured photo URLs / base64 strings */
   capturedPhotos: string[];
+  /** Selected frame template definition */
   selectedTemplate: FrameTemplate;
-  onSelectTemplate: (template: FrameTemplate) => void;
+  /** Per-slot image adjustments (filters, zoom, pan, photoIndex) */
   slotAdjustments: Record<string, SlotAdjustment>;
+  /** Callback when slot adjustment is updated */
   onUpdateSlotAdjustment: (slotId: string, adjustment: Partial<SlotAdjustment>) => void;
-  stickersBySlot: Record<string, PlacedSticker[]>;
-  onUpdateSlotStickers: (slotId: string, stickers: PlacedSticker[]) => void;
+  /** Map of stickers per slot: slotId -> StickerItem[] */
+  stickersBySlot?: Record<string, StickerItem[]>;
+  /** Callback when stickers for a slot are updated */
+  onUpdateSlotStickers?: (slotId: string, stickers: StickerItem[]) => void;
+  /** Synchronized event name for strip header/footer branding */
+  eventName?: string;
+  /** Synchronized event date for strip footer branding */
+  eventDate?: string;
+  /** Callback to navigate back to step 1 (slot assignment) */
   onBackToStep1: () => void;
+  /** Callback when customization is confirmed (proceed to print / QR) */
   onConfirm: () => void;
+  /** Optional custom CSS classes */
+  className?: string;
 }
 
-const FILTERS: { id: PhotoFilter; label: string; cssFilter: string }[] = [
-  { id: 'none', label: 'Normal', cssFilter: 'none' },
-  { id: 'bw', label: 'B&W Classic', cssFilter: 'grayscale(100%) contrast(120%)' },
-  { id: 'vintage', label: '90s Vintage', cssFilter: 'sepia(50%) contrast(90%) brightness(105%)' },
-  { id: 'warm', label: 'Warm Glow', cssFilter: 'sepia(30%) saturate(140%)' },
-  { id: 'sepia', label: 'Retro Sepia', cssFilter: 'sepia(85%)' },
-  { id: 'cyberpunk', label: 'Cyberpunk', cssFilter: 'contrast(130%) saturate(160%) hue-rotate(15deg)' },
-  { id: 'cold', label: 'Cold Breeze', cssFilter: 'saturate(90%) hue-rotate(190deg) brightness(105%)' },
-];
+export const FILTER_PRESETS: {
+  id: PhotoFilter;
+  label: string;
+  cssFilter: string;
+  swatchGradient: string;
+}[] = [
+    { id: 'none', label: 'Original', cssFilter: 'none', swatchGradient: 'from-zinc-400 to-zinc-600' },
+    { id: 'bw', label: 'B&W Classic', cssFilter: 'grayscale(100%) contrast(115%)', swatchGradient: 'from-gray-200 to-black' },
+    { id: 'sepia', label: 'Retro Sepia', cssFilter: 'sepia(80%) contrast(95%) brightness(95%)', swatchGradient: 'from-amber-200 to-amber-800' },
+    { id: 'vintage', label: '90s Film', cssFilter: 'sepia(30%) contrast(120%) saturate(125%) hue-rotate(-10deg)', swatchGradient: 'from-yellow-400 to-rose-600' },
+    { id: 'warm', label: 'Golden Hour', cssFilter: 'saturate(140%) sepia(20%) brightness(105%)', swatchGradient: 'from-orange-400 to-pink-500' },
+    { id: 'cyberpunk', label: 'Cyberpunk', cssFilter: 'contrast(130%) saturate(160%) hue-rotate(190deg)', swatchGradient: 'from-cyan-400 to-fuchsia-600' },
+    { id: 'cold', label: 'Cold Cyan', cssFilter: 'contrast(110%) saturate(90%) hue-rotate(160deg) brightness(102%)', swatchGradient: 'from-teal-300 to-blue-700' },
+  ];
 
 export const SplitFrameEditor: React.FC<SplitFrameEditorProps> = ({
   capturedPhotos,
   selectedTemplate,
-  onSelectTemplate,
   slotAdjustments,
   onUpdateSlotAdjustment,
-  stickersBySlot,
+  stickersBySlot = {},
   onUpdateSlotStickers,
+  eventName = 'QUICKPIC PHOTOBOOTH',
+  eventDate = 'SEP 2026',
   onBackToStep1,
   onConfirm,
+  className = '',
 }) => {
-  const [activeSlotId, setActiveSlotId] = useState<string>(selectedTemplate.slots[0]?.id || 's1');
+  const [activeSlotId, setActiveSlotId] = useState<string>(
+    selectedTemplate.slots[0]?.id || 's1'
+  );
+  const [activeTab, setActiveTab] = useState<'filter' | 'stickers'>('filter');
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
 
+  // Active slot & photo index
   const activeSlotIndex = selectedTemplate.slots.findIndex((s) => s.id === activeSlotId);
-  const currentAdj = slotAdjustments[activeSlotId] || {
+  const currentSlotAdj = slotAdjustments[activeSlotId] || {
     slotId: activeSlotId,
     photoIndex: Math.max(0, activeSlotIndex),
     zoom: 1.0,
@@ -79,324 +98,450 @@ export const SplitFrameEditor: React.FC<SplitFrameEditorProps> = ({
     filter: 'none',
   };
 
-  const activePhotoIndex = currentAdj.photoIndex ?? activeSlotIndex;
-  const activePhoto = capturedPhotos[activePhotoIndex] || capturedPhotos[0] || '';
-  const currentRawStickers = stickersBySlot[activeSlotId] || [];
+  const activePhotoIndex = currentSlotAdj.photoIndex ?? activeSlotIndex;
+  const activePhotoUrl = capturedPhotos[activePhotoIndex] || capturedPhotos[0] || '';
+  const currentFilter = currentSlotAdj.filter || 'none';
+  const activeFilterPreset = FILTER_PRESETS.find((f) => f.id === currentFilter) || FILTER_PRESETS[0];
 
-  // Convert PlacedSticker[] to StickerItem[] for StickerCanvasLayer
-  const canvasStickers: StickerItem[] = currentRawStickers.map((s) => ({
-    id: s.id,
-    type: 'emoji',
-    content: s.emoji,
-    x: s.x,
-    y: s.y,
-    scale: s.scale,
-    rotation: s.rotation,
-    zIndex: 1,
-  }));
+  // Local or parent stickers for the active slot
+  const [localStickers, setLocalStickers] = useState<Record<string, StickerItem[]>>(stickersBySlot);
+  const currentStickers = localStickers[activeSlotId] || [];
 
-  const handleStickersChange = (updatedItems: StickerItem[]) => {
-    const updatedPlaced: PlacedSticker[] = updatedItems.map((item) => ({
-      id: item.id,
-      emoji: item.content,
-      x: item.x,
-      y: item.y,
-      scale: item.scale,
-      rotation: item.rotation,
-    }));
-    onUpdateSlotStickers(activeSlotId, updatedPlaced);
+  useEffect(() => {
+    if (stickersBySlot) {
+      setLocalStickers(stickersBySlot);
+    }
+  }, [stickersBySlot]);
+
+  const handleSelectSlot = (slotId: string) => {
+    setActiveSlotId(slotId);
+    setSelectedStickerId(null);
   };
 
-  const handleAddStickerFromDrawer = (item: StickerLibraryItem) => {
+  const handleStickersChange = (updated: StickerItem[]) => {
+    const nextMap = { ...localStickers, [activeSlotId]: updated };
+    setLocalStickers(nextMap);
+    if (onUpdateSlotStickers) {
+      onUpdateSlotStickers(activeSlotId, updated);
+    }
+  };
+
+  const handleAddSticker = (item: StickerLibraryItem) => {
+    const nextZ = currentStickers.length > 0 ? Math.max(...currentStickers.map((s) => s.zIndex)) + 1 : 1;
     const newSticker: StickerItem = {
-      id: `stk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: `stk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       type: item.type,
       content: item.content,
       x: 50,
       y: 50,
-      scale: 1.2,
+      scale: item.type === 'stamp' ? 1.0 : 1.4,
       rotation: 0,
-      zIndex: canvasStickers.length + 1,
+      zIndex: nextZ,
     };
-    handleStickersChange([...canvasStickers, newSticker]);
+    handleStickersChange([...currentStickers, newSticker]);
+    setSelectedStickerId(newSticker.id);
   };
 
-  const handleNextSlot = () => {
-    const nextIdx = (activeSlotIndex + 1) % selectedTemplate.slots.length;
-    setActiveSlotId(selectedTemplate.slots[nextIdx].id);
+  const handleFilterSelect = (filterId: PhotoFilter) => {
+    onUpdateSlotAdjustment(activeSlotId, { filter: filterId });
   };
 
-  const handlePrevSlot = () => {
-    const prevIdx = (activeSlotIndex - 1 + selectedTemplate.slots.length) % selectedTemplate.slots.length;
-    setActiveSlotId(selectedTemplate.slots[prevIdx].id);
+  const handleApplyFilterToAll = () => {
+    selectedTemplate.slots.forEach((s) => {
+      onUpdateSlotAdjustment(s.id, { filter: currentFilter });
+    });
   };
 
-  const activeFilterPreset = FILTERS.find((f) => f.id === currentAdj.filter) || FILTERS[0];
+  const activeSlot = selectedTemplate.slots[activeSlotIndex] || selectedTemplate.slots[0];
+  const activeSlotAspect = activeSlot?.aspectRatio || 4 / 3;
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex flex-col p-3 md:p-6 text-zinc-100 select-none animate-fade-in">
-      {/* Top Banner */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <Sparkles className="w-3.5 h-3.5" /> Step 2: 35/65 Uneven Split Editor
+    <div className={`w-full max-w-7xl mx-auto flex flex-col gap-4 p-3 md:p-6 bg-zinc-950 text-white select-none animate-fade-in ${className}`}>
+      {/* Top Banner Header */}
+      {/* Header Banner */}
+      <div className="text-center max-w-xl mx-auto mb-2 flex flex-col items-center justify-center">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-bold uppercase tracking-wider mb-2">
+          <Sparkles className="w-3.5 h-3.5" /> Step 2 of 2: Picture Editor
+        </div>
+        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">
+          Pick Filters and Stickers
+        </h2>
+        <p className="text-xs md:text-sm text-zinc-400 mt-1">
+          Tap a slot, select filters and add stickers.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/90 border border-zinc-800 rounded-2xl px-5 py-3.5 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-tr from-pink-600 to-purple-600 rounded-xl shadow-md shadow-pink-500/20">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl md:text-2xl font-black text-white">
-            Custom Filters & Canva-Style Stickers
-          </h2>
+          <div>
+            <h2 className="text-lg md:text-xl font-black tracking-tight text-white flex items-center gap-2">
+              Photo Filter & Free-Transform Sticker Studio
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 font-bold uppercase">
+                {selectedTemplate.name}
+              </span>
+            </h2>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Header Action Buttons */}
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={onBackToStep1}
-            className="px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-semibold rounded-xl text-xs transition"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Slots
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Slots</span>
           </button>
+
           <button
             type="button"
             onClick={onConfirm}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-pink-500/25 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-pink-500/30 active:scale-95 transition-all"
           >
-            <Check className="w-4 h-4 stroke-[3]" /> Finish & Print
+            <Check className="w-4 h-4 stroke-[3]" />
+            <span>Finish & Print Strip</span>
           </button>
         </div>
       </div>
 
-      {/* 35% / 65% Uneven Split-Screen Layout */}
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-        
-        {/* ========================================================================= */}
-        {/* LEFT COLUMN (~35% Width): Composite Strip Preview with Active Slot Glow  */}
-        {/* ========================================================================= */}
-        <div className="w-full lg:w-[35%] bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex flex-col items-center justify-between shadow-2xl">
+      {/* Main Uneven Split Layout: 35% Left Overview vs 65% Right Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        {/* ========================================================= */}
+        {/* Left Column (~35% width -> col-span-4)                     */}
+        {/* Full Strip Preview with synchronized header/footer branding */}
+        {/* ========================================================= */}
+        <div className="lg:col-span-4 flex flex-col items-center bg-zinc-900/60 border border-zinc-800/80 rounded-3xl p-4 md:p-5 shadow-2xl backdrop-blur-md">
           <div className="w-full flex items-center justify-between mb-3 px-1">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-pink-400" />
-              Composite Strip Preview
+              Full Strip Preview
             </span>
             <span className="text-[11px] font-mono text-pink-400 bg-pink-500/10 border border-pink-500/30 px-2 py-0.5 rounded-full font-semibold">
               Slot {activeSlotIndex + 1} of {selectedTemplate.slots.length}
             </span>
           </div>
 
-          {/* Frame Container */}
+          {/* Strip Frame Container */}
           <div
-            className="relative shadow-2xl rounded-xl overflow-hidden border-2 transition-all my-auto"
+            className="relative shadow-2xl rounded-2xl overflow-hidden border-4 transition-all duration-300"
             style={{
-              backgroundColor: selectedTemplate.backgroundColor || '#ffffff',
-              borderColor: selectedTemplate.accentColor || '#ec4899',
-              width: selectedTemplate.category === 'strip' ? '210px' : '280px',
-              aspectRatio:
-                selectedTemplate.category === 'strip'
-                  ? '1/3'
-                  : selectedTemplate.category === '4r'
-                  ? '4/6'
-                  : '3/4',
+              backgroundColor: selectedTemplate.backgroundColor,
+              borderColor: selectedTemplate.accentColor,
+              width: selectedTemplate.category === 'strip' ? '220px' : '300px',
+              aspectRatio: selectedTemplate.category === 'strip' ? '1/3' : '2/3',
             }}
           >
-            {selectedTemplate.slots.map((slot, idx) => {
-              const adj = slotAdjustments[slot.id] || {
-                slotId: slot.id,
-                photoIndex: idx % capturedPhotos.length,
-                zoom: 1.0,
-                panX: 0,
-                panY: 0,
-                filter: 'none',
-              };
-              const photo = capturedPhotos[adj.photoIndex] || capturedPhotos[0];
-              const isSelected = slot.id === activeSlotId;
-              const slotStkList = stickersBySlot[slot.id] || [];
-              const filterPreset = FILTERS.find((f) => f.id === adj.filter) || FILTERS[0];
+            {selectedTemplate.slots.map((slot, index) => {
+              const isActive = slot.id === activeSlotId;
+              const slotAdj = slotAdjustments[slot.id];
+              const photoIdx = slotAdj?.photoIndex ?? index;
+              const photoUrl = capturedPhotos[photoIdx] || capturedPhotos[0];
+              const slotFilter = slotAdj?.filter || 'none';
+              const filterObj = FILTER_PRESETS.find((f) => f.id === slotFilter);
+              const stickersInSlot = localStickers[slot.id] || [];
 
               return (
                 <div
                   key={slot.id}
-                  onClick={() => setActiveSlotId(slot.id)}
-                  className={`absolute rounded overflow-hidden cursor-pointer transition-all duration-200 ${
-                    isSelected
-                      ? 'ring-4 ring-pink-500 ring-offset-2 ring-offset-black scale-[1.03] z-20 shadow-xl'
-                      : 'border border-black/20 hover:ring-2 hover:ring-pink-300 z-10'
-                  }`}
+                  onClick={() => handleSelectSlot(slot.id)}
                   style={{
                     left: `${slot.x}%`,
                     top: `${slot.y}%`,
                     width: `${slot.width}%`,
                     height: `${slot.height}%`,
+                    containerType: 'inline-size',
                   }}
+                  className={`@container absolute cursor-pointer overflow-hidden rounded-lg transition-all ${isActive
+                    ? 'ring-4 ring-pink-500 z-20 scale-[1.03] shadow-lg shadow-pink-500/30'
+                    : 'ring-1 ring-zinc-400/40 z-10 hover:ring-pink-400/80'
+                    }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo}
-                    alt={`Slot ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                    style={{ filter: filterPreset.cssFilter }}
-                  />
+                  {/* Active Glowing Indicator Badge */}
+                  {isActive && (
+                    <div className="absolute top-1 left-1 z-30 bg-pink-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow flex items-center gap-1 animate-pulse">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>Editing</span>
+                    </div>
+                  )}
 
-                  {/* Stickers preview in mini slot */}
-                  {slotStkList.map((stk) => (
+                  {/* Slot Photo Image with applied filter */}
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt={`Slot ${index + 1}`}
+                      style={{ filter: filterObj?.cssFilter || 'none' }}
+                      className="w-full h-full object-cover select-none pointer-events-none transition-all duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs font-semibold">
+                      Photo #{index + 1}
+                    </div>
+                  )}
+
+                  {/* Slot Stickers Preview in composite strip (100% matched container-query proportions) */}
+                  {stickersInSlot.map((stk) => (
                     <div
                       key={stk.id}
-                      className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 select-none"
                       style={{
                         left: `${stk.x}%`,
                         top: `${stk.y}%`,
-                        transform: `translate(-50%, -50%) scale(${stk.scale * 0.4}) rotate(${stk.rotation}deg)`,
-                        fontSize: '24px',
+                        transform: `translate(-50%, -50%) rotate(${stk.rotation}deg) scale(${stk.scale})`,
+                        zIndex: stk.zIndex,
                       }}
+                      className="absolute pointer-events-none select-none drop-shadow-sm flex items-center justify-center"
                     >
-                      {stk.emoji}
+                      {stk.type === 'emoji' && (
+                        <span style={{ fontSize: '24cqw' }} className="leading-none inline-block filter drop-shadow-sm">
+                          {stk.content}
+                        </span>
+                      )}
+                      {stk.type === 'stamp' && (
+                        <div
+                          style={{ fontSize: '7.5cqw', padding: '0.8cqw 1.8cqw' }}
+                          className="bg-black/70 backdrop-blur-xs border border-pink-400 text-pink-300 font-black tracking-widest uppercase rounded shadow whitespace-nowrap leading-tight"
+                        >
+                          {stk.content}
+                        </div>
+                      )}
+                      {stk.type === 'badge' && (
+                        <div
+                          style={{ fontSize: '7cqw', padding: '0.8cqw 1.6cqw' }}
+                          className="bg-amber-500/20 border border-amber-400 text-amber-300 font-extrabold tracking-wider rounded-full shadow whitespace-nowrap leading-tight"
+                        >
+                          {stk.content}
+                        </div>
+                      )}
                     </div>
                   ))}
 
-                  {/* Active highlight label badge */}
-                  {isSelected && (
-                    <span className="absolute top-1 left-1 bg-pink-500 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow">
-                      Editing #{idx + 1}
-                    </span>
-                  )}
+                  {/* Slot Number Label Overlay */}
+                  <div className="absolute bottom-1 right-1 bg-black/60 backdrop-blur-xs text-white text-[9px] font-mono px-1 rounded">
+                    #{index + 1}
+                  </div>
                 </div>
               );
             })}
 
-            {/* Footer Event Title */}
+            {/* Template Footer Branding (Synchronized with eventName and eventDate) */}
             <div
-              className="absolute bottom-2 inset-x-0 text-center font-bold text-[9px] uppercase tracking-wider"
-              style={{ color: selectedTemplate.textColor || '#000000' }}
+              className="absolute bottom-2 inset-x-0 text-center font-mono select-none px-2"
+              style={{ color: selectedTemplate.textColor }}
             >
-              ⚡ QUICKPIC PHOTOBOOTH
+              <div className="font-black text-[10px] tracking-widest uppercase truncate leading-tight">
+                {eventName.toUpperCase()}
+              </div>
+              <div className="text-[8px] font-semibold tracking-wider opacity-75 leading-tight mt-0.5">
+                ★ {eventDate} ★
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Theme Color Presets */}
-          <div className="w-full mt-4 pt-3 border-t border-zinc-800">
-            <span className="text-[11px] font-bold text-zinc-400 block mb-2 uppercase tracking-wider">
-              Frame Theme Style:
-            </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              {FRAME_THEMES.map((th) => (
-                <button
-                  key={th.id}
-                  type="button"
-                  onClick={() =>
-                    onSelectTemplate({
-                      ...selectedTemplate,
-                      backgroundColor: th.backgroundColor,
-                      textColor: th.textColor,
-                      accentColor: th.accentColor,
-                    })
-                  }
-                  className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                    selectedTemplate.backgroundColor === th.backgroundColor
-                      ? 'border-pink-500 bg-pink-500/20 text-pink-300'
-                      : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
+        {/* ========================================================= */}
+        {/* Right Column (~65% width -> col-span-8)                    */}
+        {/* Enlarged Active Slot Workspace + Sticker Engine            */}
+        {/* ========================================================= */}
+        <div className="lg:col-span-8 flex flex-col gap-4 bg-zinc-900/60 border border-zinc-800/80 rounded-3xl p-4 md:p-6 shadow-2xl backdrop-blur-md">
+
+          {/* Top Tab Switcher: Filters vs Stickers */}
+          <div className="flex items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('filter')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'filter'
+                  ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/25'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
                   }`}
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full border border-white/20"
-                    style={{ backgroundColor: th.backgroundColor }}
-                  />
-                  {th.name}
-                </button>
-              ))}
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Photo Filters ({FILTER_PRESETS.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('stickers')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'stickers'
+                  ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/25'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                  }`}
+              >
+                <Smile className="w-3.5 h-3.5" />
+                <span>Sticker Drawer {currentStickers.length > 0 ? `(${currentStickers.length})` : ''}</span>
+              </button>
+            </div>
+
+            {/* Quick Slot Navigation (Prev / Next) */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const prevIdx = (activeSlotIndex - 1 + selectedTemplate.slots.length) % selectedTemplate.slots.length;
+                  handleSelectSlot(selectedTemplate.slots[prevIdx].id);
+                }}
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition"
+                title="Previous Slot"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-mono font-bold text-zinc-400 px-1">
+                {activeSlotIndex + 1}/{selectedTemplate.slots.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextIdx = (activeSlotIndex + 1) % selectedTemplate.slots.length;
+                  handleSelectSlot(selectedTemplate.slots[nextIdx].id);
+                }}
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition"
+                title="Next Slot"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* ========================================================================= */}
-        {/* RIGHT PANEL (~65% Width): Enlarged Workspace + Canva Bounding Box Engine */}
-        {/* ========================================================================= */}
-        <div className="w-full lg:w-[65%] bg-zinc-900 border border-zinc-800 rounded-3xl p-5 flex flex-col justify-between shadow-2xl space-y-4">
-          
-          {/* Top Toolbars: Filters & Sticker Drawer */}
-          <div className="space-y-3">
-            {/* Slot Switcher Navigation */}
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-zinc-300">
-                  Active Photo Slot: <span className="text-pink-400 font-mono">#{activeSlotIndex + 1}</span>
+          {/* Sub-Panel: Filter Presets Swatches */}
+          {activeTab === 'filter' && (
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                  Color Grading & Looks
                 </span>
-                <span className="text-[10px] text-zinc-500">
-                  ({canvasStickers.length} stickers placed)
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={handlePrevSlot}
-                  className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                  onClick={handleApplyFilterToAll}
+                  className="text-[11px] font-semibold text-pink-400 hover:text-pink-300 transition"
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" /> Prev Slot
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextSlot}
-                  className="p-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer"
-                >
-                  Next Slot <ChevronRight className="w-3.5 h-3.5" />
+                  Apply &quot;{activeFilterPreset.label}&quot; to all slots
                 </button>
               </div>
-            </div>
 
-            {/* 1. Filter Chips Bar */}
-            <div>
-              <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
-                <Palette className="w-3.5 h-3.5 text-pink-400" /> Photo Color Filter
-              </label>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => onUpdateSlotAdjustment(activeSlotId, { filter: f.id })}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                      currentAdj.filter === f.id
-                        ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25 ring-1 ring-pink-400'
-                        : 'bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+              {/* Filter Swatches Grid */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                {FILTER_PRESETS.map((filter) => {
+                  const isSelected = currentFilter === filter.id;
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => handleFilterSelect(filter.id)}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl border transition-all ${isSelected
+                        ? 'bg-pink-500/15 border-pink-500 ring-2 ring-pink-500/50 scale-105 shadow-lg shadow-pink-500/20'
+                        : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/40'
+                        }`}
+                    >
+                      {/* Thumbnail with filter preview */}
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-zinc-700">
+                        {activePhotoUrl ? (
+                          <img
+                            src={activePhotoUrl}
+                            alt={filter.label}
+                            style={{ filter: filter.cssFilter }}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className={`w-full h-full bg-gradient-to-tr ${filter.swatchGradient}`} />
+                        )}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-pink-500/20 flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white drop-shadow" />
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[11px] font-bold text-center truncate max-w-full ${isSelected ? 'text-pink-400' : 'text-zinc-400'
+                        }`}>
+                        {filter.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+          )}
 
-            {/* 2. Sticker Library Drawer */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Smile className="w-3.5 h-3.5 text-yellow-400" /> Canva-Style Free-Transform Stickers
-                </label>
-                <span className="text-[10px] text-zinc-500">Tap to place • Drag corners to resize • Rotate stem to angle</span>
+          {/* Sub-Panel: Sticker Picker Drawer */}
+          {activeTab === 'stickers' && (
+            <StickerPickerDrawer
+              onSelectSticker={handleAddSticker}
+              onClearAll={() => handleStickersChange([])}
+              stickersCount={currentStickers.length}
+            />
+          )}
+
+          {/* Enlarged Photo Workspace Canvas */}
+          <div className="relative w-full rounded-2xl bg-zinc-950 border-2 border-zinc-800 p-2 md:p-4 overflow-hidden flex items-center justify-center shadow-inner group min-h-[380px]">
+            {activePhotoUrl ? (
+              <div
+                style={{
+                  aspectRatio: `${activeSlotAspect}`,
+                  containerType: 'inline-size',
+                }}
+                className="@container relative w-full max-w-xl max-h-[520px] rounded-xl overflow-hidden shadow-2xl border border-zinc-700 bg-zinc-900 flex items-center justify-center select-none"
+              >
+                {/* Enlarged Photo with Active Filter */}
+                <img
+                  src={activePhotoUrl}
+                  alt={`Slot ${activeSlotIndex + 1} Workspace`}
+                  style={{ filter: activeFilterPreset.cssFilter }}
+                  className="w-full h-full object-cover pointer-events-none select-none transition-all duration-200"
+                />
+
+                {/* Interactive Sticker Layer matching exact photo frame */}
+                <StickerCanvasLayer
+                  stickers={currentStickers}
+                  onStickersChange={handleStickersChange}
+                  selectedStickerId={selectedStickerId}
+                  onSelectSticker={setSelectedStickerId}
+                />
               </div>
-              <StickerPickerDrawer onSelectSticker={handleAddStickerFromDrawer} />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 py-12">
+                <ImageIcon className="w-10 h-10 stroke-1" />
+                <span className="text-sm font-semibold">No photo captured for this slot</span>
+              </div>
+            )}
+
+            {/* Slot Label Badge */}
+            <div className="absolute top-3 left-3 bg-zinc-950/80 backdrop-blur-md border border-zinc-700 px-3 py-1 rounded-xl text-xs font-mono font-bold text-pink-300 flex items-center gap-1.5 shadow-lg pointer-events-none">
+              <span>Editing Slot #{activeSlotIndex + 1}</span>
             </div>
           </div>
 
-          {/* Canva-Style Sticker Canvas Layer Workspace */}
-          <div className="relative w-full flex items-center justify-center bg-zinc-950 rounded-2xl p-4 border border-zinc-800 overflow-hidden min-h-[380px]">
-            <div className="relative aspect-4/3 w-full max-w-lg rounded-2xl overflow-hidden border-2 border-zinc-700 shadow-2xl">
-              {/* Active Base Photo */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activePhoto}
-                alt="Active Pose"
-                className="w-full h-full object-cover pointer-events-none select-none"
-                style={{ filter: activeFilterPreset.cssFilter }}
-              />
-
-              {/* Canva-Style Bounding Box Interactive Sticker Canvas */}
-              <StickerCanvasLayer
-                stickers={canvasStickers}
-                onStickersChange={handleStickersChange}
-                readOnly={false}
-              />
+          {/* Raw Shot Selector for Slot mapping */}
+          {capturedPhotos.length > 1 && (
+            <div className="flex items-center gap-3 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-3">
+              <span className="text-xs font-bold text-zinc-400 whitespace-nowrap">
+                Map Raw Shot to Slot #{activeSlotIndex + 1}:
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {capturedPhotos.map((photo, idx) => {
+                  const isAssigned = activePhotoIndex === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => onUpdateSlotAdjustment(activeSlotId, { photoIndex: idx })}
+                      className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${isAssigned
+                        ? 'border-pink-500 ring-2 ring-pink-500/50 scale-105'
+                        : 'border-zinc-700 opacity-60 hover:opacity-100'
+                        }`}
+                    >
+                      <img src={photo} alt={`Raw ${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0.5 right-0.5 bg-black/70 text-[9px] font-mono px-1 rounded text-white">
+                        #{idx + 1}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-
+          )}
         </div>
-
       </div>
     </div>
   );

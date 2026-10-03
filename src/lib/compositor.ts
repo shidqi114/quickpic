@@ -513,15 +513,41 @@ export async function renderCustomFrameSlotComposite(
             slotCtx.drawImage(stImg, -sW / 2, -sH / 2, sW, sH);
             slotCtx.restore();
           } else {
-            // Render emoji sticker
+            // Render emoji or styled stamp badge
             slotCtx.save();
             slotCtx.translate(posX, posY);
             slotCtx.rotate(rotationRad);
-            const fontSize = Math.max(24, Math.round(slotCanvas.width * 0.22 * scale));
-            slotCtx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-            slotCtx.textAlign = 'center';
-            slotCtx.textBaseline = 'middle';
-            slotCtx.fillText(sticker.emojiOrUrl, 0, 0);
+
+            const isStamp = sticker.emojiOrUrl.length > 3;
+            if (isStamp) {
+              const fontSize = Math.max(16, Math.round(slotCanvas.width * 0.075 * scale));
+              slotCtx.font = `900 ${fontSize}px sans-serif`;
+              const textMetrics = slotCtx.measureText(sticker.emojiOrUrl);
+              const padX = fontSize * 0.8;
+              const padY = fontSize * 0.4;
+              const boxW = textMetrics.width + padX * 2;
+              const boxH = fontSize + padY * 2;
+
+              // Draw badge background
+              slotCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+              slotCtx.beginPath();
+              slotCtx.roundRect(-boxW / 2, -boxH / 2, boxW, boxH, fontSize * 0.3);
+              slotCtx.fill();
+              slotCtx.strokeStyle = '#f472b6'; // pink-400
+              slotCtx.lineWidth = Math.max(2, fontSize * 0.08);
+              slotCtx.stroke();
+
+              slotCtx.fillStyle = '#fbcfe8'; // pink-200
+              slotCtx.textAlign = 'center';
+              slotCtx.textBaseline = 'middle';
+              slotCtx.fillText(sticker.emojiOrUrl, 0, 0);
+            } else {
+              const fontSize = Math.max(24, Math.round(slotCanvas.width * 0.24 * scale));
+              slotCtx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+              slotCtx.textAlign = 'center';
+              slotCtx.textBaseline = 'middle';
+              slotCtx.fillText(sticker.emojiOrUrl, 0, 0);
+            }
             slotCtx.restore();
           }
         }
