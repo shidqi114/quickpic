@@ -171,9 +171,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement | null>(null);
 
-<<<<<<< HEAD
-  // Close dropdowns on outside click
-=======
   // Slot Customization Dropdown state
   const [isSlotCustomizationOpen, setIsSlotCustomizationOpen] = useState(false);
   const slotCustomizationRef = useRef<HTMLDivElement | null>(null);
@@ -319,51 +316,27 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   }, [currentPage, selectedDeviceId, settings.useDslr]);
 
   // Close dropdown on outside click
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
         setIsTemplateDropdownOpen(false);
       }
-<<<<<<< HEAD
       if (outletDropdownRef.current && !outletDropdownRef.current.contains(event.target as Node)) {
         setIsOutletDropdownOpen(false);
-=======
+      }
       if (slotCustomizationRef.current && !slotCustomizationRef.current.contains(event.target as Node)) {
         setIsSlotCustomizationOpen(false);
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-<<<<<<< HEAD
   const currentUserId = userId || 'usr-demo-01';
-=======
-  // Load saved event profiles from localStorage
+
+  // Load saved custom templates
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedEvents = localStorage.getItem('quickpic_event_profiles');
-      if (savedEvents) {
-        try {
-          const parsed = JSON.parse(savedEvents);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setEvents(parsed);
-            setActiveEventId(parsed[0].id);
-            setSettings((s) => ({
-              ...s,
-              eventName: parsed[0].name,
-              eventDate: parsed[0].date,
-              eventHashtag: parsed[0].hashtag,
-            }));
-          }
-        } catch (e) {
-          console.warn('Failed to parse saved events:', e);
-        }
-      }
-
-      // Load saved custom templates
       const savedTemplates = localStorage.getItem('quickpic_custom_templates');
       if (savedTemplates) {
         try {
@@ -377,7 +350,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       }
     }
   }, []);
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
 
   // 1. Fetch Outlets for this User on mount
   useEffect(() => {
@@ -455,14 +427,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       eventName: event.name,
       eventDate: event.date,
       eventHashtag: event.hashtag,
-<<<<<<< HEAD
       operatingMode: event.operatingMode || prev.operatingMode,
-      welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
-=======
       welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
       customWelcomeImageUrl: event.customWelcomeImageUrl,
       customWelcomeHeadline: event.customWelcomeHeadline,
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
     }));
   };
 
@@ -476,17 +444,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       date: newEventDate.trim() || '2026',
       hashtag: newEventHashtag.trim() || '#QuickPicBooth',
       stripFooterText: newEventFooterText.trim() || `⚡ ${newEventName.trim().toUpperCase()}`,
-<<<<<<< HEAD
       operatingMode: settings.operatingMode,
-      welcomeTheme: settings.welcomeTheme,
-    });
-=======
       welcomeTheme: settings.welcomeTheme,
       customWelcomeImageUrl: settings.customWelcomeImageUrl,
       customWelcomeHeadline: settings.customWelcomeHeadline,
-      createdAt: Date.now(),
-    };
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
+    });
 
     const updated = [created, ...events];
     setEvents(updated);
@@ -500,10 +462,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     setIsAddEventModalOpen(false);
   };
 
-<<<<<<< HEAD
-  // Handle Delete Event Profile from the Active Selected Outlet
-  const handleDeleteEvent = async (e: React.MouseEvent, eventId: string) => {
-=======
   // Handle Custom Welcoming Screen Image Upload
   const handleWelcomeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -533,9 +491,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     }));
   };
 
-  // Handle Delete Event Profile
-  const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
+  // Handle Delete Event Profile from the Active Selected Outlet
+  const handleDeleteEvent = async (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     if (!selectedOutlet || events.length <= 1) return;
 
@@ -870,15 +827,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
           {/* RIGHT 9 COLUMNS: Account Header Tray + Middle Config + Next Action */}
           <div className="col-span-12 lg:col-span-9 flex flex-col gap-3.5 h-full min-h-0 overflow-hidden justify-between">
-<<<<<<< HEAD
-            
             {/* TOP TRAY: User Account Name, Outlet Dropdown & Sign Out Button */}
             <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md z-30">
-=======
-
-            {/* NEW TOP TRAY: User Account Name, Outlet Name & Sign Out Button */}
-            <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md">
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               <div className="flex items-center gap-4 text-xs">
                 {/* User Account */}
                 <div className="flex items-center gap-2">
@@ -974,17 +924,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               {/* Functional Sign Out Button */}
               <button
                 type="button"
-<<<<<<< HEAD
                 onClick={() => {
                   onSignOut?.();
                 }}
                 title="Sign out of operator session"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/60 border border-zinc-700/70 hover:border-rose-800 text-zinc-300 hover:text-rose-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
-=======
-                onClick={() => { }}
-                title="Sign out of operator session (Placeholder)"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/40 border border-zinc-700/70 hover:border-rose-800/50 text-zinc-300 hover:text-rose-300 text-xs font-semibold transition active:scale-95 cursor-pointer"
->>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
