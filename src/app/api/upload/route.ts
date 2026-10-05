@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Wrap upload with a fast 1500ms timeout guard to prevent localhost latency
+    // Allow up to 30 seconds for image upload to Cloudinary
     const uploadPromise = cloudinary.uploader.upload(image, {
       folder,
       public_id: publicId,
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     });
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Cloudinary timeout (1.5s)')), 1500)
+      setTimeout(() => reject(new Error('Cloudinary upload timed out after 30 seconds')), 30000)
     );
 
     const result = (await Promise.race([uploadPromise, timeoutPromise])) as any;
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Upload failed';
+    console.warn('[Cloudinary API Route] Upload error:', message);
     return NextResponse.json({ error: message, url: null }, { status: 200 });
   }
 }

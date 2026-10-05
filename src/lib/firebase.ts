@@ -392,6 +392,72 @@ export async function createOutlet(
 }
 
 /**
+ * Update an existing outlet under users/{userId}/outlets/{outletId}.
+ */
+export async function updateOutlet(
+  userId: string,
+  outletId: string,
+  data: Partial<Omit<Outlet, 'id' | 'userId' | 'createdAt'>>
+): Promise<Outlet | null> {
+  // 1. Try Firestore
+  if (db && isFirebaseConfigured) {
+    try {
+      const outletDoc = doc(db, 'users', userId, 'outlets', outletId);
+      await setDoc(outletDoc, data, { merge: true });
+    } catch (err) {
+      console.warn('Firestore update outlet failed, caching locally:', err);
+    }
+  }
+
+  // 2. Update local cache
+  if (typeof window !== 'undefined') {
+    try {
+      const cacheKey = `${OUTLETS_PREFIX}${userId}`;
+      const existing = await getUserOutlets(userId);
+      const updated = existing.map((o) => (o.id === outletId ? { ...o, ...data } : o));
+      localStorage.setItem(cacheKey, JSON.stringify(updated));
+      const found = updated.find((o) => o.id === outletId) || null;
+      return found;
+    } catch (err) {
+      console.error('LocalStorage write failed:', err);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Delete an outlet under users/{userId}/outlets/{outletId}.
+ */
+export async function deleteOutlet(userId: string, outletId: string): Promise<void> {
+  // 1. Try Firestore
+  if (db && isFirebaseConfigured) {
+    try {
+      const outletDoc = doc(db, 'users', userId, 'outlets', outletId);
+      await deleteDoc(outletDoc);
+    } catch (err) {
+      console.warn('Firestore delete outlet failed:', err);
+    }
+  }
+
+  // 2. Update local cache
+  if (typeof window !== 'undefined') {
+    try {
+      const cacheKey = `${OUTLETS_PREFIX}${userId}`;
+      const existing = await getUserOutlets(userId);
+      const updated = existing.filter((o) => o.id !== outletId);
+      localStorage.setItem(cacheKey, JSON.stringify(updated));
+
+      // Also clean up events cache for this outlet
+      const eventsCacheKey = `${EVENTS_PREFIX}${userId}_${outletId}`;
+      localStorage.removeItem(eventsCacheKey);
+    } catch (err) {
+      console.error('LocalStorage delete outlet failed:', err);
+    }
+  }
+}
+
+/**
  * Fetch events under a specific outlet: users/{userId}/outlets/{outletId}/events.
  */
 export async function getOutletEvents(userId: string, outletId: string): Promise<OutletEvent[]> {

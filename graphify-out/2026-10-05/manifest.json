@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "src/app/api/upload/route.ts": {
-    "mtime": 1791218671.5622058,
-    "seen": 1791219041.985003,
-    "ast_hash": "dffc6bb41c252928884124343737dc41",
+    "mtime": 1791032206.4689794,
+    "seen": 1791217879.022913,
+    "ast_hash": "e10a30f7beb8302a583c0419b827a8d6",
     "semantic_hash": ""
   },
   "src/app/gallery/[id]/page.tsx": {
@@ -822,9 +822,9 @@
     "semantic_hash": ""
   },
   "src/components/ux/OperatorSetupWizard.tsx": {
-    "mtime": 1791218960.1645875,
-    "seen": 1791219041.9853141,
-    "ast_hash": "bfc92d64ca2b2ca4c27e0d84274d0823",
+    "mtime": 1791163622.8164961,
+    "seen": 1791217879.02292,
+    "ast_hash": "6c78b5ea6c806e4e2eaf9fdfc2017b25",
     "semantic_hash": ""
   },
   "src/components/ux/PhotoPickSlots.tsx": {
@@ -870,9 +870,9 @@
     "semantic_hash": ""
   },
   "src/lib/firebase.ts": {
-    "mtime": 1791218649.491132,
-    "seen": 1791219041.9854238,
-    "ast_hash": "17fc8bbf7bdf2f01777cb222a3c393ee",
+    "mtime": 1791163622.817259,
+    "seen": 1791217879.022923,
+    "ast_hash": "5b6b1e9d87e63ba3f781fc26234850f5",
     "semantic_hash": ""
   },
   "src/lib/hardware/daemon-client.ts": {
@@ -1863,12 +1863,6 @@
     "mtime": 1790923214.9249737,
     "seen": 1791217879.022989,
     "ast_hash": "a2760511c65806022ad20adf74370ff3",
-    "semantic_hash": ""
-  },
-  "__tests__/outlet-management.test.ts": {
-    "mtime": 1791219015.7913473,
-    "seen": 1791219041.9846761,
-    "ast_hash": "d673163b78519806e5d36f79be1ae723",
     "semantic_hash": ""
   }
 }
