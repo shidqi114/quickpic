@@ -36,10 +36,18 @@ import {
   Wand2,
   ImagePlus,
 } from 'lucide-react';
-import { BoothSettings, FrameTemplate, FrameSlot, StripLayout, WelcomeScreenTheme } from '@/types/photobooth';
+import { BoothSettings, FrameTemplate, FrameSlot, StripLayout, WelcomeScreenTheme, Outlet, OutletEvent } from '@/types/photobooth';
 import { FRAME_TEMPLATES } from '@/lib/constants';
 import { detectTemplateSlots } from '@/lib/slotDetector';
 import { WELCOME_THEME_PRESETS } from './WelcomeScreen';
+import {
+  getUserOutlets,
+  createOutlet,
+  getOutletEvents,
+  createOutletEvent,
+  deleteOutletEvent,
+  DEFAULT_DEMO_OUTLETS,
+} from '@/lib/firebase';
 
 export type OperatingMode = 'regular' | 'event';
 export type CaptureModeType = 'photo' | 'gif' | 'boomerang' | 'video';
@@ -71,6 +79,9 @@ interface OperatorSetupWizardProps {
   onClose?: () => void;
   userAccountName?: string;
   outletName?: string;
+  userId?: string;
+  onSignOut?: () => void;
+  onOutletChange?: (outlet: Outlet) => void;
 }
 
 const DEFAULT_EVENT_PROFILES: EventProfile[] = [
@@ -113,12 +124,27 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   currentTemplate,
   onSaveAndLaunch,
   userAccountName = 'Alex Pratama (Operator)',
-  outletName = 'QuickPic Central Mall - Grand Indonesia',
+  outletName = 'Grand Indonesia - Flagship',
+  userId = 'usr-demo-01',
+  onSignOut,
+  onOutletChange,
 }) => {
   // Page 1 vs Page 2 navigation state
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
 
-  // Event profiles state
+  // Outlets State (Firebase collection: users/{userId}/outlets)
+  const [outlets, setOutlets] = useState<Outlet[]>(DEFAULT_DEMO_OUTLETS);
+  const [selectedOutlet, setSelectedOutlet] = useState<Outlet>(DEFAULT_DEMO_OUTLETS[0]);
+  const [isOutletDropdownOpen, setIsOutletDropdownOpen] = useState(false);
+  const [isAddOutletModalOpen, setIsAddOutletModalOpen] = useState(false);
+  const outletDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // New outlet modal form fields
+  const [newOutletName, setNewOutletName] = useState('');
+  const [newOutletLocation, setNewOutletLocation] = useState('');
+  const [newOutletCode, setNewOutletCode] = useState('');
+
+  // Event profiles state (stored inside the selected outlet: users/{userId}/outlets/{outletId}/events)
   const [events, setEvents] = useState<EventProfile[]>(DEFAULT_EVENT_PROFILES);
   const [activeEventId, setActiveEventId] = useState<string>('ev-1');
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
@@ -145,6 +171,9 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement | null>(null);
 
+<<<<<<< HEAD
+  // Close dropdowns on outside click
+=======
   // Slot Customization Dropdown state
   const [isSlotCustomizationOpen, setIsSlotCustomizationOpen] = useState(false);
   const slotCustomizationRef = useRef<HTMLDivElement | null>(null);
@@ -290,19 +319,28 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   }, [currentPage, selectedDeviceId, settings.useDslr]);
 
   // Close dropdown on outside click
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
         setIsTemplateDropdownOpen(false);
       }
+<<<<<<< HEAD
+      if (outletDropdownRef.current && !outletDropdownRef.current.contains(event.target as Node)) {
+        setIsOutletDropdownOpen(false);
+=======
       if (slotCustomizationRef.current && !slotCustomizationRef.current.contains(event.target as Node)) {
         setIsSlotCustomizationOpen(false);
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+<<<<<<< HEAD
+  const currentUserId = userId || 'usr-demo-01';
+=======
   // Load saved event profiles from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -339,13 +377,74 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       }
     }
   }, []);
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
 
-  // Save event profiles to localStorage whenever they change
-  const saveEventsToStorage = (updatedEvents: EventProfile[]) => {
-    setEvents(updatedEvents);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('quickpic_event_profiles', JSON.stringify(updatedEvents));
-    }
+  // 1. Fetch Outlets for this User on mount
+  useEffect(() => {
+    let isMounted = true;
+    getUserOutlets(currentUserId).then((fetchedOutlets) => {
+      if (!isMounted) return;
+      if (fetchedOutlets && fetchedOutlets.length > 0) {
+        setOutlets(fetchedOutlets);
+        const match = fetchedOutlets.find((o) => o.name === outletName || o.id === outletName) || fetchedOutlets[0];
+        setSelectedOutlet(match);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [currentUserId, outletName]);
+
+  // 2. Fetch Events for the Active Selected Outlet
+  useEffect(() => {
+    let isMounted = true;
+    if (!selectedOutlet) return;
+    getOutletEvents(currentUserId, selectedOutlet.id).then((fetchedEvents) => {
+      if (!isMounted) return;
+      if (fetchedEvents && fetchedEvents.length > 0) {
+        setEvents(fetchedEvents);
+        setActiveEventId(fetchedEvents[0].id);
+        setSettings((s) => ({
+          ...s,
+          eventName: fetchedEvents[0].name,
+          eventDate: fetchedEvents[0].date,
+          eventHashtag: fetchedEvents[0].hashtag,
+          operatingMode: (fetchedEvents[0].operatingMode as OperatingMode) || s.operatingMode,
+          welcomeTheme: fetchedEvents[0].welcomeTheme || s.welcomeTheme,
+        }));
+      } else {
+        setEvents([]);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [currentUserId, selectedOutlet?.id]);
+
+  // Handle Outlet Selection
+  const handleSelectOutlet = (outlet: Outlet) => {
+    setSelectedOutlet(outlet);
+    setIsOutletDropdownOpen(false);
+    onOutletChange?.(outlet);
+  };
+
+  // Handle Add New Outlet
+  const handleCreateOutlet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOutletName.trim()) return;
+
+    const created = await createOutlet(currentUserId, {
+      name: newOutletName.trim(),
+      location: newOutletLocation.trim() || 'Central Zone',
+      code: newOutletCode.trim() || `OUT-${Math.floor(100 + Math.random() * 900)}`,
+    });
+
+    const updated = [...outlets, created];
+    setOutlets(updated);
+    setSelectedOutlet(created);
+    onOutletChange?.(created);
+
+    // Reset and close modal
+    setNewOutletName('');
+    setNewOutletLocation('');
+    setNewOutletCode('');
+    setIsAddOutletModalOpen(false);
   };
 
   // Handle Event selection
@@ -356,32 +455,42 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       eventName: event.name,
       eventDate: event.date,
       eventHashtag: event.hashtag,
+<<<<<<< HEAD
+      operatingMode: event.operatingMode || prev.operatingMode,
+      welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
+=======
       welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
       customWelcomeImageUrl: event.customWelcomeImageUrl,
       customWelcomeHeadline: event.customWelcomeHeadline,
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
     }));
   };
 
-  // Handle Add New Event Profile
-  const handleCreateEvent = (e: React.FormEvent) => {
+  // Handle Add New Event Profile inside the Active Selected Outlet
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEventName.trim()) return;
+    if (!newEventName.trim() || !selectedOutlet) return;
 
-    const newEvent: EventProfile = {
-      id: `ev_${Date.now()}`,
+    const created = await createOutletEvent(currentUserId, selectedOutlet.id, {
       name: newEventName.trim(),
       date: newEventDate.trim() || '2026',
       hashtag: newEventHashtag.trim() || '#QuickPicBooth',
       stripFooterText: newEventFooterText.trim() || `⚡ ${newEventName.trim().toUpperCase()}`,
+<<<<<<< HEAD
+      operatingMode: settings.operatingMode,
+      welcomeTheme: settings.welcomeTheme,
+    });
+=======
       welcomeTheme: settings.welcomeTheme,
       customWelcomeImageUrl: settings.customWelcomeImageUrl,
       customWelcomeHeadline: settings.customWelcomeHeadline,
       createdAt: Date.now(),
     };
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
 
-    const updated = [newEvent, ...events];
-    saveEventsToStorage(updated);
-    handleSelectEvent(newEvent);
+    const updated = [created, ...events];
+    setEvents(updated);
+    handleSelectEvent(created);
 
     // Reset and close modal
     setNewEventName('');
@@ -391,6 +500,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     setIsAddEventModalOpen(false);
   };
 
+<<<<<<< HEAD
+  // Handle Delete Event Profile from the Active Selected Outlet
+  const handleDeleteEvent = async (e: React.MouseEvent, eventId: string) => {
+=======
   // Handle Custom Welcoming Screen Image Upload
   const handleWelcomeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -422,10 +535,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
   // Handle Delete Event Profile
   const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
     e.stopPropagation();
-    if (events.length <= 1) return;
+    if (!selectedOutlet || events.length <= 1) return;
+
+    await deleteOutletEvent(currentUserId, selectedOutlet.id, eventId);
     const updated = events.filter((ev) => ev.id !== eventId);
-    saveEventsToStorage(updated);
+    setEvents(updated);
     if (activeEventId === eventId && updated.length > 0) {
       handleSelectEvent(updated[0]);
     }
@@ -754,9 +870,15 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
           {/* RIGHT 9 COLUMNS: Account Header Tray + Middle Config + Next Action */}
           <div className="col-span-12 lg:col-span-9 flex flex-col gap-3.5 h-full min-h-0 overflow-hidden justify-between">
+<<<<<<< HEAD
+            
+            {/* TOP TRAY: User Account Name, Outlet Dropdown & Sign Out Button */}
+            <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md z-30">
+=======
 
             {/* NEW TOP TRAY: User Account Name, Outlet Name & Sign Out Button */}
             <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               <div className="flex items-center gap-4 text-xs">
                 {/* User Account */}
                 <div className="flex items-center gap-2">
@@ -771,24 +893,98 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
                 <div className="h-6 w-px bg-zinc-800 hidden sm:block" />
 
-                {/* Outlet Name */}
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                    <Store className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider leading-none">Outlet Location</span>
-                    <span className="font-bold text-zinc-200 text-xs">{outletName}</span>
-                  </div>
+                {/* Outlet Dropdown Selector */}
+                <div className="relative" ref={outletDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsOutletDropdownOpen(!isOutletDropdownOpen)}
+                    className="flex items-center gap-2.5 p-1.5 px-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/70 hover:border-amber-500/50 transition cursor-pointer text-left"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
+                      <Store className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0 pr-1">
+                      <span className="text-[9px] text-zinc-400 block uppercase font-bold tracking-wider leading-none">Outlet Location</span>
+                      <span className="font-bold text-zinc-100 text-xs truncate max-w-[160px] sm:max-w-[220px]">
+                        {selectedOutlet?.name || outletName}
+                      </span>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${isOutletDropdownOpen ? 'rotate-180 text-amber-400' : ''}`} />
+                  </button>
+
+                  {/* Fixed-Size, Auto-Scrolling Dropdown Modal */}
+                  {isOutletDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1.5 w-72 sm:w-80 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-fade-in">
+                      <div className="p-2 border-b border-zinc-800/80 flex items-center justify-between text-[11px] font-bold text-zinc-400 px-3 bg-zinc-950/40">
+                        <span>Select Outlet</span>
+                        <span className="text-[10px] text-zinc-500 font-normal">{outlets.length} available</span>
+                      </div>
+
+                      {/* Scrollable outlets list with fixed max height */}
+                      <div className="max-h-60 overflow-y-auto p-1.5 flex flex-col gap-1">
+                        {outlets.map((outlet) => {
+                          const isSelected = selectedOutlet?.id === outlet.id;
+                          return (
+                            <button
+                              key={outlet.id}
+                              type="button"
+                              onClick={() => handleSelectOutlet(outlet)}
+                              className={`p-2.5 rounded-xl text-left flex items-start justify-between gap-2 transition cursor-pointer ${
+                                isSelected
+                                  ? 'bg-amber-500/20 border border-amber-500/50 text-white'
+                                  : 'hover:bg-zinc-800/70 text-zinc-300'
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-xs truncate">{outlet.name}</span>
+                                  {outlet.code && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-zinc-800 text-amber-400 border border-amber-500/20 shrink-0">
+                                      {outlet.code}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-zinc-400 truncate mt-0.5">{outlet.location}</div>
+                              </div>
+                              {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Add an outlet Button at the Very Bottom of Dropdown Modal */}
+                      <div className="p-2 border-t border-zinc-800 bg-zinc-950/60">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsOutletDropdownOpen(false);
+                            setIsAddOutletModalOpen(true);
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/40 hover:border-pink-500 text-pink-300 hover:text-pink-200 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer active:scale-95"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add an outlet</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Sign Out Dummy Button */}
+              {/* Functional Sign Out Button */}
               <button
                 type="button"
+<<<<<<< HEAD
+                onClick={() => {
+                  onSignOut?.();
+                }}
+                title="Sign out of operator session"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/60 border border-zinc-700/70 hover:border-rose-800 text-zinc-300 hover:text-rose-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
+=======
                 onClick={() => { }}
                 title="Sign out of operator session (Placeholder)"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/40 border border-zinc-700/70 hover:border-rose-800/50 text-zinc-300 hover:text-rose-300 text-xs font-semibold transition active:scale-95 cursor-pointer"
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -1856,6 +2052,81 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-pink-500/25 transition cursor-pointer"
                 >
                   Save & Select Event
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* DISCRETE MODAL: ADD NEW OUTLET                                             */}
+      {/* ========================================================================= */}
+      {isAddOutletModalOpen && (
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Store className="w-4 h-4 text-amber-400" /> Add New Outlet Location
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddOutletModalOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOutlet} className="space-y-3 text-xs">
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Outlet Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Grand Indonesia - Flagship"
+                  value={newOutletName}
+                  onChange={(e) => setNewOutletName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Location / Venue Details</label>
+                <input
+                  type="text"
+                  placeholder="e.g. West Mall Level 3, Jakarta Pusat"
+                  value={newOutletLocation}
+                  onChange={(e) => setNewOutletLocation(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-semibold">Branch Code</label>
+                <input
+                  type="text"
+                  placeholder="e.g. GI-01"
+                  value={newOutletCode}
+                  onChange={(e) => setNewOutletCode(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddOutletModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Save Outlet</span>
                 </button>
               </div>
             </form>

@@ -233,3 +233,43 @@ export interface BoothSettings {
   cameraDeviceId?: string;
   useDslr?: boolean;
 }
+
+// ============================================================================
+// Firebase User & Outlet Hierarchy Domain Models
+// Schema: users/{userId} -> outlets/{outletId} -> events/{eventId}
+// ============================================================================
+
+export type UserRole = 'owner' | 'operator' | 'admin';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: number;
+  lastLoginAt?: number;
+}
+
+export interface Outlet {
+  id: string;
+  userId: string;       // Owner or parent user account ID
+  name: string;         // e.g. "Grand Indonesia - Flagship"
+  location: string;     // e.g. "West Mall Level 3, Jakarta"
+  code: string;         // e.g. "GI-JKT-01"
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface OutletEvent {
+  id: string;
+  outletId: string;     // Parent outlet reference
+  userId: string;       // Parent user reference
+  name: string;         // e.g. "Summer Gala 2026"
+  date: string;         // e.g. "OCT 2026"
+  hashtag: string;      // e.g. "#QuickPicSummer"
+  stripFooterText?: string;
+  operatingMode?: BoothOperatingMode;
+  welcomeTheme?: WelcomeScreenTheme;
+  createdAt: number;
+  updatedAt?: number;
+}

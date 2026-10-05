@@ -78,21 +78,21 @@ export default function GuestGalleryPage() {
       const maxAttempts = 3;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        // Source 1: Supabase Cloud Database
+        // Source 1: Firebase Cloud Firestore
         if (id) {
-          try {
-            foundSession = await getSupabasePhotoSession(id);
-          } catch (supabaseErr) {
-            console.warn(`[Gallery] Supabase fetch attempt ${attempt} failed:`, supabaseErr);
-          }
-        }
-
-        // Source 2: Firebase Firestore Fallback
-        if (!foundSession && id) {
           try {
             foundSession = await getFirebasePhotoSession(id);
           } catch (firebaseErr) {
             console.warn(`[Gallery] Firebase fetch attempt ${attempt} failed:`, firebaseErr);
+          }
+        }
+
+        // Source 2: Cloud Fallback
+        if (!foundSession && id) {
+          try {
+            foundSession = await getSupabasePhotoSession(id);
+          } catch (cloudErr) {
+            console.warn(`[Gallery] Cloud fetch attempt ${attempt} failed:`, cloudErr);
           }
         }
 
