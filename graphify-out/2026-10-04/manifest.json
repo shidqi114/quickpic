@@ -1852,11 +1852,5 @@
     "seen": 1791118914.1553879,
     "ast_hash": "618b46e653f8201c51913b4aa4f0d7b2",
     "semantic_hash": ""
-  },
-  "scripts/seed-firestore.mjs": {
-    "mtime": 1791120034.5508463,
-    "seen": 1791120123.161313,
-    "ast_hash": "a3e2ec3df88e4f7e538083e1b4cee45a",
-    "semantic_hash": ""
   }
 }

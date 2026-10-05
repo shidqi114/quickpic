@@ -128,7 +128,7 @@ flowchart TD
 - **Hardware Daemon**: Local Python daemon (`hardware-daemon/app.py` on port 8000) communicating with Canon EDSDK for cameras and local DNP printer drivers.
 - **Media CDN**: Cloudinary for high-speed cloud asset storage, auto-optimizations, and mobile guest delivery.
 - **Payment Processing**: **Frozen in Simulation Mode** (Dynamic QRIS simulation + Staff PIN bypass `1144`).
-- **Database**: Supabase (PostgreSQL) for multi-tenant relational persistence with offline `LocalStorage` buffering.
+- **Database & Auth**: Firebase (Firebase Auth, Cloud Firestore, Firebase Storage) for multi-tenant relational persistence with hierarchical schema (`users/{userId}/outlets/{outletId}/events/{eventId}`) and offline `LocalStorage` buffering for physical kiosks.
 - **Knowledge Engine**: Graphify (`graphify-out/graph.json`) for structured codebase memory.
 
 ---

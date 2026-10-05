@@ -53,12 +53,21 @@ import {
 import { FRAME_TEMPLATES, PHOTOBOOTH_PACKAGES } from '@/lib/constants';
 import { renderCustomFrameSlotComposite, FRAME_THEMES } from '@/lib/compositor';
 import { photoboothAudio } from '@/lib/audio';
-import { savePhotoSession, ExtendedPhotoSession } from '@/lib/supabase/client';
+import {
+  savePhotoSession,
+  ExtendedPhotoSession,
+  subscribeToAuth,
+  signOutUser,
+  UserProfile,
+  Outlet,
+} from '@/lib/firebase';
 import { livePhotoRecorder } from '@/lib/livephoto';
 import { sendDnpPrintJob } from '@/lib/hardware/daemon-client';
+import { LoginScreen } from '@/components/ux/LoginScreen';
 import Link from 'next/link';
 
 export type KioskStep =
+  | 'LOGIN'
   | 'OPERATOR_SETUP'
   | 'WELCOME'
   | 'PACKAGE_PAYMENT'
@@ -89,7 +98,10 @@ const DEFAULT_OPERATOR_SETTINGS: ExtendedOperatorSettings = {
 };
 
 export default function PhotoboothKioskPage() {
-  const [currentStep, setCurrentStep] = useState<KioskStep>('OPERATOR_SETUP');
+  const [currentStep, setCurrentStep] = useState<KioskStep>('LOGIN');
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [activeOutlet, setActiveOutlet] = useState<Outlet | null>(null);
+
   const [operatorSettings, setOperatorSettings] =
     useState<ExtendedOperatorSettings>(DEFAULT_OPERATOR_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -101,6 +113,27 @@ export default function PhotoboothKioskPage() {
 
   // Kiosk Machine Identification (booth_id)
   const [boothId, setBoothId] = useState<string>('booth-jkt-01');
+
+  // Firebase Auth state listener
+  useEffect(() => {
+    const unsubscribe = subscribeToAuth((user) => {
+      setCurrentUser(user);
+      if (user) {
+        // If user is authenticated, route to Operator Setup Wizard
+        setCurrentStep((prev) => (prev === 'LOGIN' ? 'OPERATOR_SETUP' : prev));
+      } else {
+        setCurrentStep('LOGIN');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOutUser();
+    setCurrentUser(null);
+    setCurrentStep('LOGIN');
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -653,6 +686,17 @@ export default function PhotoboothKioskPage() {
     }
   };
 
+  if (currentStep === 'LOGIN') {
+    return (
+      <LoginScreen
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setCurrentStep('OPERATOR_SETUP');
+        }}
+      />
+    );
+  }
+
   return (
     <main className="h-screen w-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between select-none relative overflow-hidden">
       {/* Minimal Single Top-Left Back Arrow */}
@@ -673,6 +717,11 @@ export default function PhotoboothKioskPage() {
         <OperatorSetupWizard
           initialSettings={operatorSettings}
           currentTemplate={selectedTemplate}
+          userAccountName={currentUser?.displayName || 'Alex Pratama (Operator)'}
+          outletName={activeOutlet?.name || 'Grand Indonesia - Flagship'}
+          userId={currentUser?.uid || 'usr-demo-01'}
+          onOutletChange={(outlet) => setActiveOutlet(outlet)}
+          onSignOut={handleSignOut}
           onSaveAndLaunch={(newSettings, newTemplate) => {
             setOperatorSettings(newSettings);
             setSelectedTemplate(newTemplate);
