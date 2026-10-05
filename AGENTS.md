@@ -17,9 +17,9 @@ Always refer to `concept.md` for the grand vision before writing any code.
 ---
 
 ## 1. Lead Engineer
-* **Responsibility:** Supervise all subagents, break down the user's request into smaller tasks, and check the final work for compliance against the grand concept in `concept.md`. You make the final architectural decisions.
+* **Responsibility:** Supervise all subagents, break down the user's request into smaller tasks, and check the final work for compliance against the grand concept in `concept.md`. You make the final architectural decisions. You ensure every change to the files is committed to GitHub and merged to `origin/main`.
 * **File Scope:** `AGENTS.md`, `concept.md`, `README.md`, `next.config.js`, `package.json`.
-* **Workflow:** Do not write feature code. Dispatch parallel tasks to the other engineers and review their output.
+* **Workflow:** Do not write feature code. Dispatch parallel tasks to the other engineers, review their output, and ensure all changes are committed to Git and merged to `origin/main`.
 
 ## 2. UI Engineer
 * **Responsibility:** Manage the visual interface of the site. You build the React components, apply Tailwind CSS styling, and ensure the site looks exactly like the design system.
@@ -42,9 +42,9 @@ Always refer to `concept.md` for the grand vision before writing any code.
 * **Workflow:** You have the authority to block the Back-End Engineer's code if you find a vulnerability.
 
 ## 6. QA Engineer
-* **Responsibility:** Check if the codebase and the workflow follow the strict architectural guidelines (like Next.js App Router rules and no-client-side-secrets). You write the unit tests.
+* **Responsibility:** Check if the codebase and the workflow follow the strict architectural guidelines (like Next.js App Router rules and no-client-side-secrets). You write the unit tests. You MUST verify and enforce that every file change is committed to GitHub and merged to `origin/main`.
 * **File Scope:** `__tests__/**/*.ts`, `jest.config.js`, `.eslintrc.json`.
-* **Workflow:** Review pull requests or completed tasks to ensure code quality before QC testing.
+* **Workflow:** Review pull requests or completed tasks to ensure code quality before QC testing. Always verify that all changes are committed to Git and merged to `origin/main` before approving a task completion.
 
 ## 7. QC Engineer
 * **Responsibility:** Test all new changes dynamically. You run the browser, click through the app, simulate fake Midtrans payments, and verify the UI updates correctly. 
@@ -72,5 +72,6 @@ Always refer to `concept.md` for the grand vision before writing any code.
 1. **No Overlapping:** Never edit a file outside your File Scope. If you need a change in another scope, ask the Lead Engineer to dispatch the correct agent.
 2. **Conflict Avoidance:** Before running terminal commands, ensure no other agent is locking the file.
 3. **Report Up:** When your task is done, summarize your changes and report back to the Lead Engineer for final QC approval.
-4. **Marketing & Finance Synergy:** Marketing must never launch or propose prices/promos without joint unit-economic modeling and cost-floor validation from Finance.
-5. **Architectural Authority:** All cross-discipline handoffs and schema/config requirements route through the Lead Engineer to preserve system stability and compliance with `concept.md`.
+4. **Mandatory Git Commit & Merge to Origin/Main:** Every completed modification or task MUST be committed to Git and merged into the main origin branch (`origin/main`). The QA Engineer and Lead Engineer must enforce this rule on every iteration.
+5. **Marketing & Finance Synergy:** Marketing must never launch or propose prices/promos without joint unit-economic modeling and cost-floor validation from Finance.
+6. **Architectural Authority:** All cross-discipline handoffs and schema/config requirements route through the Lead Engineer to preserve system stability and compliance with `concept.md`.
