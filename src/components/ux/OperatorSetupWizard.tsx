@@ -29,10 +29,16 @@ import {
   User,
   Store,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  RefreshCw,
+  Upload,
+  Scan,
+  Wand2,
+  ImagePlus,
 } from 'lucide-react';
 import { BoothSettings, FrameTemplate, FrameSlot, StripLayout, WelcomeScreenTheme, Outlet, OutletEvent } from '@/types/photobooth';
 import { FRAME_TEMPLATES } from '@/lib/constants';
+import { detectTemplateSlots } from '@/lib/slotDetector';
 import { WELCOME_THEME_PRESETS } from './WelcomeScreen';
 import {
   getUserOutlets,
@@ -54,6 +60,8 @@ export interface EventProfile {
   stripFooterText?: string;
   operatingMode?: OperatingMode;
   welcomeTheme?: WelcomeScreenTheme;
+  customWelcomeImageUrl?: string;
+  customWelcomeHeadline?: string;
   createdAt: number;
 }
 
@@ -152,25 +160,224 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const [template, setTemplate] = useState<FrameTemplate>(currentTemplate);
   const [selectedSlotId, setSelectedSlotId] = useState<string>(template.slots[0]?.id || 's1');
 
+  // Custom Strip Templates & Auto-Detection state
+  const [customTemplates, setCustomTemplates] = useState<FrameTemplate[]>([]);
+  const [isAnalyzingTemplate, setIsAnalyzingTemplate] = useState<boolean>(false);
+  const [detectionBanner, setDetectionBanner] = useState<string | null>(null);
+  const templateFileInputRef = useRef<HTMLInputElement | null>(null);
+  const welcomeFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Page 2 single template dropdown open/close state
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement | null>(null);
 
+<<<<<<< HEAD
   // Close dropdowns on outside click
+=======
+  // Slot Customization Dropdown state
+  const [isSlotCustomizationOpen, setIsSlotCustomizationOpen] = useState(false);
+  const slotCustomizationRef = useRef<HTMLDivElement | null>(null);
+
+  // Camera device detection & status state
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>(settings.cameraDeviceId || '');
+  const [dslrConnected, setDslrConnected] = useState<boolean>(false);
+  const [dslrModel, setDslrModel] = useState<string>('Canon DSLR');
+  const [cameraStatus, setCameraStatus] = useState<'connected' | 'checking' | 'disconnected'>('checking');
+  const [isProbingDevices, setIsProbingDevices] = useState<boolean>(false);
+
+  // Probes hardware companion daemon for DSLR & browser for Webcams
+  const refreshCameraDevices = async () => {
+    setIsProbingDevices(true);
+    setCameraStatus('checking');
+    try {
+      // 1. Check DSLR Hardware Companion Daemon
+      let isDslrFound = false;
+      try {
+        const res = await fetch('http://localhost:8000/camera/status', { signal: AbortSignal.timeout(1200) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected) {
+            setDslrConnected(true);
+            setDslrModel(data.model || 'Canon DSLR');
+            isDslrFound = true;
+          } else {
+            setDslrConnected(false);
+          }
+        } else {
+          setDslrConnected(false);
+        }
+      } catch {
+        setDslrConnected(false);
+      }
+
+      // 2. Check Web / USB Camera Devices
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          stream.getTracks().forEach((t) => t.stop());
+        } catch {
+          // Ignore error if already allowed or denied
+        }
+
+        const all = await navigator.mediaDevices.enumerateDevices();
+        const vInputs = all.filter((d) => d.kind === 'videoinput');
+        setVideoDevices(vInputs);
+
+        if (settings.useDslr) {
+          setCameraStatus(isDslrFound ? 'connected' : 'disconnected');
+        } else if (vInputs.length > 0) {
+          setCameraStatus('connected');
+          if (!selectedDeviceId && vInputs[0].deviceId) {
+            setSelectedDeviceId(vInputs[0].deviceId);
+            setSettings((s) => ({ ...s, cameraDeviceId: vInputs[0].deviceId }));
+          }
+        } else {
+          setCameraStatus('disconnected');
+        }
+      }
+    } catch (err) {
+      console.warn('Camera device probe error:', err);
+      setCameraStatus('disconnected');
+    } finally {
+      setIsProbingDevices(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshCameraDevices();
+  }, [settings.useDslr]);
+
+  const handleDeviceChange = (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+    setSettings((s) => ({ ...s, cameraDeviceId: deviceId }));
+    setCameraStatus('connected');
+  };
+
+  const handleSelectCameraType = (type: 'webcam' | 'dslr') => {
+    const isDslr = type === 'dslr';
+    setSettings((s) => ({ ...s, useDslr: isDslr }));
+    if (isDslr) {
+      setCameraStatus(dslrConnected ? 'connected' : 'disconnected');
+    } else {
+      setCameraStatus(videoDevices.length > 0 ? 'connected' : 'disconnected');
+    }
+  };
+
+  // Live Camera Preview Stream for Setup Wizard
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [previewStreamActive, setPreviewStreamActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    let isCancelled = false;
+
+    async function startCameraPreview() {
+      if (currentPage !== 2 || settings.useDslr) {
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = null;
+        }
+        setPreviewStreamActive(false);
+        return;
+      }
+
+      try {
+        setPreviewStreamActive(false);
+        const constraints: MediaStreamConstraints = {
+          audio: false,
+          video: selectedDeviceId
+            ? { deviceId: { exact: selectedDeviceId } }
+            : { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (isCancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        activeStream = stream;
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = stream;
+          previewVideoRef.current.play().catch(() => { });
+        }
+        setPreviewStreamActive(true);
+      } catch (err) {
+        console.warn('Live preview stream error:', err);
+        setPreviewStreamActive(false);
+      }
+    }
+
+    startCameraPreview();
+
+    return () => {
+      isCancelled = true;
+      if (activeStream) {
+        activeStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [currentPage, selectedDeviceId, settings.useDslr]);
+
+  // Close dropdown on outside click
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
         setIsTemplateDropdownOpen(false);
       }
+<<<<<<< HEAD
       if (outletDropdownRef.current && !outletDropdownRef.current.contains(event.target as Node)) {
         setIsOutletDropdownOpen(false);
+=======
+      if (slotCustomizationRef.current && !slotCustomizationRef.current.contains(event.target as Node)) {
+        setIsSlotCustomizationOpen(false);
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+<<<<<<< HEAD
   const currentUserId = userId || 'usr-demo-01';
+=======
+  // Load saved event profiles from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEvents = localStorage.getItem('quickpic_event_profiles');
+      if (savedEvents) {
+        try {
+          const parsed = JSON.parse(savedEvents);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setEvents(parsed);
+            setActiveEventId(parsed[0].id);
+            setSettings((s) => ({
+              ...s,
+              eventName: parsed[0].name,
+              eventDate: parsed[0].date,
+              eventHashtag: parsed[0].hashtag,
+            }));
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved events:', e);
+        }
+      }
+
+      // Load saved custom templates
+      const savedTemplates = localStorage.getItem('quickpic_custom_templates');
+      if (savedTemplates) {
+        try {
+          const parsed = JSON.parse(savedTemplates);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCustomTemplates(parsed);
+          }
+        } catch (e) {
+          console.warn('Failed to parse saved custom templates:', e);
+        }
+      }
+    }
+  }, []);
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
 
   // 1. Fetch Outlets for this User on mount
   useEffect(() => {
@@ -248,8 +455,14 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       eventName: event.name,
       eventDate: event.date,
       eventHashtag: event.hashtag,
+<<<<<<< HEAD
       operatingMode: event.operatingMode || prev.operatingMode,
       welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
+=======
+      welcomeTheme: event.welcomeTheme || prev.welcomeTheme,
+      customWelcomeImageUrl: event.customWelcomeImageUrl,
+      customWelcomeHeadline: event.customWelcomeHeadline,
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
     }));
   };
 
@@ -263,9 +476,17 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       date: newEventDate.trim() || '2026',
       hashtag: newEventHashtag.trim() || '#QuickPicBooth',
       stripFooterText: newEventFooterText.trim() || `⚡ ${newEventName.trim().toUpperCase()}`,
+<<<<<<< HEAD
       operatingMode: settings.operatingMode,
       welcomeTheme: settings.welcomeTheme,
     });
+=======
+      welcomeTheme: settings.welcomeTheme,
+      customWelcomeImageUrl: settings.customWelcomeImageUrl,
+      customWelcomeHeadline: settings.customWelcomeHeadline,
+      createdAt: Date.now(),
+    };
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
 
     const updated = [created, ...events];
     setEvents(updated);
@@ -279,8 +500,42 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     setIsAddEventModalOpen(false);
   };
 
+<<<<<<< HEAD
   // Handle Delete Event Profile from the Active Selected Outlet
   const handleDeleteEvent = async (e: React.MouseEvent, eventId: string) => {
+=======
+  // Handle Custom Welcoming Screen Image Upload
+  const handleWelcomeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setSettings((prev) => ({
+          ...prev,
+          welcomeTheme: 'custom',
+          customWelcomeImageUrl: dataUrl,
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Handle Remove Custom Welcoming Screen Image
+  const handleRemoveWelcomeImage = () => {
+    setSettings((prev) => ({
+      ...prev,
+      welcomeTheme: 'neon_cyber',
+      customWelcomeImageUrl: undefined,
+    }));
+  };
+
+  // Handle Delete Event Profile
+  const handleDeleteEvent = (e: React.MouseEvent, eventId: string) => {
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
     e.stopPropagation();
     if (!selectedOutlet || events.length <= 1) return;
 
@@ -407,6 +662,126 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     });
   };
 
+  const handleUploadCustomTemplate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsAnalyzingTemplate(true);
+    setDetectionBanner('Analyzing custom template & scanning slot windows...');
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      if (!dataUrl) {
+        setIsAnalyzingTemplate(false);
+        return;
+      }
+
+      try {
+        const detection = await detectTemplateSlots(dataUrl);
+        const fileNameClean = file.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const newCustomTemplate: FrameTemplate = {
+          id: `custom-${Date.now()}`,
+          name: fileNameClean || `Custom Frame (${detection.detectedCount} Slots)`,
+          category: detection.category,
+          layout: detection.layout,
+          slotCount: detection.slots.length,
+          backgroundColor: detection.backgroundColor,
+          textColor: detection.textColor,
+          accentColor: detection.accentColor,
+          overlayPngUrl: dataUrl,
+          customImageUrl: dataUrl,
+          isCustom: true,
+          aspectRatio: detection.aspectRatio,
+          includeText: true,
+          slots: detection.slots,
+        };
+
+        const updatedTemplates = [newCustomTemplate, ...customTemplates.filter((t) => t.id !== newCustomTemplate.id)];
+        setCustomTemplates(updatedTemplates);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('quickpic_custom_templates', JSON.stringify(updatedTemplates));
+          } catch (e) {
+            console.warn('Could not save custom template to localStorage:', e);
+          }
+        }
+        setTemplate(newCustomTemplate);
+        if (newCustomTemplate.slots.length > 0) {
+          setSelectedSlotId(newCustomTemplate.slots[0].id);
+        }
+        setDetectionBanner(`✨ Auto-detected ${detection.detectedCount} slots (${detection.category.toUpperCase()} • ${detection.layout})!`);
+        setTimeout(() => setDetectionBanner(null), 5000);
+      } catch (err) {
+        console.error('Template slot detection error:', err);
+        setDetectionBanner('⚠️ Failed to auto-detect slots. Default layout applied.');
+        setTimeout(() => setDetectionBanner(null), 4000);
+      } finally {
+        setIsAnalyzingTemplate(false);
+        if (templateFileInputRef.current) {
+          templateFileInputRef.current.value = '';
+        }
+      }
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeleteCustomTemplate = (e: React.MouseEvent, templateId: string) => {
+    e.stopPropagation();
+    const updated = customTemplates.filter((t) => t.id !== templateId);
+    setCustomTemplates(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('quickpic_custom_templates', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Could not save custom templates to localStorage:', err);
+      }
+    }
+    if (template.id === templateId) {
+      handleSelectPreset(updated.length > 0 ? updated[0] : FRAME_TEMPLATES[0]);
+    }
+    setDetectionBanner('🗑️ Custom template deleted');
+    setTimeout(() => setDetectionBanner(null), 2500);
+  };
+
+  const handleReDetectCurrentTemplate = async () => {
+    if (!template.overlayPngUrl) return;
+    setIsAnalyzingTemplate(true);
+    setDetectionBanner('Re-scanning template & detecting slots...');
+    try {
+      const detection = await detectTemplateSlots(template.overlayPngUrl);
+      const updatedTemplate: FrameTemplate = {
+        ...template,
+        slots: detection.slots,
+        slotCount: detection.slots.length,
+        layout: detection.layout,
+        category: detection.category,
+        backgroundColor: detection.backgroundColor,
+        accentColor: detection.accentColor,
+        textColor: detection.textColor,
+        aspectRatio: detection.aspectRatio,
+      };
+      setTemplate(updatedTemplate);
+      setCustomTemplates((prev) => prev.map((t) => (t.id === template.id ? updatedTemplate : t)));
+      if (detection.slots.length > 0) {
+        setSelectedSlotId(detection.slots[0].id);
+      }
+      setDetectionBanner(`✨ Re-detected ${detection.detectedCount} slots!`);
+      setTimeout(() => setDetectionBanner(null), 4000);
+    } catch (err) {
+      console.error('Re-detection failed:', err);
+      setDetectionBanner('⚠️ Re-detection failed.');
+      setTimeout(() => setDetectionBanner(null), 3000);
+    } finally {
+      setIsAnalyzingTemplate(false);
+    }
+  };
+
   const handleSelectPreset = (t: FrameTemplate) => {
     setTemplate(t);
     if (t.slots.length > 0) {
@@ -419,13 +794,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950 text-zinc-100 flex flex-col select-none overflow-hidden h-screen w-screen p-3 md:p-4">
-      
+
       {/* ========================================================================= */}
       {/* PAGE 1: EVENT FILES, OPERATING MODE, CAPTURE CAPABILITIES & THEMES        */}
       {/* ========================================================================= */}
       {currentPage === 1 && (
         <div className="grid grid-cols-12 gap-3.5 flex-1 h-full min-h-0 overflow-hidden animate-fade-in">
-          
+
           {/* LEFT SIDE: Event Files Tray with Independent Auto-Scroll (col-span-3) */}
           <div className="col-span-12 lg:col-span-3 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-4 flex flex-col h-full min-h-0 overflow-hidden shadow-xl">
             {/* Header with '+' button */}
@@ -454,11 +829,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   <div
                     key={ev.id}
                     onClick={() => handleSelectEvent(ev)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
-                      isSelected
-                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30 text-white'
-                        : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-                    }`}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${isSelected
+                      ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30 text-white'
+                      : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                      }`}
                   >
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="text-xs font-bold truncate text-white mb-0.5">
@@ -496,9 +870,15 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
           {/* RIGHT 9 COLUMNS: Account Header Tray + Middle Config + Next Action */}
           <div className="col-span-12 lg:col-span-9 flex flex-col gap-3.5 h-full min-h-0 overflow-hidden justify-between">
+<<<<<<< HEAD
             
             {/* TOP TRAY: User Account Name, Outlet Dropdown & Sign Out Button */}
             <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md z-30">
+=======
+
+            {/* NEW TOP TRAY: User Account Name, Outlet Name & Sign Out Button */}
+            <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               <div className="flex items-center gap-4 text-xs">
                 {/* User Account */}
                 <div className="flex items-center gap-2">
@@ -594,11 +974,17 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               {/* Functional Sign Out Button */}
               <button
                 type="button"
+<<<<<<< HEAD
                 onClick={() => {
                   onSignOut?.();
                 }}
                 title="Sign out of operator session"
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/60 border border-zinc-700/70 hover:border-rose-800 text-zinc-300 hover:text-rose-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
+=======
+                onClick={() => { }}
+                title="Sign out of operator session (Placeholder)"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/40 border border-zinc-700/70 hover:border-rose-800/50 text-zinc-300 hover:text-rose-300 text-xs font-semibold transition active:scale-95 cursor-pointer"
+>>>>>>> 6e97b7abf88ddcc33922f8bd0ac2de5da0ac10ec
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -607,10 +993,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
             {/* Main Middle & Next Layout Grid (2 Columns: Config col-span-8 + Next Action col-span-4) */}
             <div className="grid grid-cols-12 gap-3.5 flex-1 min-h-0 overflow-hidden">
-              
+
               {/* Middle Configuration Section (col-span-8) */}
               <div className="col-span-12 lg:col-span-8 flex flex-col gap-3 h-full min-h-0 justify-between">
-                
+
                 {/* Operating Mode */}
                 <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2">
                   <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
@@ -620,11 +1006,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     <button
                       type="button"
                       onClick={() => setSettings((s) => ({ ...s, operatingMode: 'event' }))}
-                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${
-                        settings.operatingMode === 'event'
-                          ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
-                          : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
-                      }`}
+                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${settings.operatingMode === 'event'
+                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
+                        : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
+                        }`}
                     >
                       <div className="flex items-center justify-between w-full mb-1">
                         <Gift className="w-4 h-4 text-emerald-400" />
@@ -641,11 +1026,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     <button
                       type="button"
                       onClick={() => setSettings((s) => ({ ...s, operatingMode: 'regular' }))}
-                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${
-                        settings.operatingMode === 'regular'
-                          ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
-                          : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
-                      }`}
+                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${settings.operatingMode === 'regular'
+                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
+                        : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
+                        }`}
                     >
                       <div className="flex items-center justify-between w-full mb-1">
                         <CreditCard className="w-4 h-4 text-pink-400" />
@@ -680,11 +1064,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                           key={mode.id}
                           type="button"
                           onClick={() => toggleCaptureMode(mode.id)}
-                          className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-pink-500/20 border-pink-500 text-white shadow-md'
-                              : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                          }`}
+                          className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer ${isSelected
+                            ? 'bg-pink-500/20 border-pink-500 text-white shadow-md'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                            }`}
                         >
                           <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-pink-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
                             <Icon className="w-3.5 h-3.5" />
@@ -696,25 +1079,37 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   </div>
                 </div>
 
-                {/* Welcoming Screen Themes (5 Themes) */}
-                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2 flex-1 min-h-0 justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                    <Palette className="w-3.5 h-3.5 text-pink-400" /> 3. Welcoming Screen Theme (5 Presets)
-                  </span>
-                  <div className="grid grid-cols-5 gap-1.5">
+                {/* Welcoming Screen Themes (5 Presets + Custom Upload) */}
+                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2.5 flex-1 min-h-0 justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-pink-400" /> 3. Welcoming Screen Theme
+                    </span>
+                    {settings.customWelcomeImageUrl ? (
+                      <span className="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 text-[9px] font-black uppercase flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 text-pink-400" /> Custom Screen Active
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-zinc-500 font-medium">
+                        5 Presets or Custom Poster
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 6 Options Grid: 5 Presets + 1 Custom Option */}
+                  <div className="grid grid-cols-6 gap-1.5">
                     {WELCOME_THEME_PRESETS.map((t) => {
-                      const isSelected = (settings.welcomeTheme || 'neon_cyber') === t.id;
+                      const isSelected = settings.welcomeTheme === t.id && !settings.customWelcomeImageUrl;
                       return (
                         <button
                           key={t.id}
                           type="button"
-                          onClick={() => setSettings((s) => ({ ...s, welcomeTheme: t.id }))}
+                          onClick={() => setSettings((s) => ({ ...s, welcomeTheme: t.id, customWelcomeImageUrl: undefined }))}
                           title={`${t.name} - ${t.subtitle}`}
-                          className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${
-                            isSelected
-                              ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
-                              : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
-                          }`}
+                          className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${isSelected
+                            ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
+                            : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
+                            }`}
                         >
                           <div className={`w-full h-9 rounded-lg bg-gradient-to-tr ${t.previewGradient} shadow-md mb-1 flex items-center justify-center`}>
                             {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow stroke-[3]" />}
@@ -725,6 +1120,121 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                         </button>
                       );
                     })}
+
+                    {/* Custom Poster Theme Tile */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettings((s) => ({ ...s, welcomeTheme: 'custom' }));
+                        if (!settings.customWelcomeImageUrl && welcomeFileInputRef.current) {
+                          welcomeFileInputRef.current.click();
+                        }
+                      }}
+                      title="Custom Welcoming Screen / Poster"
+                      className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl
+                        ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
+                        : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
+                        }`}
+                    >
+                      <div className="w-full h-9 rounded-lg bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 shadow-md mb-1 flex items-center justify-center relative overflow-hidden">
+                        {settings.customWelcomeImageUrl ? (
+                          <img
+                            src={settings.customWelcomeImageUrl}
+                            alt="Custom"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ImagePlus className="w-4 h-4 text-white" />
+                        )}
+                        {(settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl) && (
+                          <div className="absolute inset-0 bg-pink-500/30 flex items-center justify-center">
+                            <Check className="w-3.5 h-3.5 text-white drop-shadow stroke-[3]" />
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[9px] font-bold text-zinc-200 truncate w-full text-center leading-tight">
+                        Custom
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Custom Welcoming Screen Upload & Headline Controls */}
+                  <div className="pt-2 border-t border-zinc-800/60 flex flex-col gap-2">
+                    <input
+                      ref={welcomeFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleWelcomeImageUpload}
+                    />
+
+                    {settings.customWelcomeImageUrl ? (
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-950/80 border border-pink-500/30">
+                        <div className="flex items-center gap-2.5 overflow-hidden">
+                          <img
+                            src={settings.customWelcomeImageUrl}
+                            alt="Custom Welcome Poster"
+                            className="w-10 h-10 object-cover rounded-lg border border-zinc-700 shrink-0"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] font-bold text-white truncate">
+                              Custom Welcome Screen Active
+                            </span>
+                            <span className="text-[9px] text-zinc-400">
+                              Full-bleed custom poster background
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => welcomeFileInputRef.current?.click()}
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-pink-400" /> Replace
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRemoveWelcomeImage}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold transition cursor-pointer"
+                            title="Remove custom image"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[10px] text-zinc-400 flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-pink-400" />
+                          Upload your custom event banner or poster
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => welcomeFileInputRef.current?.click()}
+                          className="px-3 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                        >
+                          <Upload className="w-3 h-3 text-pink-400" />
+                          Upload Poster
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Optional Custom Welcome Headline */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-zinc-400 shrink-0">
+                        Custom Headline:
+                      </span>
+                      <input
+                        type="text"
+                        value={settings.customWelcomeHeadline || ''}
+                        onChange={(e) =>
+                          setSettings((s) => ({ ...s, customWelcomeHeadline: e.target.value }))
+                        }
+                        placeholder="e.g. Maya & Alex's Wedding Photobooth (Optional)"
+                        className="flex-1 px-2.5 py-1 bg-zinc-950/70 border border-zinc-800 rounded-lg text-[10px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-pink-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -755,9 +1265,19 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     <div className="flex justify-between text-zinc-400">
                       <span>Theme:</span>
                       <span className="font-bold text-pink-400 uppercase text-[9px]">
-                        {settings.welcomeTheme || 'neon_cyber'}
+                        {settings.customWelcomeImageUrl
+                          ? 'Custom Screen'
+                          : settings.welcomeTheme || 'neon_cyber'}
                       </span>
                     </div>
+                    {settings.customWelcomeHeadline && (
+                      <div className="flex justify-between text-zinc-400">
+                        <span>Headline:</span>
+                        <span className="font-bold text-zinc-200 truncate max-w-[120px] text-[10px]">
+                          {settings.customWelcomeHeadline}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -784,13 +1304,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       {/* ========================================================================= */}
       {currentPage === 2 && (
         <div className="grid grid-cols-12 gap-3.5 flex-1 h-full min-h-0 overflow-hidden animate-fade-in">
-          
+
           {/* LEFT SIDE: Strip Choosing Single Dropdown Box & Live Canvas Viewport (col-span-6) */}
           <div className="col-span-12 lg:col-span-6 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-4 flex flex-col justify-between h-full min-h-0 overflow-hidden">
-            
-            {/* Single Dropdown Box for Template Selection (Fixed Size & Auto-Scroll) */}
+
+            {/* Single Dropdown Box for Template Selection & Upload Custom Frame Action */}
             <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-800 relative z-30">
-              
+
               {/* Dropdown Container */}
               <div ref={templateDropdownRef} className="relative flex-1 max-w-xs">
                 <button
@@ -801,6 +1321,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   <div className="flex items-center gap-2 truncate">
                     <Layout className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                     <span className="truncate">{template.name}</span>
+                    {template.isCustom && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-pink-500/30 text-pink-300 border border-pink-500/40 uppercase">
+                        Custom
+                      </span>
+                    )}
                     <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 uppercase">
                       {template.slotCount} Slots
                     </span>
@@ -810,40 +1335,109 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
                 {/* Fixed-Size Auto-Scrolling Dropdown Menu */}
                 {isTemplateDropdownOpen && (
-                  <div className="absolute top-12 left-0 w-full max-h-48 overflow-y-auto bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 animate-fade-in">
-                    {FRAME_TEMPLATES.map((t) => {
-                      const isSelected = template.id === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => handleSelectPreset(t)}
-                          className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-left flex items-center justify-between transition cursor-pointer ${
-                            isSelected
+                  <div className="absolute top-12 left-0 w-full max-h-56 overflow-y-auto bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 animate-fade-in divide-y divide-zinc-800/60">
+                    
+                    {/* Custom Uploaded Templates Section */}
+                    {customTemplates.length > 0 && (
+                      <div className="pb-1 space-y-1">
+                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-pink-400">
+                          Custom Frames ({customTemplates.length})
+                        </div>
+                        {customTemplates.map((t) => {
+                          const isSelected = template.id === t.id;
+                          return (
+                            <div
+                              key={t.id}
+                              className={`w-full px-2.5 py-1 rounded-xl text-xs flex items-center justify-between gap-1.5 transition ${isSelected
+                                ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
+                                : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
+                                }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSelectPreset(t)}
+                                className="flex-1 text-left flex items-center justify-between gap-2 truncate cursor-pointer py-1"
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="truncate font-bold">{t.name}</span>
+                                  <span className="text-[9px] uppercase px-1 rounded bg-pink-950/80 text-pink-300 border border-pink-800/50 font-mono">
+                                    {t.slotCount} Slots
+                                  </span>
+                                </div>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-pink-400 shrink-0 stroke-[3]" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteCustomTemplate(e, t.id)}
+                                title={`Delete ${t.name}`}
+                                className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/60 transition cursor-pointer shrink-0"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Standard Preset Templates */}
+                    <div className="pt-1 space-y-1">
+                      {customTemplates.length > 0 && (
+                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                          Presets
+                        </div>
+                      )}
+                      {FRAME_TEMPLATES.map((t) => {
+                        const isSelected = template.id === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => handleSelectPreset(t)}
+                            className={`w-full px-3 py-2 rounded-xl text-xs font-semibold text-left flex items-center justify-between transition cursor-pointer ${isSelected
                               ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
                               : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="truncate">{t.name}</span>
-                            <span className="text-[9px] uppercase px-1 rounded bg-zinc-800 text-zinc-400 font-mono">
-                              {t.category}
-                            </span>
-                          </div>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-pink-400 shrink-0 stroke-[3]" />}
-                        </button>
-                      );
-                    })}
+                              }`}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="truncate">{t.name}</span>
+                              <span className="text-[9px] uppercase px-1 rounded bg-zinc-800 text-zinc-400 font-mono">
+                                {t.category}
+                              </span>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-pink-400 shrink-0 stroke-[3]" />}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
+
+              {/* Upload Custom Frame Button */}
+              <button
+                type="button"
+                onClick={() => templateFileInputRef.current?.click()}
+                className="h-10 px-3 rounded-xl bg-gradient-to-r from-pink-500/20 via-rose-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 border border-pink-500/50 hover:border-pink-400 text-pink-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
+                title="Upload PNG or JPG strip template (AI auto-detects photo slot windows)"
+              >
+                <Upload className="w-3.5 h-3.5 text-pink-400" />
+                <span className="hidden sm:inline">Upload Frame</span>
+              </button>
+              <input
+                ref={templateFileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleUploadCustomTemplate}
+                className="hidden"
+              />
 
               {/* Add / Remove Slot Controls */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={handleAddSlot}
-                  disabled={template.slots.length >= 6}
+                  disabled={template.slots.length >= 8}
                   className="px-2.5 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" /> Slot
@@ -859,15 +1453,175 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               </div>
             </div>
 
-            {/* Paper Canvas Viewport with Dotted Alignment Guidelines */}
+            {/* Sub-Header Row: Canvas Label, Re-Detect Button, Delete Template Button & Slot Customization Trigger Button */}
+            <div className="flex items-center justify-between pt-1 pb-1 relative z-20">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-zinc-400 font-semibold">
+                  Canvas Preview ({template.category.toUpperCase()} • {template.slots.length} Slots)
+                </span>
+                {template.overlayPngUrl && (
+                  <button
+                    type="button"
+                    onClick={handleReDetectCurrentTemplate}
+                    disabled={isAnalyzingTemplate}
+                    className="px-2 py-0.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-pink-300 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer active:scale-95"
+                    title="Re-run automatic photo slot window detection"
+                  >
+                    <Wand2 className="w-3 h-3 text-pink-400" />
+                    <span>Auto-Detect Slots</span>
+                  </button>
+                )}
+                {template.isCustom && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteCustomTemplate(e, template.id)}
+                    className="px-2 py-0.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer active:scale-95"
+                    title="Delete this custom frame template"
+                  >
+                    <Trash2 className="w-3 h-3 text-rose-400" />
+                    <span>Delete Frame</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Slot Customization Dropdown Trigger */}
+              <div ref={slotCustomizationRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsSlotCustomizationOpen((prev) => !prev)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border shadow-sm ${isSlotCustomizationOpen
+                    ? 'bg-pink-500 text-white border-pink-400 shadow-pink-500/25 ring-2 ring-pink-400/40'
+                    : 'bg-zinc-950/90 text-zinc-300 hover:text-white border-zinc-700/80 hover:bg-zinc-800'
+                    }`}
+                >
+                  <Sliders className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Customize Slot #{template.slots.findIndex((s) => s.id === currentSlot?.id) + 1}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${isSlotCustomizationOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Modal for Slot Customization */}
+                {isSlotCustomizationOpen && (
+                  <div className="absolute top-10 right-0 w-80 bg-zinc-950/95 backdrop-blur-xl border border-zinc-700/90 rounded-2xl p-3.5 shadow-2xl z-50 flex flex-col gap-2.5 animate-fade-in ring-1 ring-white/10">
+                    <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                        <Layout className="w-3.5 h-3.5 text-pink-400" /> Slot #{template.slots.findIndex((s) => s.id === currentSlot?.id) + 1} Settings
+                      </span>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="text-zinc-400 text-[10px]">Colors:</span>
+                        <input
+                          type="color"
+                          value={template.backgroundColor}
+                          onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))}
+                          title="Canvas Background"
+                          className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
+                        />
+                        <input
+                          type="color"
+                          value={template.accentColor}
+                          onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))}
+                          title="Border Accent"
+                          className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIsSlotCustomizationOpen(false)}
+                          className="p-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition ml-1 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {currentSlot && (
+                      <div className="grid grid-cols-2 gap-2 text-xs bg-zinc-900/80 p-2.5 rounded-xl border border-zinc-800">
+                        <div>
+                          <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                            <span>Position X</span>
+                            <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.x)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={100 - currentSlot.width}
+                            value={currentSlot.x}
+                            onChange={(e) => handleSlotPositionChange(currentSlot.id, { x: parseFloat(e.target.value) })}
+                            className="w-full accent-pink-500 cursor-pointer h-1.5"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                            <span>Position Y</span>
+                            <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.y)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={100 - currentSlot.height}
+                            value={currentSlot.y}
+                            onChange={(e) => handleSlotPositionChange(currentSlot.id, { y: parseFloat(e.target.value) })}
+                            className="w-full accent-pink-500 cursor-pointer h-1.5"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                            <span>Width</span>
+                            <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.width)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="15"
+                            max="96"
+                            value={currentSlot.width}
+                            onChange={(e) => handleSlotPositionChange(currentSlot.id, { width: parseFloat(e.target.value) })}
+                            className="w-full accent-pink-500 cursor-pointer h-1.5"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                            <span>Height</span>
+                            <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.height)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="10"
+                            max="80"
+                            value={currentSlot.height}
+                            onChange={(e) => handleSlotPositionChange(currentSlot.id, { height: parseFloat(e.target.value) })}
+                            className="w-full accent-pink-500 cursor-pointer h-1.5"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Paper Canvas Viewport with Dotted Alignment Guidelines & Custom Template Preview */}
             <div className="flex-1 flex items-center justify-center my-2 relative min-h-0 overflow-hidden">
+              
+              {/* Detection Notification Toast */}
+              {detectionBanner && (
+                <div className="absolute top-2 z-40 bg-zinc-950/90 backdrop-blur-md border border-pink-500/50 text-pink-200 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-2 animate-bounce">
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>{detectionBanner}</span>
+                </div>
+              )}
+
               <div
-                className="relative shadow-2xl rounded-xl overflow-hidden border-2 transition-all shrink-0"
+                className="relative shadow-2xl rounded-xl overflow-hidden border-2 transition-all shrink-0 select-none"
                 style={{
                   backgroundColor: template.backgroundColor,
                   borderColor: template.accentColor,
                   height: '84%',
-                  aspectRatio: template.category === 'strip' ? '1/3' : '2/3',
+                  aspectRatio: template.aspectRatio
+                    ? `${template.aspectRatio}`
+                    : template.category === 'strip'
+                    ? '1/3'
+                    : '2/3',
                 }}
               >
                 {/* Visual Dotted Snapping Guides */}
@@ -887,18 +1641,26 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   <div className="absolute inset-x-0 top-[5%] h-0.5 border-t-2 border-dotted border-pink-400 z-30 pointer-events-none" />
                 )}
 
-                {/* Photo Slots */}
+                {/* Custom Template Background / Overlay Artwork */}
+                {template.overlayPngUrl && (
+                  <img
+                    src={template.overlayPngUrl}
+                    alt="Custom Frame Artwork"
+                    className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10 select-none"
+                  />
+                )}
+
+                {/* Photo Slots (Interactive Overlays) */}
                 {template.slots.map((slot, idx) => {
                   const isSelected = selectedSlotId === slot.id;
                   return (
                     <div
                       key={slot.id}
                       onClick={() => setSelectedSlotId(slot.id)}
-                      className={`absolute rounded cursor-pointer transition-all flex flex-col items-center justify-center ${
-                        isSelected
-                          ? 'ring-2 ring-pink-500 bg-pink-500/30 z-20 shadow-lg'
-                          : 'ring-1 ring-zinc-500/50 bg-zinc-800/80 hover:bg-zinc-700/80 z-10'
-                      }`}
+                      className={`absolute rounded-lg cursor-pointer transition-all flex flex-col items-center justify-center ${isSelected
+                        ? 'ring-2 ring-pink-500 bg-pink-500/40 z-30 shadow-lg shadow-pink-500/30'
+                        : 'ring-1 ring-cyan-400/60 bg-cyan-500/20 hover:bg-cyan-500/35 z-20'
+                        }`}
                       style={{
                         left: `${slot.x}%`,
                         top: `${slot.y}%`,
@@ -906,120 +1668,199 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                         height: `${slot.height}%`,
                       }}
                     >
-                      <span className="text-[10px] font-bold text-white bg-black/70 px-1.5 py-0.5 rounded">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow ${isSelected ? 'bg-pink-500 text-white ring-1 ring-pink-300' : 'bg-black/75 text-cyan-200'}`}>
                         Slot #{idx + 1}
                       </span>
                     </div>
                   );
                 })}
 
-                {/* Footer Event Title */}
-                <div
-                  className="absolute bottom-1.5 inset-x-0 text-center font-bold text-[8px] uppercase tracking-wider truncate px-1"
-                  style={{ color: template.textColor }}
-                >
-                  ⚡ {settings.eventName || 'QUICKPIC PHOTOBOOTH'}
-                </div>
+                {/* Analyzing / Scanning Overlay */}
+                {isAnalyzingTemplate && (
+                  <div className="absolute inset-0 z-40 bg-zinc-950/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2 animate-fade-in">
+                    <div className="relative">
+                      <Scan className="w-10 h-10 text-pink-400 animate-pulse" />
+                      <Sparkles className="w-5 h-5 text-yellow-300 absolute -top-1 -right-1 animate-bounce" />
+                    </div>
+                    <span className="text-xs font-bold text-white tracking-wide">Auto-Detecting Slots...</span>
+                    <span className="text-[10px] text-zinc-400">Scanning template layout & windows</span>
+                  </div>
+                )}
+
+                {/* Footer Event Title (if enabled) */}
+                {template.includeText !== false && (
+                  <div
+                    className="absolute bottom-1.5 inset-x-0 text-center font-bold text-[8px] uppercase tracking-wider truncate px-1 z-30 pointer-events-none drop-shadow"
+                    style={{ color: template.textColor }}
+                  >
+                    ⚡ {template.customText || settings.eventName || 'QUICKPIC PHOTOBOOTH'}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Helper Tag */}
-            <div className="text-[10px] text-zinc-500 text-center">
-              Tap any slot above to adjust position & dimensions on the right.
+            {/* Bottom Controls: Include Strip Text Toggle & Custom Text Input */}
+            <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={template.includeText !== false}
+                  onChange={(e) =>
+                    setTemplate((prev) => ({ ...prev, includeText: e.target.checked }))
+                  }
+                  className="w-4 h-4 accent-pink-500 rounded cursor-pointer"
+                />
+                <span className="font-bold text-zinc-300 flex items-center gap-1.5 text-xs">
+                  <FileText className="w-3.5 h-3.5 text-pink-400" />
+                  Include Strip Text
+                </span>
+              </label>
+
+              {template.includeText !== false && (
+                <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                  <input
+                    type="text"
+                    value={template.customText ?? settings.eventName ?? ''}
+                    onChange={(e) =>
+                      setTemplate((prev) => ({ ...prev, customText: e.target.value }))
+                    }
+                    placeholder="⚡ QUICKPIC PHOTOBOOTH"
+                    className="flex-1 bg-zinc-900 border border-zinc-700/80 rounded-xl px-2.5 py-1 text-xs text-white focus:outline-pink-500 truncate"
+                  />
+                  <input
+                    type="color"
+                    value={template.textColor}
+                    onChange={(e) =>
+                      setTemplate((prev) => ({ ...prev, textColor: e.target.value }))
+                    }
+                    title="Text Color"
+                    className="w-6 h-6 rounded-lg cursor-pointer border border-zinc-700 bg-transparent shrink-0"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {/* RIGHT SIDE: Slot Customization, Timers & Launch Action (col-span-6) */}
+          {/* RIGHT SIDE: Camera Input Device, Timers & Launch Action (col-span-6) */}
           <div className="col-span-12 lg:col-span-6 flex flex-col gap-3 h-full min-h-0 overflow-hidden justify-between">
-            
-            {/* Top Right: Customization of Selected Slot */}
-            <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl flex flex-col gap-2">
+
+            {/* Top Right: Camera Input Device Selector & Live Hardware Status */}
+            <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                  <Layout className="w-3.5 h-3.5 text-pink-400" /> Slot Customization (Slot #{template.slots.findIndex((s) => s.id === currentSlot?.id) + 1})
+                <span className="text-xs font-black uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-pink-400" /> Camera Input Device
                 </span>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-zinc-400 text-[10px]">Colors:</span>
-                  <input
-                    type="color"
-                    value={template.backgroundColor}
-                    onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))}
-                    title="Canvas Background"
-                    className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="color"
-                    value={template.accentColor}
-                    onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))}
-                    title="Border Accent"
-                    className="w-4 h-4 rounded cursor-pointer border-0 bg-transparent"
-                  />
+                {/* Live Status Badge */}
+                <div className="flex items-center gap-1.5 bg-zinc-950/80 border border-zinc-800 px-2 py-0.5 rounded-full">
+                  <span className={`w-2 h-2 rounded-full ${cameraStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : cameraStatus === 'checking' ? 'bg-yellow-400 animate-ping' : 'bg-rose-400'}`} />
+                  <span className={`text-[10px] font-bold font-mono uppercase ${cameraStatus === 'connected' ? 'text-emerald-400' : cameraStatus === 'checking' ? 'text-yellow-400' : 'text-rose-400'}`}>
+                    {cameraStatus === 'connected' ? (dslrConnected && settings.useDslr ? 'DSLR Ready' : 'Camera Active') : cameraStatus === 'checking' ? 'Probing...' : 'Disconnected'}
+                  </span>
                 </div>
               </div>
 
-              {currentSlot && (
-                <div className="grid grid-cols-2 gap-2.5 text-xs bg-zinc-950/80 p-2.5 rounded-2xl border border-zinc-800/80">
-                  <div>
-                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                      <span>Position X</span>
-                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.x)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max={100 - currentSlot.width}
-                      value={currentSlot.x}
-                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { x: parseFloat(e.target.value) })}
-                      className="w-full accent-pink-500 cursor-pointer h-1.5"
-                    />
-                  </div>
+              {/* Video Device Dropdown */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedDeviceId}
+                  onChange={(e) => handleDeviceChange(e.target.value)}
+                  className="flex-1 bg-zinc-950 border border-zinc-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-pink-500 cursor-pointer truncate"
+                >
+                  {videoDevices.length === 0 ? (
+                    <option value="">Default System Camera</option>
+                  ) : (
+                    videoDevices.map((dev, i) => (
+                      <option key={dev.deviceId || i} value={dev.deviceId}>
+                        {dev.label || `Camera ${i + 1} (${dev.deviceId ? dev.deviceId.slice(0, 8) : 'Default'})`}
+                      </option>
+                    ))
+                  )}
+                </select>
 
-                  <div>
-                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                      <span>Position Y</span>
-                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.y)}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max={100 - currentSlot.height}
-                      value={currentSlot.y}
-                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { y: parseFloat(e.target.value) })}
-                      className="w-full accent-pink-500 cursor-pointer h-1.5"
-                    />
-                  </div>
+                <button
+                  type="button"
+                  onClick={refreshCameraDevices}
+                  title="Refresh & Probe Devices"
+                  className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer flex-shrink-0"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isProbingDevices ? 'animate-spin text-pink-400' : ''}`} />
+                </button>
+              </div>
 
-                  <div>
-                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                      <span>Width</span>
-                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.width)}%</span>
+              {/* DSLR Status & Probing Info (if DSLR mode) */}
+              {settings.useDslr && (
+                <div className="flex items-center justify-between p-2.5 bg-zinc-950/80 border border-zinc-800 rounded-xl text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${dslrConnected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                      <Camera className="w-3.5 h-3.5" />
                     </div>
-                    <input
-                      type="range"
-                      min="20"
-                      max="96"
-                      value={currentSlot.width}
-                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { width: parseFloat(e.target.value) })}
-                      className="w-full accent-pink-500 cursor-pointer h-1.5"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
-                      <span>Height</span>
-                      <span className="font-mono text-pink-400 font-bold">{Math.round(currentSlot.height)}%</span>
+                    <div>
+                      <div className="font-bold text-white text-[11px]">{dslrConnected ? dslrModel : 'No Canon DSLR Detected'}</div>
+                      <div className="text-[9px] text-zinc-400">
+                        {dslrConnected ? 'Direct USB Live Viewfinder ready' : 'Connect USB cable to companion daemon'}
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="12"
-                      max="60"
-                      value={currentSlot.height}
-                      onChange={(e) => handleSlotPositionChange(currentSlot.id, { height: parseFloat(e.target.value) })}
-                      className="w-full accent-pink-500 cursor-pointer h-1.5"
-                    />
                   </div>
+                  <button
+                    type="button"
+                    onClick={refreshCameraDevices}
+                    className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[10px] font-bold rounded-lg transition cursor-pointer flex-shrink-0"
+                  >
+                    Re-scan
+                  </button>
                 </div>
               )}
+
+              {/* Live Camera Viewfinder Preview */}
+              <div className="relative w-full aspect-video max-h-1000 rounded-2xl bg-zinc-950 border border-zinc-800 overflow-hidden flex items-center justify-center shadow-inner mt-1">
+                {!settings.useDslr ? (
+                  <>
+                    <video
+                      ref={previewVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      style={{ transform: settings.mirrorCamera ? 'scaleX(-1)' : 'none' }}
+                      className="w-full h-full object-cover"
+                    />
+                    {!previewStreamActive && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-zinc-950/80 text-zinc-500">
+                        <Camera className="w-6 h-6 stroke-1 animate-pulse text-pink-400" />
+                        <span className="text-[11px] font-semibold">Starting camera preview...</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  dslrConnected ? (
+                    <div className="relative w-full h-full flex items-center justify-center bg-black">
+                      <img
+                        src="http://localhost:8000/camera/liveview"
+                        alt="DSLR Live Stream"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 rounded text-[9px] font-mono text-emerald-400">
+                        ● DSLR USB Live Stream
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1.5 text-zinc-500 p-4">
+                      <Camera className="w-6 h-6 stroke-1 text-zinc-600" />
+                      <span className="text-[11px] font-semibold">No DSLR Stream Connected</span>
+                    </div>
+                  )
+                )}
+
+                {/* Live Indicator Overlay */}
+                <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 pointer-events-none z-10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[9px] font-mono font-bold text-white uppercase tracking-wider">
+                    Live Feed
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Bottom Right: Timers, Audio & Hardware Settings */}

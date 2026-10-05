@@ -11,9 +11,9 @@
     "start": "next start",
     "lint": "eslint",
     "electron:dev": "concurrently -k \"next dev\" \"wait-on tcp:3000 && electron .\"",
-    "electron:dist": "next build && electron-builder",
-    "electron:dist:win": "next build && electron-builder --win",
-    "electron:dist:mac": "next build && electron-builder --mac"
+    "electron:dist": "next build && electron-builder --publish never",
+    "electron:dist:win": "next build && electron-builder --win --publish never",
+    "electron:dist:mac": "next build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "@supabase/server": "^1.9.0",
