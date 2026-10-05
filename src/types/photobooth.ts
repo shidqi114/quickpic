@@ -270,6 +270,8 @@ export interface OutletEvent {
   stripFooterText?: string;
   operatingMode?: BoothOperatingMode;
   welcomeTheme?: WelcomeScreenTheme;
+  customWelcomeImageUrl?: string;
+  customWelcomeHeadline?: string;
   createdAt: number;
   updatedAt?: number;
 }

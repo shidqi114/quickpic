@@ -453,6 +453,8 @@ export async function createOutletEvent(
     stripFooterText: data.stripFooterText,
     operatingMode: data.operatingMode || 'event',
     welcomeTheme: data.welcomeTheme || 'neon_cyber',
+    customWelcomeImageUrl: data.customWelcomeImageUrl,
+    customWelcomeHeadline: data.customWelcomeHeadline,
     createdAt: Date.now(),
   };
 
