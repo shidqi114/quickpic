@@ -58,32 +58,21 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
 
   return (
     <div className="w-full max-w-6xl mx-auto flex flex-col items-center p-4 md:p-6 text-zinc-100 select-none animate-fade-in">
-      {/* Header Banner */}
-      <div className="text-center max-w-xl mb-6">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-bold uppercase tracking-wider mb-2">
-          <Sparkles className="w-3.5 h-3.5" /> Step 1 of 2: Arrange Your Strip
-        </div>
-        <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight">
-          Pick Photos for Strip Slots
-        </h2>
-        <p className="text-xs md:text-sm text-zinc-400 mt-1">
-          Tap a slot on the print strip, then tap any captured pose below to assign it.
-        </p>
-      </div>
+
 
       {/* Main Workspace Layout */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left / Center: Interactive Print Strip Preview (5 cols) */}
-        <div className="lg:col-span-5 bg-zinc-900/90 border border-zinc-800 rounded-3xl p-6 flex flex-col items-center justify-center shadow-2xl">
-          <div className="flex items-center justify-between w-full mb-3 px-2">
+        <div className="lg:col-span-5 flex flex-col items-center justify-center">
+          <div className="flex items-center justify-between w-full max-w-[280px] mb-3 px-2">
             <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
               {template.name}
             </span>
             <button
               onClick={onAutoFillInOrder}
-              className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 font-semibold transition"
+              className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 font-semibold transition cursor-pointer"
             >
-              <Wand2 className="w-3.5 h-3.5" /> Auto-Fill in Order
+              <Wand2 className="w-3.5 h-3.5" /> Auto-Fill
             </button>
           </div>
 
@@ -94,9 +83,23 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
               backgroundColor: template.backgroundColor,
               borderColor: template.accentColor,
               width: template.category === 'strip' ? '220px' : '300px',
-              aspectRatio: template.category === 'strip' ? '1/3' : '2/3',
+              aspectRatio: template.aspectRatio
+                ? `${template.aspectRatio}`
+                : template.category === 'strip'
+                ? '1/3'
+                : '2/3',
             }}
           >
+            {/* Custom Template Frame Artwork in the BACKGROUND */}
+            {template.overlayPngUrl && (
+              <img
+                src={template.overlayPngUrl}
+                alt="Template Frame Background"
+                className="absolute inset-0 w-full h-full object-fill pointer-events-none z-0 select-none"
+              />
+            )}
+
+            {/* Photo Slots in FRONT of the template background */}
             {template.slots.map((slot, idx) => {
               const adj = slotAdjustments[slot.id] || {
                 slotId: slot.id,
@@ -115,11 +118,10 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
                   onClick={() => setSelectedSlotId(slot.id)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDropOnSlot(slot.id)}
-                  className={`absolute cursor-pointer overflow-hidden rounded-lg transition-all ${
-                    isSelected
-                      ? 'ring-4 ring-pink-500 z-20 scale-[1.03] shadow-lg shadow-pink-500/30'
-                      : 'ring-1 ring-zinc-400/40 z-10 hover:ring-pink-400/80'
-                  }`}
+                  className={`absolute cursor-pointer overflow-hidden rounded-lg transition-all ${isSelected
+                    ? 'ring-4 ring-pink-500 z-20 scale-[1.03] shadow-lg shadow-pink-500/30'
+                    : 'ring-1 ring-zinc-400/40 z-10 hover:ring-pink-400/80'
+                    }`}
                   style={{
                     left: `${slot.x}%`,
                     top: `${slot.y}%`,
@@ -151,55 +153,21 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
               );
             })}
 
-            {/* Template Footer Branding */}
-            <div
-              className="absolute bottom-2 inset-x-0 text-center font-mono select-none px-2"
-              style={{ color: template.textColor }}
-            >
-              <div className="font-black text-[10px] tracking-widest uppercase truncate leading-tight">
-                {eventName.toUpperCase()}
+            {/* Template Footer Branding (if enabled) */}
+            {template.includeText !== false && (
+              <div
+                className="absolute bottom-2 inset-x-0 text-center font-mono select-none px-2 z-20"
+                style={{ color: template.textColor }}
+              >
+                <div className="font-black text-[10px] tracking-widest uppercase truncate leading-tight">
+                  {template.customText || eventName.toUpperCase()}
+                </div>
+                <div className="text-[8px] font-semibold tracking-wider opacity-75 leading-tight mt-0.5">
+                  ★ {eventDate} ★
+                </div>
               </div>
-              <div className="text-[8px] font-semibold tracking-wider opacity-75 leading-tight mt-0.5">
-                ★ {eventDate} ★
-              </div>
-            </div>
+            )}
           </div>
-
-          {/* Theme Switcher Quick Bar */}
-          {onSelectTemplate && (
-            <div className="w-full mt-4 pt-3 border-t border-zinc-800 space-y-2">
-              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-                Frame Theme
-              </span>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {FRAME_THEMES.map((th) => (
-                  <button
-                    key={th.id}
-                    type="button"
-                    onClick={() =>
-                      onSelectTemplate({
-                        ...template,
-                        backgroundColor: th.backgroundColor,
-                        textColor: th.textColor,
-                        accentColor: th.accentColor,
-                      })
-                    }
-                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold whitespace-nowrap transition flex items-center gap-1.5 border ${
-                      template.backgroundColor === th.backgroundColor
-                        ? 'border-pink-500 bg-pink-500/20 text-pink-300'
-                        : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-white'
-                    }`}
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full border border-white/20"
-                      style={{ backgroundColor: th.backgroundColor }}
-                    />
-                    {th.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right: Captured Raw Photos Palette & Quick Controls (7 cols) */}
@@ -232,11 +200,10 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
                     draggable
                     onDragStart={() => handleDragStart(idx)}
                     onClick={() => handleTapPhoto(idx)}
-                    className={`group relative cursor-pointer rounded-2xl overflow-hidden aspect-4/3 border-2 transition-all active:scale-95 ${
-                      isCurrentlyAssignedToSelected
-                        ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105 shadow-xl shadow-pink-500/25'
-                        : 'border-zinc-700 hover:border-pink-400'
-                    }`}
+                    className={`group relative cursor-pointer rounded-2xl overflow-hidden aspect-4/3 border-2 transition-all active:scale-95 ${isCurrentlyAssignedToSelected
+                      ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105 shadow-xl shadow-pink-500/25'
+                      : 'border-zinc-700 hover:border-pink-400'
+                      }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />

@@ -401,6 +401,16 @@ export async function renderCustomFrameSlotComposite(
   ctx.lineWidth = 12;
   ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
+  // Draw template background frame image BEFORE slots (so photos render in front of template)
+  if (template.overlayPngUrl) {
+    try {
+      const overlayImg = await loadImage(template.overlayPngUrl);
+      ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+    } catch (e) {
+      console.warn('Failed to load frame background image:', e);
+    }
+  }
+
   const slots = template.slots || [];
 
   // Render each slot with its zoom, pan, aspect ratio, filter overlays, and stickers
@@ -578,28 +588,21 @@ export async function renderCustomFrameSlotComposite(
     }
   }
 
-  // Draw optional custom PNG overlay if configured
-  if (template.overlayPngUrl) {
-    try {
-      const overlayImg = await loadImage(template.overlayPngUrl);
-      ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
-    } catch (e) {
-      console.warn('Failed to load frame overlay PNG:', e);
-    }
+  // Draw branding footer (if enabled)
+  if (template.includeText !== false) {
+    const footerY = canvas.height - 180;
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+
+    const textToDraw = template.customText || eventName.toUpperCase();
+    ctx.font = 'bold 54px sans-serif';
+    ctx.fillText(textToDraw, canvas.width / 2, footerY);
+
+    ctx.font = '36px sans-serif';
+    ctx.globalAlpha = 0.75;
+    ctx.fillText(eventDate, canvas.width / 2, footerY + 60);
+    ctx.globalAlpha = 1.0;
   }
-
-  // Draw branding footer
-  const footerY = canvas.height - 180;
-  ctx.fillStyle = textColor;
-  ctx.textAlign = 'center';
-
-  ctx.font = 'bold 54px sans-serif';
-  ctx.fillText(eventName.toUpperCase(), canvas.width / 2, footerY);
-
-  ctx.font = '36px sans-serif';
-  ctx.globalAlpha = 0.75;
-  ctx.fillText(eventDate, canvas.width / 2, footerY + 60);
-  ctx.globalAlpha = 1.0;
 
   return canvas.toDataURL('image/jpeg', 0.95);
 }

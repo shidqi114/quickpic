@@ -549,6 +549,7 @@ export interface StickerPickerDrawerProps {
   onClearAll?: () => void;
   stickersCount?: number;
   className?: string;
+  headerRight?: React.ReactNode;
 }
 
 export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
@@ -556,6 +557,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
   onClearAll,
   stickersCount = 0,
   className = '',
+  headerRight,
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
@@ -573,10 +575,10 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
     : STICKER_CATALOG.filter((s) => s.category === activeCategory);
 
   return (
-    <div className={`bg-zinc-950 border border-zinc-800/80 rounded-2xl p-3 flex flex-col gap-3 ${className}`}>
-      {/* Category Pills & Clear All */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <div className="flex items-center gap-1.5">
+    <div className={`flex flex-col gap-2.5 ${className}`}>
+      {/* Category Pills, Clear All & Header Right (X button) in the same row */}
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 min-w-0">
           {categories.map((cat) => {
             const Icon = cat.icon;
             const isActive = activeCategory === cat.id;
@@ -585,7 +587,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 key={cat.id}
                 type="button"
                 onClick={() => setActiveCategory(cat.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25'
                     : 'bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
@@ -596,22 +598,28 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
               </button>
             );
           })}
+
+          {onClearAll && stickersCount > 0 && (
+            <button
+              type="button"
+              onClick={onClearAll}
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg transition whitespace-nowrap ml-1 flex-shrink-0"
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear ({stickersCount})
+            </button>
+          )}
         </div>
 
-        {onClearAll && stickersCount > 0 && (
-          <button
-            type="button"
-            onClick={onClearAll}
-            className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg transition whitespace-nowrap"
-          >
-            <Trash2 className="w-3 h-3" />
-            Clear ({stickersCount})
-          </button>
+        {headerRight && (
+          <div className="flex items-center flex-shrink-0 ml-2">
+            {headerRight}
+          </div>
         )}
       </div>
 
       {/* Stickers Grid */}
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-48 overflow-y-auto pr-1">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-52 overflow-y-auto pr-1">
         {filtered.map((item) => (
           <button
             key={item.id}
