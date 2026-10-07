@@ -43,18 +43,36 @@ class CanonCameraController:
                     lines = [l for l in res.stdout.split("\n") if "Canon" in l]
                     if lines:
                         self.camera_model = lines[0].split("  ")[0].strip()
+                    print(f"[Camera] Canon camera detected: {self.camera_model}")
                     return {"connected": True, "model": self.camera_model, "driver": "gphoto2-edsdk"}
+                else:
+                    print(f"[Camera] No Canon camera found in gphoto2 output:\n{res.stdout}")
+                    print(f"[Camera] stderr: {res.stderr}")
+            except subprocess.TimeoutExpired:
+                print(f"[Camera] gphoto2 timeout - USB bus may be busy or camera not responding")
             except Exception as e:
                 print(f"[Camera] Detection error: {e}")
 
+        # Fallback: Try lsusb if available
+        try:
+            res = subprocess.run(["lsusb"], capture_output=True, text=True, timeout=3)
+            canon_lines = [l for l in res.stdout.split("\n") if "Canon" in l]
+            if canon_lines:
+                print(f"[Camera] Camera found in lsusb (may need gphoto2 config): {canon_lines}")
+                return {"connected": True, "model": "Canon (detected via lsusb)", "driver": "usb-detected", "requires_gphoto2": True}
+        except Exception as e:
+            pass
+
         # Fallback simulation / UVC detection
+        print(f"[Camera] No Canon camera detected - falling back to simulation mode")
         self.is_connected = True
         return {
             "connected": True,
             "model": self.camera_model,
-            "driver": "native-usb-fallback",
+            "driver": "native-usb-fallback (SIMULATION)",
             "liveview_iso": self.liveview_config["iso"],
-            "flash_iso": self.flash_capture_config["iso"]
+            "flash_iso": self.flash_capture_config["iso"],
+            "warning": "Camera not physically connected - running in simulation mode"
         }
 
     def update_settings(self, profile: str, settings: Dict[str, str]) -> Dict[str, Any]:

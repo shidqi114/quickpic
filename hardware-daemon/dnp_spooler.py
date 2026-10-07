@@ -42,12 +42,30 @@ class DNPPrinterSpooler:
 
         # Check CUPS / OS printer status if on Mac/Linux
         cups_status = "idle"
+        cups_available = False
         if shutil.which("lpstat"):
             try:
                 res = subprocess.run(["lpstat", "-p"], capture_output=True, text=True, timeout=3)
+                cups_available = True
                 if "DNP" in res.stdout or "printer" in res.stdout:
                     self.is_online = True
-            except Exception:
+                    print(f"[DNP] CUPS printer found: {res.stdout}")
+                else:
+                    print(f"[DNP] CUPS lpstat output: {res.stdout if res.stdout else '(no printers configured)'}")
+            except subprocess.TimeoutExpired:
+                print(f"[DNP] lpstat timeout - CUPS daemon may not be running")
+            except Exception as e:
+                print(f"[DNP] Error querying CUPS: {e}")
+
+        # Try to detect via lsusb
+        if shutil.which("lsusb"):
+            try:
+                res = subprocess.run(["lsusb"], capture_output=True, text=True, timeout=3)
+                dnp_lines = [l for l in res.stdout.split("\n") if "DNP" in l or "Citizen" in l]
+                if dnp_lines:
+                    print(f"[DNP] Printer detected via lsusb: {dnp_lines}")
+                    self.is_online = True
+            except Exception as e:
                 pass
 
         return {
@@ -59,7 +77,9 @@ class DNPPrinterSpooler:
             "ribbon_percentage": percentage,
             "queued_jobs_count": len(self.queue),
             "media_type": "4x6 (2-inch cut enabled)",
-            "warning": "Low Ribbon Warning" if remaining_prints < 50 else None
+            "cups_available": cups_available,
+            "warning": "Low Ribbon Warning" if remaining_prints < 50 else None,
+            "debug": "Printer not physically connected - running in simulation mode" if not self.is_online else None
         }
 
     def enqueue_print(self, kiosk_id: str, image_path: str, copies: int = 1, layout: str = "strip-2x6") -> Dict[str, Any]:

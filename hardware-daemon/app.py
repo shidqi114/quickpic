@@ -42,6 +42,43 @@ def index():
         "timestamp": time.time()
     }
 
+@app.get("/debug/usb")
+def debug_usb_devices():
+    """Diagnostic endpoint to list all USB devices and debug hardware detection"""
+    import subprocess
+    import shutil
+
+    diagnostics = {
+        "timestamp": time.time(),
+        "tools_available": {
+            "gphoto2": shutil.which("gphoto2") is not None,
+            "lpstat": shutil.which("lpstat") is not None,
+            "lpr": shutil.which("lpr") is not None,
+            "lsusb": shutil.which("lsusb") is not None,
+        },
+        "camera_status": canon_camera.detect_camera(),
+        "printer_status": dnp_spooler.get_status(),
+        "usb_devices": []
+    }
+
+    # List USB devices
+    if shutil.which("lsusb"):
+        try:
+            res = subprocess.run(["lsusb"], capture_output=True, text=True, timeout=3)
+            diagnostics["usb_devices"] = res.stdout.split("\n")
+        except Exception as e:
+            diagnostics["usb_devices_error"] = str(e)
+
+    # List CUPS printers
+    if shutil.which("lpstat"):
+        try:
+            res = subprocess.run(["lpstat", "-p", "-d"], capture_output=True, text=True, timeout=3)
+            diagnostics["cups_printers"] = res.stdout
+        except Exception as e:
+            diagnostics["cups_error"] = str(e)
+
+    return diagnostics
+
 from fastapi.responses import StreamingResponse, Response
 
 # ----------------- CAMERA ENDPOINTS -----------------
