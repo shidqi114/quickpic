@@ -10,7 +10,22 @@ Controls Canon DSLR/Mirrorless cameras and monitors DNP Dye-Sublimation printers
 
 ## Installation
 
-### Automated Installation (Recommended)
+### GUI Installers (Recommended for Non-Technical Users)
+
+Download and run the GUI installer for your platform:
+
+**Windows:**
+- Download: `QuickPic-Hardware-Daemon-Installer.exe` from GitHub Releases
+- Double-click to run
+- Follow the wizard (all dependencies installed automatically)
+
+**macOS:**
+- Download: `QuickPic-Hardware-Daemon-Installer.dmg` from GitHub Releases
+- Double-click to open
+- Drag app to Applications folder
+- Launch from Applications
+
+### Command-Line Installation (For Developers)
 
 Choose your platform and run the installer script:
 
