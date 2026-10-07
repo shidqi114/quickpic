@@ -8,25 +8,62 @@ Controls Canon DSLR/Mirrorless cameras and monitors DNP Dye-Sublimation printers
 - **DNP Spooler & Ribbon Meter**: Monitors remaining print media count (e.g. 700 cuts) and provides a shared network print queue for multi-kiosk setups.
 - **Heartbeat & Telemetry**: Reports CPU, RAM, Camera, Printer, and Network status to the Admin Dashboard.
 
-## Prerequisites
+## Installation
 
-Install system dependencies for hardware detection:
+### Automated Installation (Recommended)
+
+Choose your platform and run the installer script:
+
+**Linux (Ubuntu/Debian):**
+```bash
+cd hardware-daemon
+sudo ./install-linux.sh
+./start-daemon.sh
+```
+
+**macOS:**
+```bash
+cd hardware-daemon
+chmod +x install-macos.sh
+./install-macos.sh
+./start-daemon.sh
+```
+
+**Windows:**
+```cmd
+cd hardware-daemon
+install-windows.bat
+start-daemon.bat
+```
+
+### Manual Installation
+
+If you prefer manual setup:
 
 ```bash
 # Ubuntu/Debian
 sudo apt-get update
 sudo apt-get install -y gphoto2 cups cups-client lpr usbutils
+sudo usermod -a -G dialout,plugdev $USER
 
 # macOS
 brew install gphoto2
 # CUPS is pre-installed on macOS
+
+# Windows
+# Download and install from: https://sourceforge.net/projects/gphoto/files/
+
+# Then install Python dependencies
+pip install -r requirements.txt
+python app.py
 ```
 
 ## Quick Start
 ```bash
 cd hardware-daemon
-pip install -r requirements.txt
-python app.py
+./start-daemon.sh  # macOS/Linux
+# or
+start-daemon.bat   # Windows
 ```
 Runs at `http://localhost:8000`.
 
