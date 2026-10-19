@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DeviceTelemetry } from '@/types/photobooth';
-import { ArrowLeft, RefreshCw, Cpu, HardDrive, Camera, Printer, Wifi, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DeviceMonitoringPage() {
@@ -67,156 +67,73 @@ export default function DeviceMonitoringPage() {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-6 md:p-10 flex flex-col items-center select-none">
-      <div className="w-full max-w-6xl space-y-8">
-        
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
-          <div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/admin"
-                className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Link>
-              <h1 className="text-2xl font-black text-white">Live Hardware & Device Telemetry</h1>
-            </div>
-            <p className="text-xs text-zinc-400 mt-1">
-              Automatic 1-minute heartbeat telemetry monitoring Canon camera, DNP printer ribbon, and PC health.
-            </p>
-          </div>
+  const readout = 'flex flex-col gap-2 p-6 min-w-0';
+  const label = 'text-[14px] text-muted';
 
+  return (
+    <main className="min-h-screen bg-paper text-ink font-display select-none">
+      <div className="max-w-6xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-8">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-paper-line">
+          <div className="flex items-start gap-4">
+            <Link href="/admin" aria-label="Back to the fleet" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div>
+              <h1 className="text-[clamp(26px,2.6vw,36px)] leading-none font-semibold tracking-[-0.02em]">Hardware</h1>
+              <p className="text-[15px] text-muted mt-2 max-w-[60ch]">
+                The camera, printer and computer at this booth, checked every minute.
+              </p>
+            </div>
+          </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-500">Updated: {lastUpdated}</span>
-            <button
-              onClick={fetchTelemetry}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-xs font-semibold text-zinc-200 transition"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Ping Now
+            <span className="text-[14px] text-muted tabular-nums">Updated {lastUpdated}</span>
+            <button type="button" onClick={fetchTelemetry} className="h-11 px-4 rounded border border-paper-control text-[16px] cursor-pointer hover:bg-paper-surface">
+              <span className="inline-flex items-center gap-2">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Check now
+              </span>
             </button>
           </div>
         </header>
 
-        {/* Status Alert Banner */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            Booth Device Node ({telemetry.deviceId}) is ONLINE and operational.
-          </div>
-          <div className="flex items-center gap-1">
-            <Wifi className="w-4 h-4" /> Low Latency (&lt;24ms)
-          </div>
-        </div>
+        <p className="flex flex-wrap items-center justify-between gap-3 border-y border-paper-line py-4 text-[16px]">
+          <span className="inline-flex items-center gap-3">
+            <span className={`w-2.5 h-2.5 rounded-full ${telemetry.isOnline ? 'bg-positive' : 'bg-muted'}`} />
+            Booth {telemetry.deviceId} is {telemetry.isOnline ? 'online' : 'offline'}.
+          </span>
+          <span className="text-[14px] text-muted">Connection checked {new Date(telemetry.lastPingTime).toLocaleTimeString()}</span>
+        </p>
 
-        {/* Telemetry Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          {/* 1. DNP Printer Ribbon Meter */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-pink-500/10 text-pink-400 border border-pink-500/20">
-                <Printer className="w-6 h-6" />
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase">
-                {telemetry.printer.connected ? 'Ready' : 'Offline'}
-              </span>
+        <section className="grid md:grid-cols-2 lg:grid-cols-4 border border-paper-line divide-y md:divide-y-0 lg:divide-x divide-paper-line">
+          <div className={readout}>
+            <p className={label}>Printer</p>
+            <p className="text-[16px] font-medium">{telemetry.printer.name}</p>
+            <p className="text-[14px] text-muted">{telemetry.printer.connected ? 'Ready' : 'Offline'}</p>
+            <p className="text-[24px] font-semibold tabular-nums mt-2">{telemetry.printer.ribbonRemaining} <span className="text-[15px] font-normal text-muted">of 700 prints left</span></p>
+            <div className="w-full h-2 bg-paper-surface overflow-hidden">
+              <div className="h-full bg-ink transition-all duration-500" style={{ width: `${telemetry.printer.ribbonPercentage}%` }} />
             </div>
-            <div>
-              <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                DNP Ribbon Remaining
-              </div>
-              <div className="text-3xl font-black text-white mt-1">
-                {telemetry.printer.ribbonRemaining}{' '}
-                <span className="text-sm font-normal text-zinc-500">/ 700 cuts</span>
-              </div>
-              {/* Progress bar */}
-              <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden mt-3">
-                <div
-                  className="bg-pink-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${telemetry.printer.ribbonPercentage}%` }}
-                />
-              </div>
-              <div className="text-[11px] text-zinc-400 mt-2 flex justify-between">
-                <span>{telemetry.printer.ribbonPercentage}% Left</span>
-                <span>Queue: {telemetry.printer.queueDepth} jobs</span>
-              </div>
-            </div>
+            <p className="text-[14px] text-muted tabular-nums">{telemetry.printer.ribbonPercentage}% left · {telemetry.printer.queueDepth} jobs waiting</p>
           </div>
 
-          {/* 2. Canon DSLR Controller */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-                <Camera className="w-6 h-6" />
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase">
-                {telemetry.camera.connected ? 'USB Connected' : 'Disconnected'}
-              </span>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Canon Camera SDK
-              </div>
-              <div className="text-lg font-bold text-white mt-1 truncate">
-                {telemetry.camera.model}
-              </div>
-              <div className="text-xs text-purple-400 mt-2">
-                Dual ISO Exposure Profile Active
-              </div>
-              <div className="text-[10px] text-zinc-500 mt-1">
-                Liveview: ISO 1600 &bull; Flash: ISO 100 1/125s
-              </div>
-            </div>
+          <div className={readout}>
+            <p className={label}>Camera</p>
+            <p className="text-[16px] font-medium">{telemetry.camera.model}</p>
+            <p className="text-[14px] text-muted">{telemetry.camera.connected ? 'Connected by USB' : 'Not connected'}</p>
+            <p className="text-[14px] text-muted mt-2">Live view ISO 1600 · flash ISO 100, 1/125 s</p>
           </div>
 
-          {/* 3. PC CPU & Temperature */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                <Cpu className="w-6 h-6" />
-              </div>
-              <span className="text-xs font-mono text-cyan-400">{telemetry.cpuPct}% Load</span>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Booth PC CPU Load
-              </div>
-              <div className="text-3xl font-black text-white mt-1">
-                {telemetry.cpuPct}%
-              </div>
-              <div className="text-[11px] text-zinc-400 mt-3">
-                RAM Usage: {telemetry.ramPct}% of 16 GB
-              </div>
-            </div>
+          <div className={readout}>
+            <p className={label}>Computer</p>
+            <p className="text-[24px] font-semibold tabular-nums">{telemetry.cpuPct}% <span className="text-[15px] font-normal text-muted">processor</span></p>
+            <p className="text-[14px] text-muted tabular-nums">Memory {telemetry.ramPct}% of 16 GB</p>
           </div>
 
-          {/* 4. Multi-Booth Spooler Share */}
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <HardDrive className="w-6 h-6" />
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold uppercase">
-                Port 8000
-              </span>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Network Spooler
-              </div>
-              <div className="text-lg font-bold text-white mt-1">
-                Shared DNP Spooler
-              </div>
-              <div className="text-[11px] text-zinc-400 mt-2">
-                Allows tablets on local WiFi to share this single printer.
-              </div>
-            </div>
+          <div className={readout}>
+            <p className={label}>Sharing the printer</p>
+            <p className="text-[16px] font-medium">Shared printer on the local network</p>
+            <p className="text-[14px] text-muted">Tablets on the same Wi-Fi can send prints through this booth.</p>
           </div>
-
-        </div>
-
+        </section>
       </div>
     </main>
   );
