@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, RefreshCw, Volume2, VolumeX, VideoOff } from 'lucide-react';
 import { PhotoFilter } from '@/types/photobooth';
-import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+import type { WelcomeLanguage } from '@/types/photobooth';
 
 const COPY: Record<WelcomeLanguage, {
   ready: string;

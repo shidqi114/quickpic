@@ -275,3 +275,5 @@ export interface OutletEvent {
   createdAt: number;
   updatedAt?: number;
 }
+
+export type WelcomeLanguage = 'en' | 'id';

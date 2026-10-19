@@ -4,7 +4,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { PhotoFilter } from '@/types/photobooth';
-import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+import type { WelcomeLanguage } from '@/types/photobooth';
 
 export interface CameraSessionPanelProps {
   language?: WelcomeLanguage;

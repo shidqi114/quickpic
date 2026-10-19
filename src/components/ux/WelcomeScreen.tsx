@@ -2,7 +2,9 @@
 
 import React from 'react';
 import { PHOTOBOOTH_PACKAGES } from '@/lib/constants';
-import { WelcomeScreenTheme, BoothOperatingMode } from '@/types/photobooth';
+import { WelcomeScreenTheme, BoothOperatingMode, WelcomeLanguage } from '@/types/photobooth';
+
+export type { WelcomeLanguage };
 
 const COPY: Record<WelcomeLanguage, {
   start: string;
@@ -84,8 +86,6 @@ export const WELCOME_THEME_PRESETS: {
     previewGradient: 'from-pink-300 via-rose-300 to-indigo-300',
   },
 ];
-
-export type WelcomeLanguage = 'en' | 'id';
 
 export interface WelcomeScreenProps {
   /** Selected visual theme (1 of 5 styles or custom) */
