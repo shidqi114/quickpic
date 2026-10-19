@@ -123,6 +123,9 @@ const DEFAULT_EVENT_PROFILES: EventProfile[] = [
   },
 ];
 
+import { SettingsModal } from '@/components/SettingsModal';
+import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
+
 const INPUT = 'h-11 w-full px-3 rounded border border-paper-control bg-paper text-[16px] text-ink placeholder:text-muted focus:outline-2 focus:outline-accent';
 const LABEL = 'text-[14px] font-medium text-ink';
 const BTN_P = 'h-12 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer';
@@ -140,6 +143,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 }) => {
   // Page 1 vs Page 2 navigation state
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
+  const [isBoothSettingsOpen, setIsBoothSettingsOpen] = useState(false);
 
   // Outlets State (Firebase collection: users/{userId}/outlets)
   const [outlets, setOutlets] = useState<Outlet[]>(DEFAULT_DEMO_OUTLETS);
@@ -975,9 +979,15 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               </div>
             </div>
 
-            <button type="button" onClick={() => onSignOut?.()} title="Sign out of operator session" className={BTN_S}>
-              Sign out
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <LanguageSwitch />
+              <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
+                Booth settings
+              </button>
+              <button type="button" onClick={() => onSignOut?.()} title="Sign out of operator session" className={BTN_S}>
+                Sign out
+              </button>
+            </div>
           </header>
 
           <div className="grid lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] gap-10 flex-1 min-h-0">
@@ -1165,7 +1175,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               <p className="text-[14px] text-muted">Step 2 of 2</p>
               <h1 className="text-[clamp(26px,2.4vw,36px)] leading-none font-semibold tracking-[-0.02em] mt-1">Layout and printer</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <LanguageSwitch />
+              <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
+                Booth settings
+              </button>
               <button type="button" onClick={() => setCurrentPage(1)} className={BTN_S}>
                 <span className="inline-flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</span>
               </button>
@@ -1501,6 +1515,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
           </div>
         </div>
       )}
+
+      <SettingsModal
+        isOpen={isBoothSettingsOpen}
+        onClose={() => setIsBoothSettingsOpen(false)}
+        settings={settings}
+        onUpdateSettings={(vals) => setSettings((s) => ({ ...s, ...vals }))}
+      />
 
       {/* ========================================================================= */}
       {/* DISCRETE MODAL: ADD NEW EVENT PROFILE                                     */}
