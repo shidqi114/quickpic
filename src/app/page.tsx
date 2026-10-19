@@ -790,6 +790,7 @@ export default function PhotoboothKioskPage() {
       {/* ========================================================================= */}
       {currentStep === 'PHOTO_PICK_SLOTS' && (
         <PhotoPickSlots
+          language={guestLanguage}
           capturedPhotos={capturedPhotos.map((p) => p || '')}
           template={selectedTemplate}
           onSelectTemplate={setSelectedTemplate}

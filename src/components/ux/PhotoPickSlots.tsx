@@ -2,10 +2,57 @@
 
 import React, { useState } from 'react';
 import { FrameTemplate, SlotAdjustment } from '@/types/photobooth';
-import { FRAME_THEMES } from '@/lib/compositor';
-import { Sparkles, ArrowRight, RotateCcw, Check, Wand2, Layers, RefreshCw, Palette } from 'lucide-react';
+import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+
+const COPY: Record<WelcomeLanguage, {
+  kicker: string;
+  title: string;
+  autoFill: string;
+  filling: string;
+  slot: (n: number) => string;
+  pose: (n: number) => string;
+  empty: string;
+  shots: (n: number) => string;
+  hint: string;
+  reshoot: string;
+  next: string;
+  yourPoses: string;
+  tapToPlace: string;
+}> = {
+  en: {
+    kicker: 'Step 1 of 2',
+    title: 'Pick a photo for each window',
+    autoFill: 'Fill in order',
+    filling: 'Filling',
+    slot: (n) => `Window ${n}`,
+    pose: (n) => `Pose ${n}`,
+    empty: 'Empty',
+    shots: (n) => `${n} shots`,
+    hint: 'Tap a pose to put it in the selected window. A pose can go in more than one window.',
+    reshoot: 'Retake photos',
+    next: 'Next: filters and stickers',
+    yourPoses: 'Your poses',
+    tapToPlace: 'Tap a pose',
+  },
+  id: {
+    kicker: 'Langkah 1 dari 2',
+    title: 'Pilih foto untuk setiap jendela',
+    autoFill: 'Isi berurutan',
+    filling: 'Sedang mengisi',
+    slot: (n) => `Jendela ${n}`,
+    pose: (n) => `Pose ${n}`,
+    empty: 'Kosong',
+    shots: (n) => `${n} foto`,
+    hint: 'Ketuk pose untuk memasukkannya ke jendela yang dipilih. Satu pose boleh dipakai di beberapa jendela.',
+    reshoot: 'Foto ulang',
+    next: 'Lanjut: filter dan stiker',
+    yourPoses: 'Pose Anda',
+    tapToPlace: 'Ketuk pose',
+  },
+};
 
 interface PhotoPickSlotsProps {
+  language?: WelcomeLanguage;
   capturedPhotos: string[];
   template: FrameTemplate;
   onSelectTemplate?: (template: FrameTemplate) => void;
@@ -19,6 +66,7 @@ interface PhotoPickSlotsProps {
 }
 
 export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
+  language = 'en',
   capturedPhotos,
   template,
   onSelectTemplate,
@@ -56,202 +104,150 @@ export const PhotoPickSlots: React.FC<PhotoPickSlotsProps> = ({
     }
   };
 
+  const copy = COPY[language];
+  const selectedIndex = Math.max(0, template.slots.findIndex((s) => s.id === selectedSlotId));
+  const isStrip = template.category === 'strip';
+
   return (
-    <div className="w-full max-w-6xl mx-auto flex flex-col items-center p-4 md:p-6 text-zinc-100 select-none animate-fade-in">
-
-
-      {/* Main Workspace Layout */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left / Center: Interactive Print Strip Preview (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center">
-          <div className="flex items-center justify-between w-full max-w-[280px] mb-3 px-2">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-              {template.name}
-            </span>
-            <button
-              onClick={onAutoFillInOrder}
-              className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 font-semibold transition cursor-pointer"
-            >
-              <Wand2 className="w-3.5 h-3.5" /> Auto-Fill
-            </button>
-          </div>
-
-          {/* Strip Canvas */}
-          <div
-            className="relative shadow-2xl rounded-2xl overflow-hidden border-4 transition-all duration-300"
-            style={{
-              backgroundColor: template.backgroundColor,
-              borderColor: template.accentColor,
-              width: template.category === 'strip' ? '220px' : '300px',
-              aspectRatio: template.aspectRatio
-                ? `${template.aspectRatio}`
-                : template.category === 'strip'
-                ? '1/3'
-                : '2/3',
-            }}
+    <section className="min-h-screen bg-stage text-stage-ink font-display select-none p-6 md:p-10 grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="flex flex-col items-center gap-5">
+        <div className="w-full max-w-[360px] flex items-center justify-between gap-4">
+          <span className="text-[16px] text-stage-muted">{template.name}</span>
+          <button
+            type="button"
+            onClick={onAutoFillInOrder}
+            className="h-11 px-4 rounded border border-stage-muted/50 text-[16px] cursor-pointer hover:bg-white/10"
           >
-            {/* Custom Template Frame Artwork in the BACKGROUND */}
-            {template.overlayPngUrl && (
-              <img
-                src={template.overlayPngUrl}
-                alt="Template Frame Background"
-                className="absolute inset-0 w-full h-full object-fill pointer-events-none z-0 select-none"
-              />
-            )}
-
-            {/* Photo Slots in FRONT of the template background */}
-            {template.slots.map((slot, idx) => {
-              const adj = slotAdjustments[slot.id] || {
-                slotId: slot.id,
-                photoIndex: idx % capturedPhotos.length,
-                zoom: 1.0,
-                panX: 0,
-                panY: 0,
-                filter: 'none',
-              };
-              const assignedPhoto = capturedPhotos[adj.photoIndex];
-              const isSelected = selectedSlotId === slot.id;
-
-              return (
-                <div
-                  key={slot.id}
-                  onClick={() => setSelectedSlotId(slot.id)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handleDropOnSlot(slot.id)}
-                  className={`absolute cursor-pointer overflow-hidden rounded-lg transition-all ${isSelected
-                    ? 'ring-4 ring-pink-500 z-20 scale-[1.03] shadow-lg shadow-pink-500/30'
-                    : 'ring-1 ring-zinc-400/40 z-10 hover:ring-pink-400/80'
-                    }`}
-                  style={{
-                    left: `${slot.x}%`,
-                    top: `${slot.y}%`,
-                    width: `${slot.width}%`,
-                    height: `${slot.height}%`,
-                  }}
-                >
-                  {assignedPhoto ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={assignedPhoto}
-                      alt={`Slot ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-bold">
-                      Empty Slot
-                    </div>
-                  )}
-
-                  {/* Slot Indicator Label */}
-                  <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-bold text-white uppercase backdrop-blur-xs flex items-center gap-1">
-                    <span>Slot #{idx + 1}</span>
-                    {assignedPhoto && (
-                      <span className="text-pink-400 font-normal">➔ Pose #{adj.photoIndex + 1}</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Template Footer Branding (if enabled) */}
-            {template.includeText !== false && (
-              <div
-                className="absolute bottom-2 inset-x-0 text-center font-mono select-none px-2 z-20"
-                style={{ color: template.textColor }}
-              >
-                <div className="font-black text-[10px] tracking-widest uppercase truncate leading-tight">
-                  {template.customText || eventName.toUpperCase()}
-                </div>
-                <div className="text-[8px] font-semibold tracking-wider opacity-75 leading-tight mt-0.5">
-                  ★ {eventDate} ★
-                </div>
-              </div>
-            )}
-          </div>
+            {copy.autoFill}
+          </button>
         </div>
 
-        {/* Right: Captured Raw Photos Palette & Quick Controls (7 cols) */}
-        <div className="lg:col-span-7 bg-zinc-900 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between shadow-2xl min-h-[460px]">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-white">Your Captured Poses</h3>
-                <p className="text-xs text-zinc-400">
-                  Currently filling:{' '}
-                  <span className="text-pink-400 font-bold">
-                    Slot #{template.slots.findIndex((s) => s.id === selectedSlotId) + 1}
-                  </span>
-                </p>
+        <div
+          className="relative overflow-hidden"
+          style={{
+            backgroundColor: template.backgroundColor,
+            width: isStrip ? 'min(260px, 36vw)' : 'min(340px, 40vw)',
+            aspectRatio: template.aspectRatio ? `${template.aspectRatio}` : isStrip ? '1/3' : '2/3',
+          }}
+        >
+          {template.overlayPngUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={template.overlayPngUrl} alt="" className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none" />
+          )}
+
+          {template.slots.map((slot, idx) => {
+            const adj = slotAdjustments[slot.id] || {
+              slotId: slot.id,
+              photoIndex: idx % Math.max(1, capturedPhotos.length),
+              zoom: 1.0,
+              panX: 0,
+              panY: 0,
+              filter: 'none',
+            };
+            const assignedPhoto = capturedPhotos[adj.photoIndex];
+            const isSelected = selectedSlotId === slot.id;
+
+            return (
+              <div
+                key={slot.id}
+                onClick={() => setSelectedSlotId(slot.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDropOnSlot(slot.id)}
+                className={`absolute cursor-pointer overflow-hidden ${isSelected ? 'outline-4 outline-accent -outline-offset-4 z-20' : 'outline-1 outline-stage-line -outline-offset-1 z-10'}`}
+                style={{
+                  left: `${slot.x}%`,
+                  top: `${slot.y}%`,
+                  width: `${slot.width}%`,
+                  height: `${slot.height}%`,
+                }}
+              >
+                {assignedPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={assignedPhoto} alt={copy.slot(idx + 1)} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-stage-2 flex items-center justify-center text-[14px] text-stage-muted">{copy.empty}</div>
+                )}
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-stage text-[14px] text-white tabular-nums">
+                  {idx + 1}
+                </span>
               </div>
-              <span className="text-xs font-mono text-zinc-400 bg-zinc-950 px-2.5 py-1 rounded-full border border-zinc-800">
-                {capturedPhotos.length} Shots Available
-              </span>
+            );
+          })}
+
+          {template.includeText !== false && (
+            <div className="absolute bottom-3 inset-x-0 text-center px-3 z-20" style={{ color: template.textColor }}>
+              <div className="font-semibold text-[15px] leading-tight truncate">{template.customText || eventName}</div>
+              <div className="text-[13px] opacity-80 leading-tight mt-0.5 tabular-nums">{eventDate}</div>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Raw Poses Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+      <div className="flex flex-col justify-between gap-8 min-w-0">
+        <div className="grid gap-5">
+          <div className="flex items-baseline justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-[16px] text-stage-muted">{copy.kicker}</p>
+              <h1 className="text-[clamp(32px,3vw,52px)] leading-none font-semibold tracking-[-0.03em] mt-1">{copy.title}</h1>
+            </div>
+            <p className="text-[16px] text-stage-muted tabular-nums">
+              {copy.filling} {copy.slot(selectedIndex + 1)}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[16px] text-stage-muted mb-3">
+              {copy.yourPoses} · {copy.shots(capturedPhotos.length)}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {capturedPhotos.map((photo, idx) => {
-                const isCurrentlyAssignedToSelected =
-                  (slotAdjustments[selectedSlotId]?.photoIndex ?? -1) === idx;
-
+                const isAssigned = (slotAdjustments[selectedSlotId]?.photoIndex ?? -1) === idx;
                 return (
-                  <div
+                  <button
                     key={idx}
+                    type="button"
                     draggable
                     onDragStart={() => handleDragStart(idx)}
                     onClick={() => handleTapPhoto(idx)}
-                    className={`group relative cursor-pointer rounded-2xl overflow-hidden aspect-4/3 border-2 transition-all active:scale-95 ${isCurrentlyAssignedToSelected
-                      ? 'border-pink-500 ring-4 ring-pink-500/30 scale-105 shadow-xl shadow-pink-500/25'
-                      : 'border-zinc-700 hover:border-pink-400'
-                      }`}
+                    aria-pressed={isAssigned}
+                    aria-label={`${copy.pose(idx + 1)} ${copy.tapToPlace}`}
+                    className={`relative aspect-[4/3] overflow-hidden cursor-pointer bg-stage-2 ${isAssigned ? 'outline-4 outline-white -outline-offset-4' : 'outline-1 outline-stage-line -outline-offset-1 hover:outline-stage-muted'}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
-
-                    {/* Pose Number Badge */}
-                    <div className="absolute bottom-1.5 left-1.5 bg-black/80 px-2 py-0.5 rounded-md text-[10px] font-bold text-white backdrop-blur-xs flex items-center gap-1">
-                      <span>Pose #{idx + 1}</span>
-                    </div>
-
-                    {isCurrentlyAssignedToSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center shadow-lg">
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      </div>
+                    {photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photo} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="w-full h-full flex items-center justify-center text-[14px] text-stage-muted">{copy.empty}</span>
                     )}
-                  </div>
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-stage text-[14px] text-white tabular-nums">
+                      {copy.pose(idx + 1)}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-
-            {/* Hint Box */}
-            <div className="p-4 rounded-2xl bg-zinc-950/60 border border-zinc-800 text-xs text-zinc-400 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-400 flex items-center justify-center shrink-0">
-                <Layers className="w-4 h-4" />
-              </div>
-              <p>
-                You can reuse the same pose in multiple slots or arrange them in any order you love before applying creative filters and stickers!
-              </p>
-            </div>
           </div>
 
-          {/* Action Navigation Footer */}
-          <div className="pt-6 border-t border-zinc-800 flex items-center justify-between gap-4">
-            <button
-              onClick={onBackToCamera}
-              className="px-5 py-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs uppercase tracking-wider transition flex items-center gap-2"
-            >
-              <RotateCcw className="w-4 h-4" /> Reshoot / Camera
-            </button>
+          <p className="text-[16px] text-stage-muted max-w-[60ch] leading-normal">{copy.hint}</p>
+        </div>
 
-            <button
-              onClick={onProceedToEditor}
-              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-extrabold text-sm uppercase tracking-wider shadow-xl shadow-pink-500/25 active:scale-95 transition flex items-center gap-2"
-            >
-              Next: Filters & Stickers (Step 2) <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-stage-line">
+          <button
+            type="button"
+            onClick={onBackToCamera}
+            className="h-16 px-6 rounded border border-stage-muted/50 text-[18px] cursor-pointer hover:bg-white/10"
+          >
+            {copy.reshoot}
+          </button>
+          <button
+            type="button"
+            onClick={onProceedToEditor}
+            className="h-16 px-8 rounded bg-accent hover:bg-accent-press text-white text-[18px] font-medium cursor-pointer"
+          >
+            {copy.next}
+          </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
