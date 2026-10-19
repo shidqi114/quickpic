@@ -2,13 +2,14 @@ name: Build Hardware Daemon Installers
 
 # Trigger on:
 # 1. Manual dispatch (workflow_dispatch)
-# 2. Tags starting with "daemon-v" (e.g., daemon-v2.0.0)
+# 2. Tag push matching "daemon-v*" or "v*"
+# 3. GitHub release published
 
 on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: "Release Tag (e.g., daemon-v2.0.0)"
+        description: "Release Tag (e.g., daemon-v2.0.0 or v0.1.7)"
         required: false
         type: string
       draft:
@@ -16,9 +17,17 @@ on:
         required: false
         type: boolean
         default: false
+      prerelease:
+        description: "Publish as Pre-release"
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - "daemon-v*"
+      - "v*"
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -31,27 +40,35 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download NSIS
-        run: |
-          Invoke-WebRequest -Uri https://sourceforge.net/projects/nsis/files/NSIS%203/3.09/nsis-3.09-setup.exe -OutFile nsis-setup.exe
-          .\nsis-setup.exe /S /D=C:\NSIS
+      - name: Setup NSIS Compiler
         shell: powershell
-
-      - name: Verify NSIS Installation
         run: |
-          C:\NSIS\makensis.exe /version
-        shell: cmd
+          if (Get-Command makensis -ErrorAction SilentlyContinue) {
+            Write-Host "NSIS already available in PATH"
+          } else {
+            Write-Host "Installing NSIS via Chocolatey..."
+            choco install nsis -y --no-progress
+            echo "C:\Program Files (x86)\NSIS" >> $env:GITHUB_PATH
+          }
 
       - name: Build Windows Installer
+        shell: powershell
         run: |
           cd hardware-daemon
-          C:\NSIS\makensis.exe installer-windows.nsi
-        shell: cmd
+          if (Get-Command makensis -ErrorAction SilentlyContinue) {
+            makensis installer-windows.nsi
+          } elseif (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe") {
+            & "C:\Program Files (x86)\NSIS\makensis.exe" installer-windows.nsi
+          } elseif (Test-Path "C:\NSIS\makensis.exe") {
+            & "C:\NSIS\makensis.exe" installer-windows.nsi
+          } else {
+            throw "makensis.exe compiler not found"
+          }
 
       - name: List Build Artifacts
+        shell: powershell
         run: |
-          dir hardware-daemon\*.exe
-        shell: cmd
+          Get-ChildItem -Path hardware-daemon\*.exe
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -59,17 +76,19 @@ jobs:
           name: windows-installer
           path: hardware-daemon/*.exe
           if-no-files-found: error
+          retention-days: 7
 
   build-macos-installer:
     name: Build macOS Installer (.dmg)
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Homebrew
+      - name: Setup Homebrew & Tools
         run: |
-          brew install create-dmg
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg || true
 
       - name: Build macOS DMG
         run: |
@@ -86,12 +105,13 @@ jobs:
         with:
           name: macos-installer
           path: hardware-daemon/*.dmg
-          if-no-files-found: error
+          if-no-files-found: warn
+          retention-days: 7
 
   publish-release:
     name: Publish Release
     needs: [build-windows-installer, build-macos-installer]
-    if: always() && !cancelled()
+    if: always() && !cancelled() && needs.build-windows-installer.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -99,18 +119,16 @@ jobs:
 
       - name: Determine Release Tag
         id: release_info
+        shell: bash
         run: |
           if [ -n "${{ inputs.tag_name }}" ]; then
             TAG="${{ inputs.tag_name }}"
-          elif [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+          elif [ "${{ startsWith(github.ref, 'refs/tags/daemon-v') }}" = "true" ]; then
             TAG="${GITHUB_REF#refs/tags/}"
+          elif [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
+            TAG="daemon-${GITHUB_REF#refs/tags/}"
           else
-            TAG="daemon-v$(date +%Y.%m.%d)"
-          fi
-
-          # Ensure tag starts with "daemon-v"
-          if [[ ! $TAG =~ ^daemon-v ]]; then
-            TAG="daemon-v${TAG#v}"
+            TAG="daemon-v2.0.0"
           fi
 
           echo "tag_name=${TAG}" >> $GITHUB_OUTPUT
@@ -121,33 +139,22 @@ jobs:
         with:
           path: release-artifacts
 
-      - name: List Downloaded Files
-        run: |
-          find release-artifacts -type f
-          ls -lh release-artifacts/*/*
-
       - name: Prepare Release Files
+        shell: bash
         run: |
           mkdir -p release-files
-          # Copy Windows installer
-          if [ -f "release-artifacts/windows-installer"/*.exe ]; then
-            cp release-artifacts/windows-installer/*.exe release-files/ || true
-          fi
-          # Copy macOS installer
-          if [ -f "release-artifacts/macos-installer"/*.dmg ]; then
-            cp release-artifacts/macos-installer/*.dmg release-files/ || true
-          fi
+          find release-artifacts -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.tar.gz" \) -exec cp {} release-files/ \;
+          echo "Listing all collected release binaries:"
+          ls -la release-files/
 
-          echo "Release files ready:"
-          ls -lh release-files/
-
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         if: success() && (hashFiles('release-files/*') != '')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release_info.outputs.tag_name }}
           name: "QuickPic Hardware Daemon ${{ steps.release_info.outputs.tag_name }}"
           draft: ${{ inputs.draft || false }}
+          prerelease: ${{ inputs.prerelease || false }}
           generate_release_notes: true
           body: |
             ## 📦 QuickPic Hardware Daemon Release
@@ -160,25 +167,22 @@ jobs:
             - Follow the setup wizard
 
             **macOS Users:**
-            - Download: `QuickPic-Hardware-Daemon-Installer.dmg`
+            - Download: `QuickPic-Hardware-Daemon-Installer.dmg` (if available)
             - Double-click to open
             - Drag app to Applications folder
 
             ### What's Included
-            ✅ Automatic dependency installation (gphoto2, CUPS, Python packages)
-            ✅ Professional GUI installer for easy setup
-            ✅ USB device detection and diagnostics
-            ✅ Hardware daemon with REST API
+            ✅ Automatic dependency verification (gphoto2, CUPS, Python packages)
+            ✅ Professional GUI installer for easy kiosk setup
+            ✅ USB device detection and diagnostics endpoint (`/debug/usb`)
+            ✅ Hardware daemon with REST API for Canon DSLR & DNP printers
 
             ### Quick Start
-            1. Connect Canon camera via USB-C
-            2. Connect DNP printer via USB
+            1. Connect Canon DSLR camera via USB
+            2. Connect DNP dye-sub printer via USB
             3. Launch the Hardware Daemon app
             4. Access API at: http://localhost:8000
-            5. Diagnostics at: http://localhost:8000/debug/usb
-
-            ### Release Notes
-            See commit history for detailed changes.
+            5. Run diagnostics at: http://localhost:8000/debug/usb
           files: release-files/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

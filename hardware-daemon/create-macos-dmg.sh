@@ -85,29 +85,33 @@ cat > "$TEMP_DIR/QuickPic Hardware Daemon.app/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-# Create background image for DMG
+# Create DMG installer
 echo "[3/4] Creating DMG installer..."
-mkdir -p "$TEMP_DIR/.background"
-cat > "$TEMP_DIR/.background/background.txt" << 'EOF'
-This is the QuickPic Hardware Daemon installer.
+DMG_OUTPUT="QuickPic-Hardware-Daemon-Installer.dmg"
+rm -f "$DMG_OUTPUT"
 
-To install:
-1. Drag "QuickPic Hardware Daemon.app" to Applications folder
-2. Double-click the app to launch
-3. Follow the on-screen instructions
-EOF
+# Add Applications symlink inside the bundle directory for easy drag-and-drop
+ln -s /Applications "$TEMP_DIR/Applications" 2>/dev/null || true
 
-# Create the DMG using create-dmg
-create-dmg \
-    --volname "QuickPic Hardware Daemon" \
-    --icon "QuickPic Hardware Daemon.app" 100 100 \
-    --hide-extension "QuickPic Hardware Daemon.app" \
-    --window-pos 200 120 \
-    --window-size 600 400 \
-    --text-size 12 \
-    --background "$TEMP_DIR/.background/background.txt" \
-    "QuickPic-Hardware-Daemon-Installer.dmg" \
-    "$TEMP_DIR"
+if command -v create-dmg &> /dev/null; then
+    echo "Using create-dmg utility..."
+    create-dmg \
+        --volname "QuickPic Hardware Daemon" \
+        --window-pos 200 120 \
+        --window-size 600 400 \
+        --icon-size 100 \
+        --icon "QuickPic Hardware Daemon.app" 150 190 \
+        --hide-extension "QuickPic Hardware Daemon.app" \
+        --app-drop-link 450 190 \
+        "$DMG_OUTPUT" \
+        "$TEMP_DIR" || {
+            echo "create-dmg had non-fatal warning, ensuring DMG exists via hdiutil..."
+            [ -f "$DMG_OUTPUT" ] || hdiutil create -volname "QuickPic Hardware Daemon" -srcfolder "$TEMP_DIR" -ov -format UDZO "$DMG_OUTPUT"
+        }
+else
+    echo "create-dmg not found, creating DMG with native hdiutil..."
+    hdiutil create -volname "QuickPic Hardware Daemon" -srcfolder "$TEMP_DIR" -ov -format UDZO "$DMG_OUTPUT"
+fi
 
 echo "[4/4] Cleaning up..."
 rm -rf "$TEMP_DIR"
