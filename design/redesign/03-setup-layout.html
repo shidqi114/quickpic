@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout and printer · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  body { display: grid; grid-template-rows: auto 1fr auto; min-height: 100svh; }
+  /* builder: 300px templates | fluid canvas | 360px hardware; 0 gutters, divided by 1px lines */
+  .builder { display: grid; grid-template-columns: 300px minmax(0, 1fr) 360px; min-height: 0; }
+  .builder > * { min-width: 0; }
+  .col-h { font-size: 15px; font-weight: 500; padding: 20px 24px 12px; }
+  .col-h small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+
+  .templates { border-right: 1px solid var(--line); overflow: auto; }
+  .tpl { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 14px; width: 100%; padding: 10px 24px; border: 0; background: none; text-align: left; cursor: pointer; }
+  .tpl:hover { background: var(--surface); }
+  .tpl[aria-current="true"] { background: var(--active); }
+  .tpl b { display: block; font-weight: 500; font-size: 15px; }
+  .tpl span span { display: block; color: var(--muted); font-size: 13px; }
+  .thumb { justify-self: center; background: var(--paper); outline: 1px solid var(--control); outline-offset: -1px; display: grid; gap: 2px; padding: 3px; }
+  .thumb i { background: #b8b2ab; }
+  .thumb.s3 { width: 18px; height: 54px; grid-template-rows: repeat(3, 1fr) 10px; }
+  .thumb.s4 { width: 18px; height: 54px; grid-template-rows: repeat(4, 1fr) 9px; }
+  .thumb.q { width: 36px; height: 54px; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 8px; }
+  .thumb.solo { width: 36px; height: 54px; grid-template-rows: 1fr 10px; }
+  .thumb.a4 { width: 38px; height: 54px; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr 10px; }
+  .tpl.upload { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .tpl.upload .thumb { width: 36px; height: 54px; background: none; outline: none; border: 1px dashed var(--control); place-items: center; color: var(--muted); font-size: 18px; }
+
+  /* canvas: the strip at 210px wide, with its slot readout */
+  .canvas { background: var(--surface); display: grid; grid-template-columns: auto 240px; justify-content: center; align-items: start; gap: 40px; padding: 32px; }
+  .work { position: relative; }
+  .work .strip { --w: 210px; outline: 1px solid var(--line); outline-offset: -1px; }
+  .work .photo.sel { outline: 2px solid var(--accent); outline-offset: 0; }
+  .handle { position: absolute; width: 10px; height: 10px; background: #fff; border: 2px solid var(--accent); }
+  .guide { position: absolute; left: -24px; right: -24px; border-top: 1px dashed var(--accent); }
+  .readout { display: grid; gap: 16px; padding-top: 8px; }
+  .readout h3 { font-size: 15px; font-weight: 500; }
+  .readout p { color: var(--muted); font-size: 14px; }
+  .xywh { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .xywh .field label { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .xywh .input { height: 36px; text-align: right; }
+
+  .hardware { border-left: 1px solid var(--line); overflow: auto; padding-bottom: 24px; }
+  .hw-sec { padding: 0 24px 20px; }
+  .hw-sec + .hw-sec { border-top: 1px solid var(--line); }
+  .hw-sec .col-h { padding: 20px 0 12px; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; min-height: 40px; font-size: 15px; }
+  .toggle + .toggle { border-top: 1px solid var(--rule); }
+  .stack { display: grid; gap: 14px; }
+  .dev { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .dev b { font-weight: 500; }
+  .dev > div span { display: block; color: var(--muted); font-size: 13px; }
+
+  /* the roll: 700 sheets, what is left in ink */
+  .roll { margin-top: 4px; }
+  .roll .bar { height: 10px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .roll .bar i { display: block; height: 100%; width: calc(412 / 700 * 100%); background: var(--ink); }
+  .roll .legend { display: flex; justify-content: space-between; margin-top: 8px; font-size: 14px; }
+  .roll .legend span:last-child { color: var(--muted); }
+  .btns { display: flex; gap: 8px; }
+
+  @media (max-width: 1100px) {
+    .builder { grid-template-columns: 1fr; }
+    .templates, .hardware { border: 0; }
+    .canvas { grid-template-columns: 1fr; justify-items: center; }
+    .topbar .steps, .topbar .scope { display: none; }
+  }
+</style>
+</head>
+<body class="paper">
+<header class="topbar">
+  <a class="mark" href="index.html"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</a>
+  <div class="scope">Pratama Photo Co. <span aria-hidden="true">/</span> <b>Booth A · Grand Indonesia</b></div>
+  <nav class="steps" aria-label="Setup steps">
+    <span data-n="1">Event</span>
+    <span data-n="2" aria-current="step">Layout and printer</span>
+  </nav>
+  <div class="who"><span class="initial">AP</span>Alex Pratama</div>
+</header>
+
+<main class="builder">
+  <h1 class="visually-hidden">Layout and printer</h1>
+
+  <nav class="templates" aria-label="Print templates">
+    <h2 class="col-h">Print template<small>5 templates · 1 custom</small></h2>
+    <button class="tpl" type="button"><span class="thumb s3"><i></i><i></i><i></i></span><span><b>Classic 3-shot strip</b><span>2 × 6 in · 3 poses</span></span></button>
+    <button class="tpl" type="button" aria-current="true"><span class="thumb s4"><i></i><i></i><i></i><i></i></span><span><b>Cyberpunk 4-shot strip</b><span>2 × 6 in · 4 poses · custom PNG</span></span></button>
+    <button class="tpl" type="button"><span class="thumb q"><i></i><i></i><i></i><i></i></span><span><b>4R quad grid</b><span>4 × 6 in · 4 poses</span></span></button>
+    <button class="tpl" type="button"><span class="thumb solo"><i></i></span><span><b>4R polaroid solo</b><span>4 × 6 in · 1 pose</span></span></button>
+    <button class="tpl" type="button"><span class="thumb a4"><i></i><i></i><i></i><i></i><i></i><i></i></span><span><b>A4 event poster</b><span>8.3 × 11.7 in · 6 poses</span></span></button>
+    <button class="tpl upload" type="button"><span class="thumb">+</span><span><b>Upload a template</b><span>PNG with transparent windows</span></span></button>
+  </nav>
+
+  <section class="canvas" aria-label="Template canvas">
+    <div class="work" data-ui>
+      <div class="strip">
+        <div class="photo t1"></div>
+        <div class="photo t2 sel"></div>
+        <div class="photo t3"></div>
+        <div class="photo t4"></div>
+        <div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small><small class="num">19.10.26 · #GIWeekend</small></div>
+      </div>
+      <!-- slot 2 sits at 14.7px + 125.5px + 10.5px from the top of the 630px strip -->
+      <span class="guide" style="top:151px"></span>
+      <span class="handle" style="left:10px;top:146px"></span>
+      <span class="handle" style="right:10px;top:146px"></span>
+      <span class="handle" style="left:10px;top:271px"></span>
+      <span class="handle" style="right:10px;top:271px"></span>
+    </div>
+    <div class="readout">
+      <div>
+        <h3>Window 2 of 4</h3>
+        <p>Snaps to the other windows within 10 px. Sizes are at 300 dpi on a 600 × 1800 px strip.</p>
+      </div>
+      <div class="xywh num">
+        <div class="field"><label for="x">X</label><input class="input" id="x" value="42"></div>
+        <div class="field"><label for="y">Y</label><input class="input" id="y" value="430"></div>
+        <div class="field"><label for="w">Width</label><input class="input" id="w" value="516"></div>
+        <div class="field"><label for="h">Height</label><input class="input" id="h" value="358"></div>
+      </div>
+      <div class="btns"><button class="btn" type="button">Auto-detect windows</button></div>
+    </div>
+  </section>
+
+  <aside class="hardware" aria-label="Camera and printer">
+    <section class="hw-sec">
+      <h2 class="col-h">Camera</h2>
+      <div class="stack">
+        <select class="input" aria-label="Camera"><option>Canon EOS 250D · USB-C (EDSDK)</option><option>FaceTime HD camera (built in)</option></select>
+        <div class="field">
+          <span class="label">Pose countdown</span>
+          <div class="segmented num" role="group" aria-label="Pose countdown"><button type="button" aria-pressed="false">3 s</button><button type="button" aria-pressed="true">5 s</button><button type="button" aria-pressed="false">7 s</button><button type="button" aria-pressed="false">10 s</button></div>
+        </div>
+        <div class="field">
+          <span class="label">Review each shot for</span>
+          <div class="segmented num" role="group" aria-label="Review time"><button type="button" aria-pressed="false">2 s</button><button type="button" aria-pressed="true">3 s</button><button type="button" aria-pressed="false">5 s</button></div>
+        </div>
+        <div>
+          <label class="toggle">Mirror the live view <input class="switch" type="checkbox" checked></label>
+          <label class="toggle">White screen flash <input class="switch" type="checkbox" checked></label>
+          <label class="toggle">Countdown beeps <input class="switch" type="checkbox"></label>
+        </div>
+      </div>
+    </section>
+    <section class="hw-sec">
+      <h2 class="col-h">Printer</h2>
+      <div class="stack">
+        <div class="dev"><div><b>DNP DS-RX1HS</b><span>USB · DNP spooler</span></div><span class="pill pos"><span class="dot"></span>Ready</span></div>
+        <div class="roll num">
+          <div class="bar" role="img" aria-label="412 of 700 sheets left"><i></i></div>
+          <div class="legend"><span>412 sheets left</span><span>of 700 · about 824 strips</span></div>
+        </div>
+        <select class="input" aria-label="Paper and cut"><option>4 × 6 in, cut into two 2 × 6 strips</option><option>4 × 6 in, no cut</option></select>
+        <div class="btns"><button class="btn" type="button">Test print</button><button class="btn quiet" type="button">Re-scan USB</button></div>
+      </div>
+    </section>
+  </aside>
+</main>
+
+<footer class="actionbar">
+  <p class="status">Step 2 of 2 · camera and printer ready</p>
+  <a class="btn" href="02-setup-event.html">Back</a>
+  <a class="btn primary" href="04-welcome.html">Launch photobooth</a>
+</footer>
+</body>
+</html>

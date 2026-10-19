@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pose 3 of 4 · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* kiosk 1920x1080: 40px frame; the strip column (strip + 40px) beside the live view, which takes the rest */
+  .capture { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 28px 40px; height: 100svh; padding: 40px; }
+  .capture > header { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 24px; }
+  .capture h1 { font-size: clamp(36px, 3.2vw, 64px); line-height: 1; font-weight: 600; letter-spacing: -0.035em; }
+  .capture header p { font-size: clamp(18px, 1.3vw, 24px); color: var(--stage-muted); }
+
+  .building { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 16px; min-height: 0; }
+  .building .strip { --w: max(200px, min(14vw, 25vh)); align-self: start; }
+  .slot { position: relative; }
+  .slot.now { outline: 4px solid var(--accent); outline-offset: -4px; background: #1b1b1b; display: grid; place-items: center; color: #fff; font-size: 15px; }
+  .slot.next { background: transparent; border: 2px dashed #bdb8b1; }
+  .retake { position: absolute; top: 6px; right: 6px; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: var(--radius); background: #111; color: #fff; cursor: pointer; }
+  .retake svg { width: 16px; height: 16px; }
+  .building .tip { max-width: 22ch; font-size: 16px; color: var(--stage-muted); }
+
+  /* live view: Canon 3:2, mirrored; the count sits on its own black block, never on the picture */
+  .live { position: relative; min-height: 0; display: grid; place-items: center; container-type: size; }
+  .frame { position: relative; width: min(100cqw, 150cqh); aspect-ratio: 3 / 2; background: #34322f url("photos/live.jpg") center / cover no-repeat; transform: scaleX(-1); }
+  .count { position: absolute; left: 50%; bottom: 32px; translate: -50% 0; display: grid; grid-template-columns: auto auto; align-items: center; gap: 20px; padding: 12px 32px 12px 36px; background: #111; border-radius: var(--radius); }
+  .count b { font-size: 160px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+  .count span { font-size: 20px; color: var(--stage-muted); line-height: 1.3; }
+  .pips { display: flex; gap: 6px; margin-top: 10px; }
+  .pips i { width: 28px; height: 6px; border-radius: 1px; background: #3a3a3a; }
+  .pips i.on { background: #fff; }
+  .cam-note { position: absolute; top: 16px; left: 50%; translate: -50% 0; padding: 8px 14px; background: #111; border-radius: var(--radius); font-size: 16px; }
+  @media (max-width: 1000px) {
+    .capture { grid-template-columns: 1fr; grid-template-rows: auto auto 60svh; height: auto; padding: 24px; }
+    .capture > header { flex-direction: column; gap: 8px; }
+    .building { grid-template-columns: auto 1fr; align-items: end; }
+    .count b { font-size: 96px; }
+  }
+</style>
+</head>
+<body class="stage">
+<main class="capture">
+  <header>
+    <h1>Pose 3 of 4</h1>
+    <p>Look at the camera above the screen</p>
+  </header>
+
+  <aside class="building" aria-label="Your strip so far">
+    <div class="strip">
+      <div class="photo t1 slot"><button class="retake" type="button" aria-label="Retake pose 1"><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div class="photo t2 slot"><button class="retake" type="button" aria-label="Retake pose 2"><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3 3 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div class="photo slot now">Now</div>
+      <div class="photo slot next"></div>
+      <div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small></div>
+    </div>
+    <p class="tip">Not happy with one? Tap its × and the camera retakes it straight away.</p>
+  </aside>
+
+  <section class="live" aria-label="Live view">
+    <div class="frame" role="img" aria-label="Canon EOS 250D live view, mirrored"></div>
+    <p class="cam-note">Canon EOS 250D · live</p>
+    <div class="count" aria-live="assertive">
+      <b>3</b>
+      <div><span>seconds</span><div class="pips" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

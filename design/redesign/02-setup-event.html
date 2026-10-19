@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Set up tonight's event · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* centred column: 1160px max, 32px gutters; each section = 320px label column + 48px + panel */
+  .settings { max-width: 1160px; margin: 0 auto; padding: 40px 32px 48px; }
+  .settings > header h1 { font-size: 27px; line-height: 1.25; font-weight: 500; letter-spacing: -0.02em; }
+  .settings > header p { margin-top: 6px; color: var(--muted); }
+  .sec { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 48px; padding: 32px 0; border-top: 1px solid var(--line); }
+  .settings > header + .sec { margin-top: 32px; }
+  .sec h2 { font-size: 18px; font-weight: 500; line-height: 1.3; }
+  .sec .desc { margin-top: 6px; color: var(--muted); font-size: 15px; }
+  .sec .desc + .desc { margin-top: 12px; }
+  .panel { background: var(--surface); border-radius: var(--radius); padding: 20px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .inline { display: flex; gap: 8px; align-items: end; }
+  .inline .field { flex: 1; }
+
+  /* saved event profiles for this outlet */
+  .profiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
+  .profile { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--bg); text-align: left; cursor: pointer; }
+  .profile b { font-weight: 500; font-size: 15px; }
+  .profile span { color: var(--muted); font-size: 13px; }
+  .profile[aria-pressed="true"] { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
+  .profile.new { border-style: dashed; color: var(--muted); place-content: center; }
+
+  .event-grid { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 28px; align-items: start; }
+  .event-grid .fields { display: grid; gap: 16px; }
+  .event-grid figure { display: grid; gap: 8px; justify-items: center; }
+  .event-grid figcaption { font-size: 13px; color: var(--muted); text-align: center; }
+  .event-grid .strip { --w: 200px; outline: 1px solid var(--line); outline-offset: -1px; }
+
+  /* operating mode as two choices that say what the guest will see */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mode { display: grid; grid-template-columns: 20px 1fr; gap: 4px 12px; padding: 16px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--bg); cursor: pointer; }
+  .mode input { grid-row: 1 / 3; margin: 3px 0 0; accent-color: var(--ink); width: 18px; height: 18px; }
+  .mode b { font-weight: 500; }
+  .mode span { color: var(--muted); font-size: 15px; }
+  .mode:has(input:checked) { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
+
+  .checks { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* welcome screen choice with its own preview */
+  .welcome-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; align-items: start; }
+  .welcome-grid .opts { display: grid; gap: 8px; }
+  .mini { width: 280px; aspect-ratio: 16 / 9; background: var(--stage); color: #fff; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 14px 16px; overflow: hidden; border-radius: var(--radius); }
+  .mini .t { font-size: 17px; line-height: 1.05; font-weight: 600; letter-spacing: -0.02em; }
+  .mini .t small { display: block; margin-top: 6px; font-size: 13px; font-weight: 400; color: var(--stage-muted); letter-spacing: 0; }
+  .mini .go { margin-top: 10px; display: inline-block; padding: 4px 8px; background: var(--accent); font-size: 13px; border-radius: 3px; }
+  .mini .strip { --w: 46px; align-self: start; margin-top: -26px; }
+  .upload { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px dashed var(--control); border-radius: var(--radius); background: var(--bg); color: var(--muted); font-size: 15px; }
+
+  @media (max-width: 900px) {
+    .topbar .steps, .topbar .scope { display: none; }
+    .topbar { padding: 0 16px; }
+    .settings { padding: 24px 16px; }
+    .sec { grid-template-columns: 1fr; gap: 16px; }
+    .profiles, .modes, .row2 { grid-template-columns: 1fr; }
+    .event-grid, .welcome-grid { grid-template-columns: 1fr; }
+    .mini { width: 100%; }
+    .actionbar { padding: 12px 16px; flex-wrap: wrap; }
+    .actionbar .status { width: 100%; }
+  }
+</style>
+</head>
+<body class="paper">
+<header class="topbar">
+  <a class="mark" href="index.html"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</a>
+  <div class="scope">Pratama Photo Co. <span aria-hidden="true">/</span> <b>Booth A · Grand Indonesia</b></div>
+  <nav class="steps" aria-label="Setup steps">
+    <span data-n="1" aria-current="step">Event</span>
+    <span data-n="2">Layout and printer</span>
+  </nav>
+  <div class="who"><span class="initial">AP</span>Alex Pratama</div>
+</header>
+
+<main class="settings">
+  <header>
+    <h1>Set up tonight's session</h1>
+    <p>Saturday 19 October 2026 · mall hours 10:00–22:00</p>
+  </header>
+
+  <section class="sec" aria-labelledby="s-outlet">
+    <div>
+      <h2 id="s-outlet">Outlet</h2>
+      <p class="desc">Where this booth stands. Sales and prints are filed under it on the fleet screen.</p>
+    </div>
+    <div class="panel">
+      <div class="inline">
+        <div class="field">
+          <label for="outlet">Outlet</label>
+          <select class="input" id="outlet">
+            <option selected>GI-01 · Grand Indonesia, West Mall L3</option>
+            <option>TP-02 · Tunjungan Plaza 6, L1 Atrium</option>
+            <option>PVJ-03 · Paris Van Java, Sky Level</option>
+            <option>BW-04 · Beachwalk Kuta, L2</option>
+          </select>
+        </div>
+        <button class="btn" type="button">Edit</button>
+        <button class="btn" type="button">Add outlet</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="s-event">
+    <div>
+      <h2 id="s-event">Event</h2>
+      <p class="desc">The name, date and footer are printed at the foot of every strip. The preview is the strip at its printed proportions.</p>
+    </div>
+    <div class="panel">
+      <div class="profiles" role="group" aria-label="Saved events at GI-01">
+        <button class="profile" type="button" aria-pressed="true"><b>GI Weekend</b><span class="num">Every Sat–Sun · 214 sessions</span></button>
+        <button class="profile" type="button" aria-pressed="false"><b>Halloween at GI</b><span class="num">31 Oct · not started</span></button>
+        <button class="profile new" type="button">New event</button>
+      </div>
+      <div class="event-grid">
+        <div class="fields">
+          <div class="field">
+            <label for="ev-name">Event name</label>
+            <input class="input" id="ev-name" value="GI Weekend">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="ev-date">Date on the strip</label>
+              <input class="input num" id="ev-date" value="19.10.26">
+            </div>
+            <div class="field">
+              <label for="ev-tag">Hashtag</label>
+              <input class="input" id="ev-tag" value="#GIWeekend">
+            </div>
+          </div>
+          <div class="field">
+            <label for="ev-foot">Second line on the strip</label>
+            <input class="input" id="ev-foot" value="Grand Indonesia, Jakarta">
+            <span class="hint">22 of 28 characters fit at the strip's footer size.</span>
+          </div>
+        </div>
+        <figure>
+          <div class="strip" aria-label="Strip preview">
+            <div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div>
+            <div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small><small class="num">19.10.26 · #GIWeekend</small></div>
+          </div>
+          <figcaption>2 × 6 in strip</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="s-mode">
+    <div>
+      <h2 id="s-mode">How guests pay</h2>
+      <p class="desc">Regular shows the packages and a QRIS code before the camera. Event skips payment entirely.</p>
+    </div>
+    <div class="panel">
+      <div class="modes">
+        <label class="mode"><input type="radio" name="mode" checked><b>Regular</b><span class="num">Guests pick a package and pay by QRIS. Packages from Rp 35.000. Staff can start a session with the PIN.</span></label>
+        <label class="mode"><input type="radio" name="mode"><b>Event</b><span>Free sessions for a private event. No payment screen, prints unlimited.</span></label>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="s-capture">
+    <div>
+      <h2 id="s-capture">What the camera records</h2>
+      <p class="desc">GIF and Boomerang use the Canon's burst; Video records 5 seconds before each pose.</p>
+    </div>
+    <div class="panel">
+      <div class="checks">
+        <label class="check"><input type="checkbox" checked>Photos</label>
+        <label class="check"><input type="checkbox" checked>GIF</label>
+        <label class="check"><input type="checkbox">Boomerang</label>
+        <label class="check"><input type="checkbox">Video</label>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="s-welcome">
+    <div>
+      <h2 id="s-welcome">Welcome screen</h2>
+      <p class="desc">What the booth shows between guests. The event's own photo works best; the default shows tonight's strip.</p>
+    </div>
+    <div class="panel">
+      <div class="welcome-grid">
+        <div class="opts">
+          <label class="mode"><input type="radio" name="welcome" checked><b>Tonight's strip</b><span>The event name with a strip from the last session.</span></label>
+          <label class="mode"><input type="radio" name="welcome"><b>Event photo</b><span>A landscape image you upload, at least 1920 × 1080.</span></label>
+          <div class="upload"><span>No image uploaded</span><button class="btn" type="button">Upload image</button></div>
+        </div>
+        <div class="mini" aria-label="Welcome screen preview">
+          <div class="t">GI Weekend<small class="num">Sat 19 Oct · Rp 35.000</small><span class="go">Touch to start</span></div>
+          <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="actionbar">
+  <p class="status num">Step 1 of 2 · saved 20:38</p>
+  <a class="btn quiet" href="01-sign-in.html">Sign out</a>
+  <a class="btn primary" href="03-setup-layout.html">Next: layout and printer</a>
+</footer>
+</body>
+</html>

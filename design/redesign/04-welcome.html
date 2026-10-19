@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* kiosk 1920x1080: 6vw outer margins; copy column 0–52%, the cut pair of strips 58–94% hanging from the top edge */
+  .welcome { position: relative; display: grid; grid-template-columns: minmax(0, 52fr) minmax(0, 48fr); min-height: 100svh; padding: 0 6vw; overflow: hidden; cursor: pointer; }
+  .copy { display: grid; grid-template-rows: auto 1fr auto; padding: 48px 0; }
+  .copy .mid { align-self: center; }
+  .welcome h1 { font-size: clamp(64px, 8.4vw, 168px); line-height: 0.92; font-weight: 600; letter-spacing: -0.04em; font-variation-settings: "opsz" 96; }
+  .when { margin-top: 28px; font-size: clamp(24px, 2.1vw, 40px); line-height: 1.2; letter-spacing: -0.01em; }
+  .offer { margin-top: 16px; max-width: 30ch; font-size: clamp(18px, 1.25vw, 24px); color: var(--stage-muted); }
+  .start { margin-top: 48px; display: flex; align-items: center; gap: 24px; }
+  .start .hint { font-size: 18px; color: var(--stage-muted); }
+
+  .pair { position: relative; display: flex; gap: 14px; justify-content: center; align-items: flex-start; }
+  .pair .strip { --w: max(200px, min(36vh, 21vw)); }
+  .pair .strip:first-child { margin-top: -10vh; }
+  .pair .strip:last-child { margin-top: 5vh; }
+
+  .lang { display: inline-flex; padding: 2px; border-radius: var(--radius); background: var(--stage-2); }
+  .lang button { height: 40px; min-width: 52px; border: 0; border-radius: 3px; background: none; color: var(--stage-muted); font-size: 16px; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--stage-3); color: var(--stage-ink); }
+
+  @media (max-width: 1000px) {
+    .welcome { grid-template-columns: 1fr; padding: 0 24px; }
+    .copy { min-height: 0; }
+    .pair { justify-content: flex-start; height: 560px; }
+    .pair .strip:first-child, .pair .strip:last-child { margin-top: 0; }
+    .start { flex-wrap: wrap; }
+  }
+  @media (max-width: 600px) { .pair .strip + .strip { display: none; } }
+</style>
+</head>
+<body class="stage">
+<main class="welcome" aria-label="Touch anywhere to start">
+  <div class="copy">
+    <div class="booth-line">
+      <span class="mark"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</span>
+    </div>
+    <div class="mid">
+      <h1>GI Weekend</h1>
+      <p class="when num">Saturday 19 October<br>Grand Indonesia, West Mall L3</p>
+      <p class="offer num">Four poses, two printed strips, and your photos on your phone. From Rp 35.000.</p>
+      <div class="start">
+        <a class="btn primary touch" href="05-package.html">Touch to start</a>
+        <span class="hint">Prints in about 40 seconds</span>
+      </div>
+    </div>
+    <div class="booth-line">
+      <span>Booth A · #GIWeekend</span>
+      <div class="lang" role="group" aria-label="Language"><button type="button" aria-pressed="true">EN</button><button type="button" aria-pressed="false">ID</button></div>
+    </div>
+  </div>
+
+  <div class="pair" aria-hidden="true">
+    <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small><small class="num">19.10.26 · #GIWeekend</small></div></div>
+    <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small><small class="num">19.10.26 · #GIWeekend</small></div></div>
+  </div>
+</main>
+</body>
+</html>

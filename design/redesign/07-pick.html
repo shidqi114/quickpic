@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pick your photos · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* kiosk 1920x1080: 40px frame; shots 65% | strip 35%, as in the editor that follows */
+  .pick { display: grid; grid-template-columns: minmax(0, 65fr) minmax(0, 35fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 28px 40px; height: 100svh; padding: 40px; }
+  .pick > header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
+  .pick h1 { font-size: clamp(28px, 3.2vw, 64px); line-height: 1; font-weight: 600; letter-spacing: -0.035em; }
+  .pick header p { font-size: clamp(18px, 1.3vw, 24px); color: var(--stage-muted); }
+
+  .shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: min-content; gap: 16px; align-content: start; min-height: 0; }
+  .shot { position: relative; aspect-ratio: 3 / 2; border: 0; padding: 0; cursor: pointer; border-radius: 2px; }
+  .shot .badge { position: absolute; top: 10px; left: 10px; min-width: 44px; height: 44px; display: grid; place-items: center; padding: 0 10px; border-radius: var(--radius); background: #fff; color: #111; font-size: 20px; font-weight: 600; }
+  .shot[aria-pressed="true"] { outline: 4px solid #fff; outline-offset: -4px; }
+  .shot.hover { outline: 4px solid var(--accent); outline-offset: -4px; }
+  .shot .meta { position: absolute; right: 10px; bottom: 8px; font-size: 14px; color: rgba(255,255,255,.8); }
+  .shot.gif .meta::before { content: "GIF · "; }
+
+  .side { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 32px; align-items: start; min-height: 0; }
+  .side .strip { --w: max(200px, min(13vw, 25vh)); }
+  .window { position: relative; }
+  .window .n { left: 8px; top: 6px; bottom: auto; font-size: 15px; font-weight: 600; color: #fff; }
+  .window.wait { background: #1b1b1b; outline: 4px solid var(--accent); outline-offset: -4px; display: grid; place-items: center; color: #fff; font-size: 14px; text-align: center; padding: 8px; }
+  .side h2 { font-size: 24px; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; }
+  .side ol { margin-top: 20px; display: grid; gap: 0; counter-reset: w; }
+  .side li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--stage-line); font-size: 18px; }
+  .side li span:last-child { color: var(--stage-muted); }
+  .side li.cur span:last-child { color: var(--stage-ink); }
+
+  .bar { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .bar p { font-size: 18px; color: var(--stage-muted); }
+  .bar .btns { display: flex; gap: 12px; }
+  .stage .btn[disabled] { background: var(--stage-2); color: var(--stage-muted); border-color: var(--stage-line); }
+  @media (max-width: 1000px) {
+    .pick { grid-template-columns: 1fr; height: auto; padding: 24px; }
+    .pick > header { flex-direction: column; gap: 8px; }
+    .shots { grid-template-columns: 1fr 1fr; }
+    .shot .meta { right: 16px; }
+    .bar { flex-direction: column; align-items: stretch; }
+    .bar .btns { flex-direction: column; }
+  }
+  @media (max-width: 600px) { .side { grid-template-columns: 1fr; } .shots { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="stage">
+<main class="pick">
+  <header>
+    <h1>Pick a photo for each window</h1>
+    <p>6 shots taken · 4 windows on your strip</p>
+  </header>
+
+  <section class="shots" aria-label="Your shots">
+    <button class="shot photo t1" type="button" aria-pressed="true"><span class="badge">1</span><span class="meta">Pose 1</span></button>
+    <button class="shot photo t2" type="button" aria-pressed="true"><span class="badge">2</span><span class="meta">Pose 2</span></button>
+    <button class="shot photo t5" type="button" aria-pressed="false"><span class="meta">Pose 2, second take</span></button>
+    <button class="shot photo t3" type="button" aria-pressed="true"><span class="badge">3</span><span class="meta">Pose 3</span></button>
+    <button class="shot photo t4 hover" type="button" aria-pressed="false"><span class="meta">Pose 4</span></button>
+    <button class="shot photo t6 gif" type="button" aria-pressed="false"><span class="meta">Pose 4, burst</span></button>
+  </section>
+
+  <aside class="side" aria-label="Your strip">
+    <div class="strip">
+      <div class="photo t1 window"><span class="n">1</span></div>
+      <div class="photo t2 window"><span class="n">2</span></div>
+      <div class="photo t3 window"><span class="n">3</span></div>
+      <div class="photo window wait">Tap a photo</div>
+      <div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small></div>
+    </div>
+    <div>
+      <h2>Window 4 is empty</h2>
+      <ol class="num">
+        <li><span>Window 1</span><span>Pose 1</span></li>
+        <li><span>Window 2</span><span>Pose 2</span></li>
+        <li><span>Window 3</span><span>Pose 3</span></li>
+        <li class="cur"><span>Window 4</span><span>Waiting</span></li>
+      </ol>
+    </div>
+  </aside>
+
+  <footer class="bar">
+    <p>Tap a photo again to take it out of the strip.</p>
+    <div class="btns">
+      <a class="btn touch" href="06-capture.html">Retake all</a>
+      <button class="btn touch" type="button" disabled>Fill window 4 to continue</button>
+    </div>
+  </footer>
+</main>
+</body>
+</html>

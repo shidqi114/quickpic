@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* open plane: 232px sidebar on the page ground + 1px hairline; canvas padding 32px; 12-col grid, 16px gap.
+     1440 - 232 - 1 - 64 = 1143px canvas: chart 8 cols (756) + 16 + sessions 4 cols (371) = 1143. */
+  .app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100svh; }
+  .sidebar { position: sticky; top: 0; height: 100svh; display: flex; flex-direction: column; gap: 2px; padding: 20px 12px; border-right: 1px solid var(--line); }
+  .sidebar .mark { padding: 0 8px 18px; }
+  .ws { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 40px; padding: 0 10px; margin-bottom: 16px; border: 1px solid var(--control); border-radius: var(--radius); font-size: 15px; font-weight: 500; background: none; cursor: pointer; }
+  .ws svg { width: 12px; }
+  .nav { white-space: nowrap; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--radius); color: var(--muted); font-size: 15px; text-decoration: none; }
+  .nav svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .nav:hover { background: var(--surface); color: var(--ink); }
+  .nav[aria-current="page"] { background: var(--active); color: var(--ink); }
+  .nav .count { margin-left: auto; font-size: 13px; color: var(--negative); }
+  .sidebar .bottom { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 10px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .sidebar .bottom span span { display: block; font-size: 13px; color: var(--muted); }
+
+  .canvas { min-width: 0; padding: 28px 32px 40px; }
+  .title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .title-row h1 { font-size: 27px; line-height: 1.2; font-weight: 500; letter-spacing: -0.02em; }
+  .title-row .sub { margin-top: 4px; color: var(--muted); font-size: 15px; }
+
+  /* the finding, with the action it drives */
+  .finding { display: flex; align-items: center; gap: 16px; margin: 20px 0 16px; padding: 12px 16px; background: var(--pill-warn-bg); border: 1px solid #fde68a; border-radius: var(--radius); color: #5c2b06; font-size: 15px; }
+  .finding p { flex: 1; }
+  .finding b { font-weight: 600; }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius); }
+  .kpi { padding: 14px 20px; }
+  .kpi + .kpi { border-left: 1px solid var(--line); }
+  .kpi .l { font-size: 14px; color: var(--muted); }
+  .kpi .v { margin-top: 4px; font-size: 27px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .kpi .v small { font-size: 15px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+  .kpi .d { margin-top: 2px; font-size: 13px; color: var(--muted); }
+  .kpi .d .up { color: var(--positive); }
+
+  .panel { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; min-width: 0; }
+  .panel > header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+  .panel h2 { font-size: 16px; font-weight: 500; }
+  .panel .meta { font-size: 13px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { height: 34px; padding: 0 10px; text-align: left; font-weight: 400; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { white-space: nowrap; padding: 12px 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  th:first-child, td:first-child { padding-left: 0; } th:last-child, td:last-child { padding-right: 0; }
+  th.n, td.n { text-align: right; }
+  td .sub { display: block; font-size: 13px; color: var(--muted); }
+  tr.hover td { background: #fafafa; }
+
+  /* the roll: track = 700 sheets; ink = what is left; red when it runs out before close */
+  .roll { display: grid; grid-template-columns: minmax(120px, 1fr) 170px; align-items: center; gap: 14px; }
+  .roll .bar { height: 8px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+  .roll .bar i { display: block; height: 100%; background: var(--ink); }
+  .roll.low .bar i { background: var(--negative); }
+  .roll .txt { font-size: 14px; }
+  .roll .txt span { display: block; font-size: 13px; color: var(--muted); }
+  .roll.low .txt span { color: var(--negative); }
+
+  .grid2 { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 16px; }
+  .chart svg { width: 100%; height: auto; font: 12px var(--font); fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; background: var(--accent); }
+  .legend span.part::before { background: #a9bcf5; }
+
+  .by-booth { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule); display: grid; gap: 6px; }
+  .by-booth li { display: grid; grid-template-columns: 200px minmax(0, 1fr) 120px; align-items: center; gap: 14px; font-size: 14px; }
+  .by-booth .b { height: 8px; }
+  .by-booth .b i { display: block; height: 100%; background: var(--accent); }
+  .by-booth .v { text-align: right; }
+  .by-booth small { color: var(--muted); font-size: 13px; }
+  .sess li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 9px 0; }
+  .sess li + li { border-top: 1px solid var(--rule); }
+  .sess .mini { width: 14px; height: 42px; background: var(--paper); outline: 1px solid var(--control); outline-offset: -1px; display: grid; gap: 1px; padding: 1px; grid-template-rows: repeat(4, 1fr) 6px; }
+  .sess .mini i:nth-child(1) { background: #4b4541; } .sess .mini i:nth-child(2) { background: #3f4549; } .sess .mini i:nth-child(3) { background: #57504a; } .sess .mini i:nth-child(4) { background: #464a43; }
+  .sess b { font-weight: 500; font-size: 15px; display: block; }
+  .sess .who { font-size: 13px; color: var(--muted); }
+  .sess .amt { text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .sess .amt span { display: block; font-size: 13px; color: var(--muted); }
+  .card-link { display: inline-block; margin-top: 8px; font-size: 14px; font-weight: 500; color: var(--ink); text-decoration: none; }
+  .card-link:hover { text-decoration: underline; }
+  .table-wrap { overflow-x: auto; }
+  .mobile-bar { display: none; }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .mobile-bar { display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+    .canvas { padding: 20px 16px 32px; }
+    .title-row { flex-wrap: wrap; align-items: flex-start; }
+    .finding { flex-direction: column; align-items: stretch; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .kpi + .kpi { border-left: 0; }
+    .kpi:nth-child(2n) { border-left: 1px solid var(--line); }
+    .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .grid2 { grid-template-columns: 1fr; }
+    .kpi { padding: 12px 14px; }
+    .kpi .v { font-size: 22px; white-space: nowrap; }
+    .by-booth li { grid-template-columns: 1fr 110px; }
+    .by-booth .b { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>
+</head>
+<body class="paper">
+<header class="mobile-bar"><a class="mark" href="index.html"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</a><button class="btn" type="button">Menu</button></header>
+<div class="app">
+  <nav class="sidebar" aria-label="Main">
+    <a class="mark" href="index.html"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</a>
+    <button class="ws" type="button">Pratama Photo Co. <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5 6 7.5l3-3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+    <a class="nav" href="10-fleet.html" aria-current="page"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="12"/><rect x="9" y="2" width="5" height="7"/></svg>Fleet</a>
+    <a class="nav" href="#"><svg viewBox="0 0 16 16"><rect x="5" y="1.5" width="6" height="13"/><path d="M5 5.5h6M5 9h6"/></svg>Sessions</a>
+    <a class="nav" href="#"><svg viewBox="0 0 16 16"><path d="M2 5.5h12v8H2zM5 5.5V3h6v2.5"/></svg>Packages</a>
+    <a class="nav" href="#"><svg viewBox="0 0 16 16"><path d="M2.5 3h11l-1 7h-9z"/><circle cx="5" cy="13" r="1"/><circle cx="11" cy="13" r="1"/></svg>Merch and POS</a>
+    <a class="nav" href="#"><svg viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="7"/><path d="M5 9v4h6V9"/></svg>Hardware<span class="count num">1 offline</span></a>
+    <a class="nav" href="#"><svg viewBox="0 0 16 16"><rect x="1.5" y="3" width="13" height="8.5"/><path d="M6 14h4"/></svg>Live projector</a>
+    <div class="bottom"><span class="initial">AP</span><span>Alex Pratama<span>Owner</span></span></div>
+  </nav>
+
+  <main class="canvas">
+    <div class="title-row">
+      <div>
+        <h1>Fleet</h1>
+        <p class="sub num">4 booths · Saturday 19 October · updated 20:40 WIB</p>
+      </div>
+      <a class="btn" href="#">Pair a new kiosk</a>
+    </div>
+
+    <div class="finding" role="status">
+      <p class="num"><b>Paris Van Java, Booth C has 38 sheets left.</b> At the last hour's pace of 46 an hour it runs out about 21:30, 30 min before the mall closes.</p>
+      <a class="btn primary" href="#">Ask PVJ staff to load a roll</a>
+    </div>
+
+    <section class="kpis" aria-label="Today so far">
+      <div class="kpi"><p class="l">Takings today</p><p class="v">Rp 7.655.000</p><p class="d num"><span class="up">+Rp 675.000</span> on last Saturday by 20:40</p></div>
+      <div class="kpi"><p class="l">Sessions</p><p class="v">285</p><p class="d num">197 paid · 88 at the TP-02 event</p></div>
+      <div class="kpi"><p class="l">Sheets printed</p><p class="v">314 <small>4 × 6 in</small></p><p class="d num">556 strips and 36 4R prints</p></div>
+      <div class="kpi"><p class="l">Booths online</p><p class="v">3 <small>of 4</small></p><p class="d num">BW-04 offline since 20:26</p></div>
+    </section>
+
+    <section class="panel" aria-labelledby="h-booths">
+      <header><h2 id="h-booths">Booths and their rolls</h2><span class="meta">A roll holds 700 sheets · malls close at 22:00 local time</span></header>
+      <div class="table-wrap" data-ui>
+        <table>
+          <thead><tr><th>Booth</th><th>Tonight</th><th>Status</th><th class="n">Sessions</th><th class="n">Takings</th><th style="width:30%">Roll</th></tr></thead>
+          <tbody class="num">
+            <tr>
+              <td>GI-01 · Booth A<span class="sub">Grand Indonesia, Jakarta</span></td>
+              <td>Regular<span class="sub">GI Weekend</span></td>
+              <td><span class="pill pos"><span class="dot"></span>Printing</span></td>
+              <td class="n">62</td><td class="n">Rp 2.410.000</td>
+              <td><div class="roll"><div class="bar"><i style="width:58.9%"></i></div><p class="txt">412 left<span>lasts past close</span></p></div></td>
+            </tr>
+            <tr>
+              <td>TP-02 · Booth B<span class="sub">Tunjungan Plaza, Surabaya</span></td>
+              <td>Event<span class="sub">Surabaya Wedding Expo</span></td>
+              <td><span class="pill pos"><span class="dot"></span>Live</span></td>
+              <td class="n">88</td><td class="n">Rp 0<span class="sub">free event</span></td>
+              <td><div class="roll"><div class="bar"><i style="width:75.7%"></i></div><p class="txt">530 left<span>lasts past close</span></p></div></td>
+            </tr>
+            <tr class="hover">
+              <td>PVJ-03 · Booth C<span class="sub">Paris Van Java, Bandung</span></td>
+              <td>Regular<span class="sub">PVJ Sky Level</span></td>
+              <td><span class="pill pos"><span class="dot"></span>Live</span></td>
+              <td class="n">81</td><td class="n">Rp 3.160.000</td>
+              <td><div class="roll low"><div class="bar"><i style="width:5.4%"></i></div><p class="txt">38 left<span>runs out about 21:30</span></p></div></td>
+            </tr>
+            <tr>
+              <td>BW-04 · Booth D<span class="sub">Beachwalk Kuta, Bali</span></td>
+              <td>Regular<span class="sub">Sunset Sessions</span></td>
+              <td><span class="pill warn"><span class="dot"></span>Offline</span><span class="sub">3 sessions waiting to sync</span></td>
+              <td class="n">54</td><td class="n">Rp 2.085.000<span class="sub">as of 20:26</span></td>
+              <td><div class="roll"><div class="bar"><i style="width:37.3%"></i></div><p class="txt">261 left<span>as of 20:26</span></p></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="grid2">
+      <section class="panel chart" aria-labelledby="h-hour">
+        <header><h2 id="h-hour">Takings by hour, all booths</h2><div class="legend"><span>Full hour</span><span class="part">20:00 to 20:40</span></div></header>
+<svg viewBox="0 0 640 230" role="img" aria-label="Takings by hour, all booths, 10:00 to 20:40">
+<line x1="72" x2="640" y1="190.0" y2="190.0" stroke="var(--line)"/>
+<text x="60" y="194.0" text-anchor="end">0</text>
+<line x1="72" x2="640" y1="130.0" y2="130.0" stroke="var(--rule)"/>
+<text x="60" y="134.0" text-anchor="end">400 rb</text>
+<line x1="72" x2="640" y1="70.0" y2="70.0" stroke="var(--rule)"/>
+<text x="60" y="74.0" text-anchor="end">800 rb</text>
+<line x1="72" x2="640" y1="10.0" y2="10.0" stroke="var(--rule)"/>
+<text x="60" y="14.0" text-anchor="end">1,2 jt</text>
+<rect x="82.8" y="154.0" width="30" height="36.0" fill="var(--accent)"><title>10:00 · Rp 240.000</title></rect>
+<text x="97.8" y="210" text-anchor="middle">10:00</text>
+<rect x="134.5" y="132.2" width="30" height="57.8" fill="var(--accent)"><title>11:00 · Rp 385.000</title></rect>
+<rect x="186.1" y="98.5" width="30" height="91.5" fill="var(--accent)"><title>12:00 · Rp 610.000</title></rect>
+<text x="201.1" y="210" text-anchor="middle">12:00</text>
+<rect x="237.7" y="82.0" width="30" height="108.0" fill="var(--accent)"><title>13:00 · Rp 720.000</title></rect>
+<rect x="289.4" y="91.8" width="30" height="98.2" fill="var(--accent)"><title>14:00 · Rp 655.000</title></rect>
+<text x="304.4" y="210" text-anchor="middle">14:00</text>
+<rect x="341.0" y="100.0" width="30" height="90.0" fill="var(--accent)"><title>15:00 · Rp 600.000</title></rect>
+<rect x="392.6" y="86.5" width="30" height="103.5" fill="var(--accent)"><title>16:00 · Rp 690.000</title></rect>
+<text x="407.6" y="210" text-anchor="middle">16:00</text>
+<rect x="444.3" y="68.5" width="30" height="121.5" fill="var(--accent)"><title>17:00 · Rp 810.000</title></rect>
+<rect x="495.9" y="54.2" width="30" height="135.8" fill="var(--accent)"><title>18:00 · Rp 905.000</title></rect>
+<text x="510.9" y="210" text-anchor="middle">18:00</text>
+<rect x="547.5" y="13.0" width="30" height="177.0" fill="var(--accent)"><title>19:00 · Rp 1.180.000</title></rect>
+<rect x="599.2" y="61.0" width="30" height="129.0" fill="#a9bcf5"><title>20:00 · Rp 860.000</title></rect>
+<text x="614.2" y="210" text-anchor="middle">20:00</text>
+<text x="614.2" y="53.0" text-anchor="middle" fill="var(--ink)">so far</text>
+</svg>
+        <ul class="by-booth num" aria-label="Takings by booth"><li><span>PVJ-03 · Paris Van Java</span><span class="b"><i style="width:100.0%"></i></span><span class="v">Rp 3.160.000</span></li><li><span>GI-01 · Grand Indonesia</span><span class="b"><i style="width:76.3%"></i></span><span class="v">Rp 2.410.000</span></li><li><span>BW-04 · Beachwalk Kuta</span><span class="b"><i style="width:66.0%"></i></span><span class="v">Rp 2.085.000</span></li><li><span>TP-02 · Tunjungan Plaza</span><span class="b"><i style="width:0.0%"></i></span><span class="v">Rp 0<small> event</small></span></li></ul>
+      </section>
+      <section class="panel" aria-labelledby="h-sess">
+        <header><h2 id="h-sess">Latest sessions</h2><span class="meta">285 today</span></header>
+        <ul class="sess num">
+          <li><span class="mini"><i></i><i></i><i></i><i></i></span><span><b>VIP four strips</b><span class="who">PVJ-03 · 20:38</span></span><span class="amt">Rp 55.000</span></li>
+          <li><span class="mini"><i></i><i></i><i></i><i></i></span><span><b>Classic twin strips</b><span class="who">GI-01 · 20:36</span></span><span class="amt">Rp 35.000</span></li>
+          <li><span class="mini"><i></i><i></i><i></i><i></i></span><span><b>Event session</b><span class="who">TP-02 · 20:35</span></span><span class="amt">Rp 0<span>event</span></span></li>
+          <li><span class="mini"><i></i><i></i><i></i><i></i></span><span><b>Classic twin strips</b><span class="who">PVJ-03 · 20:33</span></span><span class="amt">Rp 35.000</span></li>
+          <li><span class="mini"><i></i><i></i><i></i><i></i></span><span><b>4R print</b><span class="who">BW-04 · 20:26</span></span><span class="amt">Rp 40.000<span>not synced</span></span></li>
+        </ul>
+        <a class="card-link" href="#">All 285 sessions →</a>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

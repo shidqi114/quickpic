@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your photos from GI Weekend</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* phone first: 20px margins, one column; from 760px the strip sits beside the actions */
+  .gallery { max-width: 960px; margin: 0 auto; padding: 24px 20px 40px; }
+  .gallery > header { display: flex; justify-content: space-between; align-items: center; }
+  .gallery > header span { font-size: 14px; color: var(--muted); }
+  .gallery h1 { margin-top: 32px; font-size: clamp(36px, 9vw, 56px); line-height: 0.95; font-weight: 600; letter-spacing: -0.04em; }
+  .gallery .lede { margin-top: 10px; color: var(--muted); }
+
+  .main { margin-top: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; }
+  .main .strip { --w: min(40vw, 190px); outline: 1px solid var(--line); outline-offset: -1px; }
+  .actions { display: grid; gap: 10px; margin-top: 20px; }
+  .actions .btn { width: 100%; height: 48px; justify-content: space-between; }
+  .actions .btn span { font-weight: 400; color: inherit; opacity: .75; font-size: 14px; }
+  .main .gif { position: relative; aspect-ratio: 2 / 3; border-radius: 2px; }
+  .main .gif b { position: absolute; left: 8px; top: 8px; padding: 2px 6px; background: #111; color: #fff; font-size: 13px; font-weight: 500; border-radius: 3px; }
+
+  .singles { margin-top: 36px; }
+  .singles h2 { font-size: 20px; font-weight: 500; }
+  .singles ul { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .singles li { display: grid; gap: 6px; }
+  .singles .photo { aspect-ratio: 3 / 2; border-radius: 2px; }
+  .singles a { font-size: 14px; }
+
+  .keep { margin-top: 32px; padding: 16px; background: var(--surface); border-radius: var(--radius); font-size: 15px; }
+  .keep b { font-weight: 500; }
+  .gallery > footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+
+  @media (min-width: 760px) {
+    .main { grid-template-columns: auto 300px; gap: 24px; }
+    .actions { grid-template-columns: repeat(3, 1fr); }
+    .singles ul { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body class="paper">
+<main class="gallery">
+  <header>
+    <span class="mark"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</span>
+    <span class="num">GI01-A-0412</span>
+  </header>
+
+  <h1>GI Weekend</h1>
+  <p class="lede num">Your photos from Booth A, Grand Indonesia. Saturday 19 October, 20:36.</p>
+
+  <section class="main" aria-label="Your strip">
+    <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot">GI Weekend<small>Grand Indonesia, Jakarta</small><small class="num">19.10.26 · #GIWeekend</small></div></div>
+    <div class="photo t2 gif" role="img" aria-label="Your GIF"><b>GIF</b></div>
+  </section>
+  <div class="actions num">
+    <a class="btn primary" href="#">Save the strip <span>JPG · 2.1 MB</span></a>
+    <a class="btn" href="#">Save the GIF <span>4.8 MB</span></a>
+    <a class="btn" href="#">Save everything <span>ZIP · 18 MB</span></a>
+  </div>
+
+  <section class="singles" aria-labelledby="h-singles">
+    <h2 id="h-singles">Each pose, full size</h2>
+    <ul class="num">
+      <li><div class="photo t1"></div><a class="link" href="#">Save pose 1</a></li>
+      <li><div class="photo t2"></div><a class="link" href="#">Save pose 2</a></li>
+      <li><div class="photo t3"></div><a class="link" href="#">Save pose 3</a></li>
+      <li><div class="photo t4"></div><a class="link" href="#">Save pose 4</a></li>
+    </ul>
+  </section>
+
+  <p class="keep num"><b>Kept until Saturday 26 October.</b> After that the photos are deleted from our servers.</p>
+
+  <footer>Taken at a Pratama Photo Co. booth · Grand Indonesia, West Mall L3 · #GIWeekend</footer>
+</main>
+</body>
+</html>
