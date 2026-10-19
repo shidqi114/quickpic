@@ -81,6 +81,21 @@ const COPY: Record<WelcomeLanguage, {
   },
 };
 
+const PACKAGE_TEXT_ID: Record<string, { name: string; description: string }> = {
+  'pkg-standard-strip': {
+    name: 'Dua Strip Klasik',
+    description: '2 strip foto fisik 2x6 (3 atau 4 pose) + file digital',
+  },
+  'pkg-4r-polaroid': {
+    name: '4R Polaroid Vintage',
+    description: '1 cetakan besar 4R (4x6 inci) dengan 2 atau 4 slot',
+  },
+  'pkg-vip-livephoto': {
+    name: 'VIP Live Photo + Strip Lengkap',
+    description: '4 strip foto + GIF boomerang 5 detik + akses VIP cloud 30 hari',
+  },
+};
+
 const newTransactionId = () => 'TRX_' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
 export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({
@@ -190,12 +205,12 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({
                 >
                   <span className="grid gap-1">
                     <span className="flex items-center gap-3 flex-wrap">
-                      <span className="text-[22px] font-medium">{pkg.name}</span>
+                      <span className="text-[22px] font-medium">{language === 'id' ? PACKAGE_TEXT_ID[pkg.id]?.name ?? pkg.name : pkg.name}</span>
                       {pkg.isPopular && (
                         <span className="px-2 py-0.5 rounded-full bg-accent text-white text-[13px] font-medium">{copy.popular}</span>
                       )}
                     </span>
-                    <span className="text-[16px] text-stage-muted leading-normal max-w-prose">{pkg.description}</span>
+                    <span className="text-[16px] text-stage-muted leading-normal max-w-prose">{language === 'id' ? PACKAGE_TEXT_ID[pkg.id]?.description ?? pkg.description : pkg.description}</span>
                   </span>
                   <span className="text-right shrink-0 grid gap-1">
                     <span className="text-[24px] font-medium tabular-nums">{pkg.formattedPrice}</span>
