@@ -1,26 +1,89 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { getPhotoSession as getSupabasePhotoSession, getLocalSessions as getSupabaseLocalSessions } from '@/lib/supabase/client';
 import { getPhotoSession as getFirebasePhotoSession } from '@/lib/firebase';
-import { PhotoSession, LivePhotoMedia } from '@/types/photobooth';
-import {
-  Download,
-  Share2,
-  Sparkles,
-  Camera,
-  Check,
-  ArrowLeft,
-  RefreshCw,
-  Film,
-  Layers,
-  ExternalLink,
-  ShieldCheck,
-  AlertCircle
-} from 'lucide-react';
+import { PhotoSession, WelcomeLanguage } from '@/types/photobooth';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
+
+const COPY: Record<WelcomeLanguage, {
+  loadingTitle: string;
+  loadingBody: string;
+  notFoundTitle: string;
+  notFoundBody: string;
+  retry: string;
+  retrying: string;
+  back: string;
+  strip: string;
+  boomerangs: string;
+  raw: (n: number) => string;
+  stripAlt: string;
+  save: string;
+  saved: string;
+  copied: string;
+  share: string;
+  pose: (n: number) => string;
+  live: (n: number) => string;
+  keep: string;
+  footer: string;
+}> = {
+  en: {
+    loadingTitle: 'Finding your photos',
+    loadingBody: 'This takes a few seconds.',
+    notFoundTitle: 'Your photos are not ready yet',
+    notFoundBody: 'The booth may still be uploading them. Try again in a moment.',
+    retry: 'Check again',
+    retrying: 'Checking…',
+    back: 'Booth',
+    strip: 'Strip',
+    boomerangs: 'Boomerangs',
+    raw: (n) => `All poses (${n})`,
+    stripAlt: 'Your photo strip',
+    save: 'Save strip',
+    saved: 'Saved',
+    copied: 'Link copied',
+    share: 'Share link',
+    pose: (n) => `Pose ${n}`,
+    live: (n) => `Boomerang ${n}`,
+    keep: 'Kept for 30 days.',
+    footer: 'QuickPic',
+  },
+  id: {
+    loadingTitle: 'Mencari foto Anda',
+    loadingBody: 'Ini memakan beberapa detik.',
+    notFoundTitle: 'Foto Anda belum siap',
+    notFoundBody: 'Booth mungkin masih mengunggah foto. Coba lagi sebentar lagi.',
+    retry: 'Periksa lagi',
+    retrying: 'Memeriksa…',
+    back: 'Booth',
+    strip: 'Strip',
+    boomerangs: 'Boomerang',
+    raw: (n) => `Semua pose (${n})`,
+    stripAlt: 'Strip foto Anda',
+    save: 'Simpan strip',
+    saved: 'Tersimpan',
+    copied: 'Tautan disalin',
+    share: 'Bagikan tautan',
+    pose: (n) => `Pose ${n}`,
+    live: (n) => `Boomerang ${n}`,
+    keep: 'Disimpan selama 30 hari.',
+    footer: 'QuickPic',
+  },
+};
+
+const subscribeNever = () => () => {};
+
+function serverLanguage(): WelcomeLanguage {
+  return 'en';
+}
+
+function detectLanguage(): WelcomeLanguage {
+  const fromQuery = new URLSearchParams(window.location.search).get('lang');
+  if (fromQuery === 'id' || fromQuery === 'en') return fromQuery;
+  return navigator.language?.toLowerCase().startsWith('id') ? 'id' : 'en';
+}
 
 export default function GuestGalleryPage() {
   const params = useParams();
@@ -33,6 +96,8 @@ export default function GuestGalleryPage() {
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [activeTab, setActiveTab] = useState<'strip' | 'live' | 'raw'>('strip');
+  const lang = useSyncExternalStore(subscribeNever, detectLanguage, serverLanguage);
+  const copy = COPY[lang];
 
   const loadSessionResilient = async (isManual = false) => {
     if (!id && !queryImg) {
@@ -155,7 +220,7 @@ export default function GuestGalleryPage() {
           particleCount: 60,
           spread: 70,
           origin: { y: 0.4 },
-          colors: ['#ec4899', '#8b5cf6', '#06b6d4', '#fbbf24'],
+          colors: ['#1a4be0', '#ffffff', '#111111'],
         });
       } else if (!isDirectImage) {
         setSession(null);
@@ -208,201 +273,129 @@ export default function GuestGalleryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-100 select-none">
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-pink-500 via-purple-500 to-yellow-400 p-1 mb-6 animate-pulse">
-          <div className="w-full h-full bg-zinc-950 rounded-[22px] flex items-center justify-center">
-            <RefreshCw className="w-8 h-8 text-pink-500 animate-spin" />
-          </div>
-        </div>
-        <h2 className="text-xl font-bold text-white mb-1">Loading Your Memory</h2>
-        <p className="text-zinc-400 text-xs">Retrieving high-res photos from QuickPic Cloud...</p>
-      </div>
+      <main className="min-h-screen bg-paper text-ink font-display flex flex-col items-center justify-center gap-2 p-6 select-none text-center">
+        <h1 className="text-[28px] font-semibold tracking-tight">{copy.loadingTitle}</h1>
+        <p className="text-[16px] text-muted">{copy.loadingBody}</p>
+      </main>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center text-zinc-100 select-none max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500 mb-4">
-          <Camera className="w-8 h-8" />
+      <main className="min-h-screen bg-paper text-ink font-display flex flex-col justify-center gap-6 p-6 max-w-md mx-auto select-none">
+        <div className="grid gap-3">
+          <h1 className="text-[28px] leading-tight font-semibold tracking-tight">{copy.notFoundTitle}</h1>
+          <p className="text-[16px] text-muted leading-normal">{copy.notFoundBody}</p>
         </div>
-        <h2 className="text-2xl font-black text-white mb-2">Memory Uploading or Not Found</h2>
-        <p className="text-zinc-400 text-xs mb-6 leading-relaxed">
-          If your photobooth session just completed, the kiosk may still be syncing high-res photos to the cloud. Please tap retry below.
-        </p>
-
-        <div className="flex flex-col gap-3 w-full">
+        <div className="grid gap-3">
           <button
+            type="button"
             onClick={handleManualRetry}
             disabled={retrying}
-            className="w-full py-3.5 px-4 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white font-bold rounded-2xl transition shadow-lg shadow-pink-500/25 active:scale-95 flex items-center justify-center gap-2 text-sm cursor-pointer"
+            className="h-14 rounded bg-accent hover:bg-accent-press disabled:opacity-50 text-white text-[18px] font-medium cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
-            {retrying ? 'Connecting...' : 'Check Again / Refresh'}
+            {retrying ? copy.retrying : copy.retry}
           </button>
-
-          <Link
-            href="/"
-            className="w-full py-3 px-4 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold rounded-2xl border border-zinc-800 text-xs transition"
-          >
-            Return to Photobooth Kiosk
+          <Link href="/" className="h-14 rounded border border-paper-control text-[18px] flex items-center justify-center no-underline">
+            {copy.back}
           </Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   const hasLivePhotos = session.livePhotos && session.livePhotos.length > 0;
   const hasRawPhotos = session.rawPhotos && session.rawPhotos.length > 0;
+  const tabClass = (active: boolean) =>
+    `flex-1 h-12 rounded text-[16px] font-medium cursor-pointer ${active ? 'bg-ink text-white' : 'bg-paper-surface text-ink hover:bg-paper-control/40'}`;
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 flex flex-col items-center justify-between select-none">
-      
-      {/* Top Header */}
-      <header className="w-full max-w-md flex items-center justify-between py-3 mb-2">
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 text-zinc-400 hover:text-white text-xs font-semibold transition"
-        >
-          <ArrowLeft className="w-4 h-4" /> Booth
-        </Link>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs font-bold uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-300" /> QuickPic Cloud
-        </div>
-        <div className="w-10" />
-      </header>
+    <main className="min-h-screen bg-paper text-ink font-display select-none">
+      <div className="max-w-md mx-auto px-5 py-6 flex flex-col gap-6 min-h-screen">
+        <header className="flex items-center justify-between">
+          <Link href="/" className="text-[16px] text-muted no-underline">{copy.back}</Link>
+          <span className="text-[16px] font-semibold tracking-tight">{copy.footer}</span>
+        </header>
 
-      {/* Main Guest Card */}
-      <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col items-center">
-        
-        {/* Gallery Mode Tabs */}
         {(hasLivePhotos || hasRawPhotos) && (
-          <div className="flex items-center gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-2xl mb-4 w-full">
-            <button
-              onClick={() => setActiveTab('strip')}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                activeTab === 'strip'
-                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5" /> Full Strip
+          <div className="flex gap-2" role="tablist">
+            <button type="button" role="tab" aria-selected={activeTab === 'strip'} onClick={() => setActiveTab('strip')} className={tabClass(activeTab === 'strip')}>
+              {copy.strip}
             </button>
             {hasLivePhotos && (
-              <button
-                onClick={() => setActiveTab('live')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  activeTab === 'live'
-                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <Film className="w-3.5 h-3.5" /> Boomerangs
+              <button type="button" role="tab" aria-selected={activeTab === 'live'} onClick={() => setActiveTab('live')} className={tabClass(activeTab === 'live')}>
+                {copy.boomerangs}
               </button>
             )}
             {hasRawPhotos && (
-              <button
-                onClick={() => setActiveTab('raw')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                  activeTab === 'raw'
-                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                <Camera className="w-3.5 h-3.5" /> Raw ({session.rawPhotos.length})
+              <button type="button" role="tab" aria-selected={activeTab === 'raw'} onClick={() => setActiveTab('raw')} className={tabClass(activeTab === 'raw')}>
+                {copy.raw(session.rawPhotos.length)}
               </button>
             )}
           </div>
         )}
 
-        {/* Tab 1: Rendered Strip */}
         {activeTab === 'strip' && (
-          <div className="w-full flex flex-col items-center mb-5 animate-fade-in">
+          <section className="grid gap-4 justify-items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={session.compositeUrl}
-              alt="Photobooth Strip"
-              className="max-h-[56vh] w-auto rounded-xl shadow-2xl border border-zinc-800 object-contain mb-4"
-            />
+            <img src={session.compositeUrl} alt={copy.stripAlt} className="max-h-[62vh] w-auto object-contain outline-1 outline-paper-line" />
             <button
+              type="button"
               onClick={() => handleDownload(session.compositeUrl, `quickpic-${session.id}.jpg`)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-extrabold text-sm rounded-2xl transition shadow-xl shadow-pink-500/25 active:scale-95 cursor-pointer"
+              className="w-full h-14 rounded bg-accent hover:bg-accent-press text-white text-[18px] font-medium cursor-pointer"
             >
-              <Download className="w-4 h-4 stroke-[2.5]" />
-              Download High-Res Strip
+              {copy.save}
             </button>
-          </div>
+          </section>
         )}
 
-        {/* Tab 2: Live Photos / Boomerang Looping GIFs */}
         {activeTab === 'live' && session.livePhotos && (
-          <div className="w-full flex flex-col items-center mb-5 animate-fade-in space-y-3">
-            <div className="grid grid-cols-2 gap-2 w-full max-h-[56vh] overflow-y-auto p-1">
-              {session.livePhotos.map((live, idx) => (
-                <div key={idx} className="relative rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950 aspect-4/3 flex flex-col justify-between">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={live.gifUrl} alt={`Live Boomerang ${idx + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                    Live #{idx + 1}
-                  </div>
-                  <button
-                    onClick={() => handleDownload(live.gifUrl, `live-boomerang-${idx + 1}.gif`)}
-                    className="absolute top-1 right-1 p-1.5 rounded-lg bg-black/60 text-white hover:bg-pink-500 transition"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <section className="grid grid-cols-2 gap-3">
+            {session.livePhotos.map((live, idx) => (
+              <div key={idx} className="grid gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={live.gifUrl} alt={copy.live(idx + 1)} className="w-full aspect-[3/4] object-cover bg-paper-surface" />
+                <button
+                  type="button"
+                  onClick={() => handleDownload(live.gifUrl, `live-boomerang-${idx + 1}.gif`)}
+                  className="h-11 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface"
+                >
+                  {copy.save} · {copy.live(idx + 1)}
+                </button>
+              </div>
+            ))}
+          </section>
         )}
 
-        {/* Tab 3: Individual Raw Photos */}
         {activeTab === 'raw' && session.rawPhotos && (
-          <div className="w-full flex flex-col items-center mb-5 animate-fade-in">
-            <div className="grid grid-cols-2 gap-2 w-full max-h-[56vh] overflow-y-auto p-1">
-              {session.rawPhotos.map((photo, idx) => (
-                <div key={idx} className="relative rounded-xl overflow-hidden border border-zinc-700 bg-zinc-950 aspect-4/3 group">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo} alt={`Pose ${idx + 1}`} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
-                    Pose #{idx + 1}
-                  </div>
-                  <button
-                    onClick={() => handleDownload(photo, `raw-shot-${idx + 1}.jpg`)}
-                    className="absolute top-1 right-1 p-1.5 rounded-lg bg-black/60 text-white hover:bg-pink-500 transition"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <section className="grid grid-cols-2 gap-3">
+            {session.rawPhotos.map((photo, idx) => (
+              <div key={idx} className="grid gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo} alt={copy.pose(idx + 1)} className="w-full aspect-[3/4] object-cover bg-paper-surface" />
+                <button
+                  type="button"
+                  onClick={() => handleDownload(photo, `raw-shot-${idx + 1}.jpg`)}
+                  className="h-11 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface"
+                >
+                  {copy.save} · {copy.pose(idx + 1)}
+                </button>
+              </div>
+            ))}
+          </section>
         )}
 
-        {/* Share & Copy Link Button */}
-        <button
-          onClick={handleShare}
-          className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs uppercase tracking-wider rounded-2xl border border-zinc-700 transition active:scale-95 cursor-pointer"
-        >
-          {copied ? (
-            <>
-              <Check className="w-4 h-4 text-emerald-400" /> Link Copied to Clipboard!
-            </>
-          ) : (
-            <>
-              <Share2 className="w-4 h-4" /> Share Photo Strip Link
-            </>
-          )}
-        </button>
-
+        <div className="mt-auto grid gap-3">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="h-14 rounded border border-paper-control text-[18px] font-medium cursor-pointer hover:bg-paper-surface"
+          >
+            {copied ? copy.copied : copy.share}
+          </button>
+          <p className="text-[14px] text-muted text-center">{copy.keep}</p>
+        </div>
       </div>
-
-      {/* Footer */}
-      <footer className="my-4 text-center text-[11px] text-zinc-500 flex items-center gap-1.5">
-        <ShieldCheck className="w-3.5 h-3.5 text-pink-500" />
-        <span>Powered by QuickPic Cloud Photobooth &bull; Supabase + Cloudinary CDN</span>
-      </footer>
     </main>
   );
 }
