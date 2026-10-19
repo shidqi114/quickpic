@@ -1,10 +1,53 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, RefreshCw, Volume2, VolumeX, Sparkles, VideoOff } from 'lucide-react';
+import { Camera, RefreshCw, Volume2, VolumeX, VideoOff } from 'lucide-react';
 import { PhotoFilter } from '@/types/photobooth';
+import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+
+const COPY: Record<WelcomeLanguage, {
+  ready: string;
+  unavailable: string;
+  unavailableBody: string;
+  retry: string;
+  useDslr: string;
+  switchTo: (model: string) => string;
+  active: (model: string) => string;
+  switchTitle: string;
+  soundOn: string;
+  soundOff: string;
+  switchWebcam: string;
+}> = {
+  en: {
+    ready: 'Get ready and smile',
+    unavailable: 'Camera not available',
+    unavailableBody: 'Allow camera access in your browser, or use the Canon camera.',
+    retry: 'Try the webcam again',
+    useDslr: 'Use Canon camera',
+    switchTo: (model) => `Switch to ${model}`,
+    active: (model) => `${model} (on)`,
+    switchTitle: 'Click to switch between the Canon camera and the webcam',
+    soundOn: 'Sound on',
+    soundOff: 'Sound off',
+    switchWebcam: 'Switch webcam',
+  },
+  id: {
+    ready: 'Siap-siap dan senyum',
+    unavailable: 'Kamera tidak tersedia',
+    unavailableBody: 'Izinkan akses kamera di browser, atau gunakan kamera Canon.',
+    retry: 'Coba webcam lagi',
+    useDslr: 'Pakai kamera Canon',
+    switchTo: (model) => `Ganti ke ${model}`,
+    active: (model) => `${model} (aktif)`,
+    switchTitle: 'Klik untuk berganti antara kamera Canon dan webcam',
+    soundOn: 'Suara nyala',
+    soundOff: 'Suara mati',
+    switchWebcam: 'Ganti webcam',
+  },
+};
 
 interface CameraViewfinderProps {
+  language?: WelcomeLanguage;
   countdown: number | null;
   isCapturing: boolean;
   filter: PhotoFilter;
@@ -15,6 +58,7 @@ interface CameraViewfinderProps {
 }
 
 export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
+  language = 'en',
   countdown,
   isCapturing,
   filter,
@@ -178,19 +222,16 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
     setSelectedDeviceId(devices[nextIndex].deviceId);
   };
 
+  const copy = COPY[language];
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-black/90 overflow-hidden rounded-3xl border border-zinc-800 shadow-2xl">
-      {/* Live Video Element or DSLR Stream */}
+    <div className="relative w-full h-full flex items-center justify-center bg-stage overflow-hidden">
       {useDslrStream ? (
         <img
           id="dslr-liveview-stream"
           src="http://localhost:8000/camera/stream"
-          alt="Canon DSLR Liveview"
-          className="w-full h-full object-cover transition-all duration-300"
-          style={{
-            transform: mirror ? 'scaleX(-1)' : 'none',
-            ...getFilterStyle(filter),
-          }}
+          alt="Canon camera live view"
+          className="w-full h-full object-cover"
+          style={{ transform: mirror ? 'scaleX(-1)' : 'none', ...getFilterStyle(filter) }}
           onError={() => setUseDslrStream(false)}
         />
       ) : (
@@ -199,102 +240,86 @@ export const CameraViewfinder: React.FC<CameraViewfinderProps> = ({
           playsInline
           muted
           autoPlay
-          className="w-full h-full object-cover transition-all duration-300"
-          style={{
-            transform: mirror ? 'scaleX(-1)' : 'none',
-            ...getFilterStyle(filter),
-          }}
+          className="w-full h-full object-cover"
+          style={{ transform: mirror ? 'scaleX(-1)' : 'none', ...getFilterStyle(filter) }}
         />
       )}
 
-      {/* Screen Flash Overlay */}
       {flash && <div className="absolute inset-0 bg-white z-50 animate-flash pointer-events-none" />}
 
-      {/* Countdown Overlay */}
       {countdown !== null && countdown > 0 && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs">
-          <div className="text-white text-9xl md:text-[14rem] font-black drop-shadow-[0_10px_25px_rgba(0,0,0,0.8)] animate-countdown select-none">
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/35">
+          <div className="bg-stage px-10 pt-4 pb-6 text-white text-[clamp(120px,16vw,240px)] leading-none font-semibold tracking-[-0.04em] tabular-nums select-none">
             {countdown}
           </div>
-          <p className="text-pink-400 font-semibold text-xl tracking-wider uppercase mt-4 animate-pulse">
-            Get Ready & Smile!
-          </p>
+          <p className="mt-6 text-white text-[clamp(18px,1.6vw,28px)] font-medium bg-stage px-5 py-2">{copy.ready}</p>
         </div>
       )}
 
-      {/* Camera Error Fallback (Only shown if webcam fails and DSLR is not streaming) */}
       {cameraError && !useDslrStream && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center z-30">
-          <VideoOff className="w-16 h-16 text-rose-500 mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">Camera Unavailable</h3>
-          <p className="text-zinc-400 max-w-md text-sm mb-6">
-            Please allow camera permissions in your browser, or switch to your connected Canon DSLR.
-          </p>
-          <div className="flex items-center gap-3">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-stage p-8 text-center z-30 gap-5">
+          <VideoOff className="w-14 h-14 text-stage-muted" />
+          <h3 className="text-[clamp(24px,2.4vw,40px)] font-semibold text-white">{copy.unavailable}</h3>
+          <p className="text-stage-muted max-w-md text-[18px] leading-normal">{copy.unavailableBody}</p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <button
+              type="button"
               onClick={() => setSelectedDeviceId('')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-medium transition"
+              className="h-14 px-6 rounded bg-accent hover:bg-accent-press text-white text-[18px] font-medium cursor-pointer"
             >
-              <RefreshCw className="w-4 h-4" /> Retry Webcam
+              {copy.retry}
             </button>
             {dslrAvailable && (
               <button
+                type="button"
                 onClick={() => setUseDslrStream(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-sm font-medium transition"
+                className="h-14 px-6 rounded border border-stage-muted/50 text-white text-[18px] font-medium cursor-pointer hover:bg-white/10"
               >
-                <Camera className="w-4 h-4" /> Use Canon DSLR
+                {copy.useDslr}
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Top Left: DSLR Status Indicator */}
       {dslrAvailable && (
-        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+        <div className="absolute top-4 left-4 z-20">
           <button
+            type="button"
             onClick={() => setUseDslrStream((prev) => !prev)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md transition shadow-lg border ${
-              useDslrStream
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30'
-                : 'bg-zinc-900/80 text-zinc-300 border-zinc-700/50 hover:bg-zinc-800'
+            className={`h-11 flex items-center gap-2 px-4 rounded text-[16px] font-medium cursor-pointer border ${
+              useDslrStream ? 'bg-accent border-transparent text-white' : 'bg-stage border-stage-muted/50 text-white hover:bg-white/10'
             }`}
-            title="Click to toggle between Canon DSLR and Webcam"
+            title={copy.switchTitle}
           >
-            <span className={`w-2 h-2 rounded-full ${useDslrStream ? 'bg-emerald-400 animate-ping' : 'bg-zinc-400'}`} />
-            <Camera className="w-3.5 h-3.5" />
-            {useDslrStream ? `${dslrModel} (Active)` : `Switch to ${dslrModel}`}
+            <Camera className="w-4 h-4" />
+            {useDslrStream ? copy.active(dslrModel) : copy.switchTo(dslrModel)}
           </button>
         </div>
       )}
 
-      {/* Top Camera Controls Overlay */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
         {!useDslrStream && devices.length > 1 && (
           <button
+            type="button"
             onClick={switchCamera}
-            title="Switch Webcam"
-            className="p-3 rounded-full bg-zinc-900/80 backdrop-blur-md text-zinc-300 hover:text-white hover:bg-zinc-800 transition shadow-lg border border-zinc-700/50"
+            title={copy.switchWebcam}
+            aria-label={copy.switchWebcam}
+            className="w-11 h-11 rounded bg-stage text-white border border-stage-muted/50 flex items-center justify-center cursor-pointer hover:bg-white/10"
           >
             <RefreshCw className="w-5 h-5" />
           </button>
         )}
         <button
+          type="button"
           onClick={onToggleAudio}
-          title={playAudio ? 'Sound On' : 'Mute Sound'}
-          className="p-3 rounded-full bg-zinc-900/80 backdrop-blur-md text-zinc-300 hover:text-white hover:bg-zinc-800 transition shadow-lg border border-zinc-700/50"
+          title={playAudio ? copy.soundOn : copy.soundOff}
+          aria-label={playAudio ? copy.soundOn : copy.soundOff}
+          className="w-11 h-11 rounded bg-stage text-white border border-stage-muted/50 flex items-center justify-center cursor-pointer hover:bg-white/10"
         >
-          {playAudio ? <Volume2 className="w-5 h-5 text-pink-400" /> : <VolumeX className="w-5 h-5 text-zinc-500" />}
+          {playAudio ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-stage-muted" />}
         </button>
       </div>
-
-      {/* Bottom Live Filter Badge */}
-      {filter !== 'none' && (
-        <div className="absolute bottom-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900/80 backdrop-blur-md text-xs font-medium text-pink-300 border border-pink-500/30">
-          <Sparkles className="w-3.5 h-3.5" />
-          Filter: {filter.toUpperCase()}
-        </div>
-      )}
     </div>
   );
 };

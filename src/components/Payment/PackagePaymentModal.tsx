@@ -109,6 +109,8 @@ export const PackagePaymentModal: React.FC<PackagePaymentModalProps> = ({
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState<VoucherCode | null>(null);
   const [voucherMessage, setVoucherMessage] = useState<string | null>(null);
+  // A fresh ID for each opening, so the QR shown matches the ID sent on confirm.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const transactionId = useMemo(() => newTransactionId(), [isOpen]);
 
   const [isStaffPinOpen, setIsStaffPinOpen] = useState(false);
