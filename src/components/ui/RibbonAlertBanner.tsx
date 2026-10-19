@@ -1,12 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  AlertTriangle,
-  Printer,
-  X,
-  RotateCcw,
-} from 'lucide-react';
+import { X } from 'lucide-react';
 
 export interface LowRibbonBooth {
   id: string;
@@ -110,137 +105,70 @@ export const RibbonAlertBanner: React.FC<RibbonAlertBannerProps> = ({
   };
 
   return (
-    <div
-      role="alert"
-      aria-live="assertive"
-      className={`relative overflow-hidden rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/80 via-zinc-900/95 to-amber-950/60 p-4 md:p-5 shadow-xl shadow-amber-950/40 backdrop-blur-md transition-all ${className}`}
-    >
-      {/* Ambient background glow */}
-      <div className="pointer-events-none absolute -top-12 -left-12 h-36 w-36 rounded-full bg-amber-500/15 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-36 w-36 rounded-full bg-rose-500/10 blur-2xl" />
-
-      <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Left: Icon & Critical Details */}
-        <div className="flex items-start md:items-center gap-3.5 min-w-0">
-          {/* Animated Warning Icon */}
-          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 shadow-inner">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-2xl bg-amber-400/20 opacity-70" />
-            <AlertTriangle className="relative h-5 w-5 text-amber-400" />
-          </div>
-
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                <Printer className="w-3.5 h-3.5" />
-                Low Ribbon Consumable Alert
-              </span>
-
-              {criticalBooths.length > 1 && (
-                <span className="rounded-full bg-amber-500/20 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                  {criticalBooths.length} Booths Affected
-                </span>
-              )}
-            </div>
-
-            {/* Booth Information & Remaining cuts */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-100 font-medium">
-              <span className="font-bold text-white truncate">{primaryBooth.name}</span>
-              {primaryBooth.location && (
-                <span className="text-xs text-zinc-400 truncate">
-                  ({primaryBooth.location})
-                </span>
-              )}
-              <span className="text-zinc-500">·</span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-xs font-mono font-bold text-amber-300">
-                {primaryBooth.ribbonRemaining} cuts remaining ({percentage}%)
-              </span>
-            </div>
-
-            {/* Ribbon Stock Bar */}
-            <div className="flex items-center gap-2 pt-1 max-w-xs">
-              <div className="h-1.5 flex-1 rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-red-500 to-amber-400 transition-all duration-500"
-                  style={{ width: `${Math.max(percentage, 5)}%` }}
-                />
-              </div>
-              <span className="text-[10px] font-mono text-zinc-400 shrink-0">
-                {primaryBooth.ribbonRemaining} / {maxRoll}
-              </span>
-            </div>
+    <div role="alert" aria-live="assertive" className={`border-y border-ink py-4 px-1 font-display text-ink ${className}`}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="min-w-0 grid gap-2">
+          <p className="text-[16px] font-medium">
+            Low on prints: {primaryBooth.name}
+            {primaryBooth.location && <span className="text-muted font-normal"> · {primaryBooth.location}</span>}
+          </p>
+          <p className="text-[15px] text-muted tabular-nums">
+            {primaryBooth.ribbonRemaining} prints left of {maxRoll} ({percentage}%)
+            {criticalBooths.length > 1 && ` · ${criticalBooths.length} booths need a new roll`}
+          </p>
+          <div className="w-full max-w-xs h-1.5 bg-paper-surface overflow-hidden">
+            <div className="h-full bg-ink transition-all duration-500" style={{ width: `${Math.max(percentage, 5)}%` }} />
           </div>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
+        <div className="flex items-center gap-3 shrink-0">
           {criticalBooths.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setExpanded((prev) => !prev)}
-              className="px-3 py-2 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 text-xs font-semibold text-zinc-300 hover:text-white transition cursor-pointer"
-            >
-              {expanded ? 'Hide List' : `View All (${criticalBooths.length})`}
+            <button type="button" onClick={() => setExpanded((prev) => !prev)} className="h-10 px-4 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface">
+              {expanded ? 'Hide list' : `See all ${criticalBooths.length}`}
             </button>
           )}
 
           {(onAction || onSelectBooth) && (
-            <button
-              type="button"
-              onClick={() => handleAction(primaryBooth)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-bold text-xs shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
+            <button type="button" onClick={() => handleAction(primaryBooth)} className="h-10 px-4 rounded bg-accent hover:bg-accent-press text-white text-[15px] font-medium cursor-pointer">
               {actionLabel}
             </button>
           )}
 
           {dismissible && (
-            <button
-              type="button"
-              onClick={handleDismiss}
-              aria-label="Dismiss alert"
-              className="p-2 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 transition cursor-pointer"
-            >
+            <button type="button" onClick={handleDismiss} aria-label="Dismiss alert" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Expanded list for multi-booth low ribbon alerts */}
       {expanded && criticalBooths.length > 1 && (
-        <div className="mt-4 pt-3 border-t border-amber-500/20 space-y-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-400/90 mb-1">
-            All Fleet Stations Requiring Ribbon Replacement
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {criticalBooths.map((booth) => {
-              const boothPercent =
-                booth.ribbonPercentage ??
-                Math.round((booth.ribbonRemaining / (booth.maxRibbon || 700)) * 100);
-              return (
-                <div
-                  key={booth.id}
+        <ul className="mt-4 border-t border-paper-line divide-y divide-paper-line">
+          {criticalBooths.map((booth) => {
+            const boothPercent =
+              booth.ribbonPercentage ??
+              Math.round((booth.ribbonRemaining / (booth.maxRibbon || 700)) * 100);
+            return (
+              <li key={booth.id}>
+                <button
+                  type="button"
                   onClick={() => onSelectBooth && onSelectBooth(booth.id)}
-                  className={`p-2.5 rounded-xl bg-zinc-950/70 border border-amber-500/20 flex items-center justify-between gap-2 ${
-                    onSelectBooth ? 'cursor-pointer hover:border-amber-500/40 hover:bg-zinc-900/80 transition' : ''
-                  }`}
+                  disabled={!onSelectBooth}
+                  className="w-full py-3 flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-paper-surface disabled:cursor-default disabled:hover:bg-transparent"
                 >
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-zinc-100 truncate">{booth.name}</div>
-                    <div className="text-[11px] text-zinc-400 truncate">{booth.location || booth.id}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-mono text-xs font-bold text-amber-400">
-                      {booth.ribbonRemaining} cuts
-                    </div>
-                    <div className="text-[10px] text-zinc-500">{boothPercent}% left</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-medium truncate">{booth.name}</span>
+                    <span className="block text-[14px] text-muted truncate">{booth.location || booth.id}</span>
+                  </span>
+                  <span className="text-[15px] tabular-nums shrink-0">
+                    {booth.ribbonRemaining} prints left
+                    <span className="block text-[13px] text-muted">{boothPercent}%</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

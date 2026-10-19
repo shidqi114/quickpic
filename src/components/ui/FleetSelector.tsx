@@ -1,16 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  Store,
-  Cpu,
-  Radio,
-  Layers,
-  ChevronDown,
-  Check,
-  Search,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, Search, X } from 'lucide-react';
 
 export type BoothStatus = 'online' | 'offline' | 'maintenance';
 
@@ -82,71 +73,6 @@ export const DEFAULT_MOCK_BOOTHS: BoothOption[] = [
   },
 ];
 
-/**
- * Status indicator badge with emerald pulse for online,
- * amber dot for maintenance, and zinc dot for offline.
- */
-function StatusBadge({ status, label }: { status: BoothStatus; label?: boolean }) {
-  if (status === 'online') {
-    return (
-      <span className="flex items-center gap-1.5" title="Online & Heartbeat Active">
-        <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-xs shadow-emerald-500/50" />
-        </span>
-        {label && <span className="text-[11px] font-medium text-emerald-400">Online</span>}
-      </span>
-    );
-  }
-
-  if (status === 'maintenance') {
-    return (
-      <span className="flex items-center gap-1.5" title="In Maintenance Mode">
-        <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-          <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-amber-400/50" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-        </span>
-        {label && <span className="text-[11px] font-medium text-amber-400">Maintenance</span>}
-      </span>
-    );
-  }
-
-  return (
-    <span className="flex items-center gap-1.5" title="Offline / No Heartbeat">
-      <span className="inline-flex rounded-full h-2 w-2 bg-zinc-500" />
-      {label && <span className="text-[11px] font-medium text-zinc-400">Offline</span>}
-    </span>
-  );
-}
-
-/**
- * Helper to select appropriate visual Lucide icon for booth type / location
- */
-function getBoothIcon(booth?: BoothOption) {
-  if (!booth) return <Layers className="w-4 h-4 text-violet-400" />;
-  const loc = (booth.location || '').toLowerCase();
-  const name = booth.name.toLowerCase();
-
-  if (loc.includes('mall') || loc.includes('plaza') || loc.includes('atrium') || loc.includes('store')) {
-    return <Store className="w-4 h-4 text-pink-400" />;
-  }
-  if (name.includes('kiosk') || name.includes('node') || name.includes('station')) {
-    return <Cpu className="w-4 h-4 text-cyan-400" />;
-  }
-  return <Radio className="w-4 h-4 text-amber-400" />;
-}
-
-/**
- * FleetSelector Component
- *
- * Interactive dropdown / station selector for photobooth stations across the fleet.
- * Features:
- * - Option 'all' (All Booths / Consolidated Fleet Overview) or specific booth IDs
- * - Visual badges: online (emerald pulse), offline (zinc dot), maintenance (amber dot)
- * - Booth name and location labels with icons (Store / Cpu / Radio)
- * - Dark modern theme (zinc-900, border-zinc-800, Tailwind CSS v4, Lucide icons)
- * - Search filter for large fleets & accessible keyboard/click-outside navigation
- */
 export const FleetSelector: React.FC<FleetSelectorProps> = ({
   booths = DEFAULT_MOCK_BOOTHS,
   selectedBoothId = 'all',
@@ -196,6 +122,11 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
   const selectedBooth = booths.find((b) => b.id === selectedBoothId);
   const isFleetOverview = selectedBoothId === 'all' || !selectedBooth;
 
+  const dot = (status: BoothStatus) =>
+    status === 'online' ? 'bg-positive' : status === 'maintenance' ? 'bg-warning' : 'bg-muted';
+  const statusText = (status: BoothStatus) =>
+    status === 'online' ? 'Online' : status === 'maintenance' ? 'Needs attention' : 'Offline';
+
   // Filtered booth list based on search query
   const filteredBooths = booths.filter((b) => {
     if (!searchQuery.trim()) return true;
@@ -221,142 +152,73 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
   };
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
-      {label && (
-        <span className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-          {label}
-        </span>
-      )}
+    <div className={`relative inline-block text-left font-display text-ink ${className}`} ref={dropdownRef}>
+      {label && <span className="block text-[14px] text-muted mb-2">{label}</span>}
 
-      {/* Main Dropdown Trigger Button */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        className={`group flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80 transition-all shadow-md focus:outline-hidden focus:ring-2 focus:ring-pink-500/50 ${
-          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-        } ${isOpen ? 'ring-2 ring-pink-500/40 border-pink-500/40' : ''}`}
+        className={`h-14 min-w-[280px] px-4 rounded border border-paper-control bg-paper flex items-center justify-between gap-4 text-left cursor-pointer hover:bg-paper-surface disabled:opacity-40 ${isOpen ? 'outline-2 outline-accent' : ''}`}
       >
-        <div className="flex items-center gap-2.5 min-w-0 text-left">
-          {/* Leading Icon */}
-          <div className="w-8 h-8 rounded-xl bg-zinc-800/90 border border-zinc-700/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            {isFleetOverview ? (
-              <Layers className="w-4 h-4 text-violet-400" />
-            ) : (
-              getBoothIcon(selectedBooth)
-            )}
-          </div>
-
-          {/* Text Information */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-zinc-100 truncate">
-                {isFleetOverview ? 'All Booths (Fleet Overview)' : selectedBooth.name}
-              </span>
-              {!isFleetOverview && selectedBooth && (
-                <StatusBadge status={selectedBooth.status} />
-              )}
-            </div>
-
-            <p className="text-[11px] text-zinc-400 truncate">
-              {isFleetOverview
-                ? `${onlineCount} of ${booths.length} stations online`
-                : selectedBooth?.location || selectedBooth?.id}
-            </p>
-          </div>
-        </div>
-
-        {/* Chevron Icon */}
-        <ChevronDown
-          className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-pink-400' : 'group-hover:text-zinc-200'
-          }`}
-        />
+        <span className="min-w-0">
+          <span className="block text-[16px] font-medium truncate">
+            {isFleetOverview ? 'All booths' : selectedBooth.name}
+          </span>
+          <span className="block text-[14px] text-muted truncate">
+            {isFleetOverview
+              ? `${onlineCount} of ${booths.length} online`
+              : `${statusText(selectedBooth.status)}${selectedBooth.location ? ` · ${selectedBooth.location}` : ''}`}
+          </span>
+        </span>
+        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown Menu Popover */}
       {isOpen && (
-        <div
-          role="listbox"
-          className="absolute z-50 mt-2 w-80 md:w-96 rounded-2xl bg-zinc-900/98 border border-zinc-800 p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 origin-top-left"
-        >
-          {/* Search Bar (Shown when 3+ booths available) */}
+        <div role="listbox" className="absolute z-50 mt-2 w-full min-w-[320px] md:w-[400px] bg-paper border border-paper-control flex flex-col">
           {booths.length >= 3 && (
-            <div className="relative mb-2 px-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+            <div className="relative p-3 border-b border-paper-line">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search booth name, venue, ID..."
-                className="w-full pl-9 pr-8 py-2 rounded-xl bg-zinc-950/80 border border-zinc-800 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-hidden focus:border-pink-500 transition"
+                placeholder="Search by name, venue or ID"
+                className="w-full h-11 pl-10 pr-10 rounded border border-paper-control bg-paper text-[15px] placeholder:text-muted focus:outline-2 focus:outline-accent"
               />
               {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 p-0.5"
-                >
-                  <X className="w-3.5 h-3.5" />
+                <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear search" className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-muted hover:text-ink cursor-pointer">
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           )}
 
-          {/* Option: All Booths (Fleet Overview) */}
           {!searchQuery && (
-            <div className="pb-1.5 mb-1.5 border-b border-zinc-800/80">
-              <button
-                type="button"
-                role="option"
-                aria-selected={isFleetOverview}
-                onClick={() => handleSelect('all')}
-                className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-colors text-left cursor-pointer ${
-                  isFleetOverview
-                    ? 'bg-violet-500/15 border border-violet-500/30 text-white'
-                    : 'hover:bg-zinc-800/70 text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-violet-950/60 border border-violet-500/30 flex items-center justify-center shrink-0">
-                    <Layers className="w-4 h-4 text-violet-400" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-zinc-100">
-                      All Booths (Fleet Overview)
-                    </div>
-                    <div className="text-[11px] text-zinc-400 flex items-center gap-2">
-                      <span className="text-emerald-400 font-medium">{onlineCount} online</span>
-                      {maintenanceCount > 0 && (
-                        <span className="text-amber-400 font-medium">{maintenanceCount} maint</span>
-                      )}
-                      {offlineCount > 0 && (
-                        <span className="text-zinc-400">{offlineCount} offline</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {isFleetOverview && (
-                  <Check className="w-4 h-4 text-violet-400 shrink-0 ml-2" />
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              role="option"
+              aria-selected={isFleetOverview}
+              onClick={() => handleSelect('all')}
+              className={`w-full px-4 py-3 flex items-center justify-between gap-3 text-left border-b border-paper-line cursor-pointer hover:bg-paper-surface ${isFleetOverview ? 'bg-paper-surface' : ''}`}
+            >
+              <span>
+                <span className="block text-[16px] font-medium">All booths</span>
+                <span className="block text-[14px] text-muted">{onlineCount} online · {maintenanceCount} need attention · {offlineCount} offline</span>
+              </span>
+              {isFleetOverview && <Check className="w-4 h-4 text-accent" />}
+            </button>
           )}
 
-          {/* Booths List */}
-          <div className="max-h-64 overflow-y-auto space-y-1 pr-0.5">
+          <div className="max-h-80 overflow-y-auto">
             {filteredBooths.length === 0 ? (
-              <div className="p-4 text-center text-xs text-zinc-500">
-                No photobooth stations found matching &ldquo;{searchQuery}&rdquo;
-              </div>
+              <p className="px-4 py-6 text-center text-[15px] text-muted">No booth matches that search.</p>
             ) : (
               filteredBooths.map((booth) => {
                 const isSelected = selectedBoothId === booth.id;
-
                 return (
                   <button
                     key={booth.id}
@@ -364,54 +226,19 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
                     role="option"
                     aria-selected={isSelected}
                     onClick={() => handleSelect(booth.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-colors text-left cursor-pointer ${
-                      isSelected
-                        ? 'bg-pink-500/15 border border-pink-500/30 text-white'
-                        : 'hover:bg-zinc-800/70 text-zinc-200'
-                    }`}
+                    className={`w-full px-4 py-3 flex items-center justify-between gap-3 text-left border-b border-paper-line last:border-0 cursor-pointer hover:bg-paper-surface ${isSelected ? 'bg-paper-surface' : ''}`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {/* Booth Type / Location Icon */}
-                      <div className="w-8 h-8 rounded-lg bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center shrink-0">
-                        {getBoothIcon(booth)}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-zinc-100 truncate">
-                            {booth.name}
-                          </span>
-                          <span className="font-mono text-[9px] text-zinc-400 bg-zinc-800/90 px-1.5 py-0.5 rounded border border-zinc-700/40">
-                            {booth.id}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-zinc-400">
-                          {booth.location ? (
-                            <span className="truncate max-w-[170px]">{booth.location}</span>
-                          ) : (
-                            <span>Venue unassigned</span>
-                          )}
-
-                          {booth.ribbonRemaining !== undefined && (
-                            <span
-                              className={`font-mono text-[10px] shrink-0 ${
-                                booth.ribbonRemaining < 100
-                                  ? 'text-amber-400 font-semibold'
-                                  : 'text-zinc-400'
-                              }`}
-                            >
-                              · {booth.ribbonRemaining} cuts
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
-                      <StatusBadge status={booth.status} />
-                      {isSelected && <Check className="w-4 h-4 text-pink-400" />}
-                    </div>
+                    <span className="min-w-0">
+                      <span className="block text-[16px] font-medium truncate">{booth.name}</span>
+                      <span className="block text-[14px] text-muted truncate">
+                        {booth.location || 'Venue not set'}
+                        {booth.ribbonRemaining !== undefined && <span className="tabular-nums"> · {booth.ribbonRemaining} prints left</span>}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2 shrink-0 text-[14px]">
+                      <span className={`w-2 h-2 rounded-full ${dot(booth.status)}`} />
+                      {statusText(booth.status)}
+                    </span>
                   </button>
                 );
               })
