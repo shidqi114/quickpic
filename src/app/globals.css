@@ -1,5 +1,26 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-grotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+}
+
+@theme inline {
+  --font-display: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-paper: #ffffff;
+  --color-paper-surface: #f4f4f4;
+  --color-paper-line: #e6e6e6;
+  --color-paper-control: #cfd2d6;
+  --color-ink: #111111;
+  --color-muted: #6b6b6b;
+  --color-accent: #1a4be0;
+  --color-accent-press: #1238b0;
+  --color-negative: #c4242a;
+}
+
 :root {
   --background: #09090b;
   --foreground: #fafafa;
