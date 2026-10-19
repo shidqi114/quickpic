@@ -24,7 +24,6 @@ import {
   Clock,
   ChevronLeft
 } from 'lucide-react';
-import { SettingsModal } from '@/components/SettingsModal';
 import { PackagePaymentModal } from '@/components/Payment/PackagePaymentModal';
 import { ConsentModal } from '@/components/ConsentModal';
 import { ResultModal } from '@/components/ResultModal';
@@ -105,7 +104,6 @@ export default function PhotoboothKioskPage() {
 
   const [operatorSettings, setOperatorSettings] =
     useState<ExtendedOperatorSettings>(DEFAULT_OPERATOR_SETTINGS);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Selected package & payment details
   const [selectedPackage, setSelectedPackage] = useState<PhotoboothPackage>(PHOTOBOOTH_PACKAGES[0]);
@@ -876,15 +874,6 @@ export default function PhotoboothKioskPage() {
         onPrint={handleManualPrint}
       />
 
-      {/* BOOTH SETTINGS MODAL */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        settings={operatorSettings}
-        onUpdateSettings={(vals) =>
-          setOperatorSettings((s) => ({ ...s, ...vals }))
-        }
-      />
     </main>
   );
 }
