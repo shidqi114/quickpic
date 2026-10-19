@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose a package · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  /* kiosk 1920x1080: 6vw margins; packages 64% | 4vw | payment 32% */
+  .pay-screen { display: grid; grid-template-rows: auto auto 1fr; gap: 32px; min-height: 100svh; padding: 48px 6vw; }
+  .pay-screen h1 { font-size: clamp(40px, 3.6vw, 72px); line-height: 1; font-weight: 600; letter-spacing: -0.035em; }
+  .body { display: grid; grid-template-columns: minmax(0, 64fr) minmax(0, 32fr); gap: 4vw; align-items: start; }
+
+  .pkgs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .pkg { display: grid; grid-template-rows: auto auto 1fr auto; gap: 16px; padding: 0 0 20px; border: 0; background: none; text-align: left; color: inherit; cursor: pointer; }
+  /* the prints at true relative scale: a strip is 2 in wide, a 4R sheet 4 in, both 6 in tall */
+  .tray { height: clamp(280px, 34vh, 380px); background: var(--stage-2); display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--radius); outline: 2px solid transparent; outline-offset: -2px; transition: outline-color 150ms ease; }
+  .pkg[aria-pressed="true"] .tray { outline-color: var(--stage-ink); }
+  .tray .strip { --w: 84px; }
+  .tray.four { gap: 6px; }
+  .tray.four .strip { --w: 64px; }
+  .tray .sheet4r { --w: 168px; }
+  .tray .gif { align-self: flex-end; margin: 0 0 30px 4px; padding: 2px 6px; border: 1px solid var(--stage-line); border-radius: 3px; font-size: 13px; color: var(--stage-muted); }
+  .pkg h2 { font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em; }
+  .pkg ul { display: grid; gap: 4px; align-content: start; color: var(--stage-muted); font-size: 17px; }
+  .pkg .price { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; }
+  .pkg .price .pill { vertical-align: middle; margin-left: 8px; background: var(--stage-3); color: var(--stage-ink); }
+  .pkg .price small { display: block; margin-top: 2px; font-size: 15px; font-weight: 400; color: var(--stage-muted); letter-spacing: 0; }
+
+  .addons { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--stage-line); }
+  .addons h2 { font-size: 18px; font-weight: 500; margin-bottom: 12px; }
+  .addons .list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .addon { display: inline-flex; align-items: center; gap: 12px; height: 56px; padding: 0 18px; border: 1px solid var(--stage-line); border-radius: var(--radius); background: var(--stage-2); font-size: 17px; cursor: pointer; }
+  .addon span { color: var(--stage-muted); }
+  .addon input { width: 20px; height: 20px; accent-color: #fff; margin: 0; }
+
+  .qris { background: var(--stage-2); border-radius: var(--radius); padding: 28px; display: grid; gap: 20px; }
+  .qris h2 { font-size: 24px; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; }
+  .qris .total { display: flex; justify-content: space-between; align-items: baseline; font-size: 17px; color: var(--stage-muted); }
+  .qris .total b { font-size: 40px; font-weight: 500; color: var(--stage-ink); letter-spacing: -0.02em; }
+  .qris .code { background: #fff; padding: 20px; border-radius: var(--radius); display: grid; justify-items: center; gap: 10px; color: #111; }
+  .qris .code img { width: 100%; max-width: 260px; }
+  .qris .code p { font-size: 14px; color: #555; }
+  .qris .apps { font-size: 16px; color: var(--stage-muted); }
+  .qris .wait { display: flex; justify-content: space-between; font-size: 17px; }
+  .qris .wait span:last-child { color: var(--stage-muted); }
+  .qris .foot { display: flex; justify-content: space-between; gap: 12px; }
+  .btn.touch-s { height: 56px; padding: 0 22px; font-size: 18px; }
+
+  @media (max-width: 1100px) { .body, .pkgs { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="stage">
+<main class="pay-screen">
+  <div class="booth-line">
+    <span class="mark"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</span>
+    <span>GI Weekend · Booth A</span>
+  </div>
+  <h1>Choose what you take home</h1>
+
+  <div class="body">
+    <section aria-label="Packages">
+      <div class="pkgs">
+        <button class="pkg" type="button" aria-pressed="true">
+          <div class="tray" aria-hidden="true">
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+          </div>
+          <h2>Classic twin strips</h2>
+          <ul><li>Two 2 × 6 in strips</li><li>4 poses</li><li>Photos on your phone</li></ul>
+          <p class="price num">Rp 35.000 <span class="pill">Chosen by 41 of 62 today</span></p>
+        </button>
+        <button class="pkg" type="button" aria-pressed="false">
+          <div class="tray" aria-hidden="true">
+            <div class="sheet4r"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <span class="gif">GIF</span>
+          </div>
+          <h2>4R print</h2>
+          <ul><li>One 4 × 6 in glossy print</li><li>4 poses and a GIF</li><li>Photos on your phone</li></ul>
+          <p class="price num">Rp 40.000</p>
+        </button>
+        <button class="pkg" type="button" aria-pressed="false">
+          <div class="tray four" aria-hidden="true">
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <div class="strip"><div class="photo t1"></div><div class="photo t2"></div><div class="photo t3"></div><div class="photo t4"></div><div class="foot"></div></div>
+            <span class="gif">GIF</span>
+          </div>
+          <h2>VIP four strips</h2>
+          <ul><li>Four 2 × 6 in strips</li><li>4 poses and a 5-second GIF</li><li>Online gallery kept 30 days</li></ul>
+          <p class="price num">Rp 55.000</p>
+        </button>
+      </div>
+
+      <div class="addons">
+        <h2>Add to your order</h2>
+        <div class="list num">
+          <label class="addon"><input type="checkbox">Wooden frame for a strip <span>Rp 25.000</span></label>
+          <label class="addon"><input type="checkbox">Acrylic keychain <span>Rp 15.000</span></label>
+          <label class="addon"><input type="checkbox">Extra strip <span>Rp 10.000</span></label>
+        </div>
+      </div>
+    </section>
+
+    <aside class="qris" aria-label="Payment">
+      <h2>Scan to pay with QRIS</h2>
+      <p class="total num">Classic twin strips <b>Rp 35.000</b></p>
+      <div class="code">
+        <img src="img/qr-qris.svg" width="256" height="256" alt="QRIS payment code for Rp 35.000">
+        <p>QUICKPIC GI-01 · NMID ID1026341257</p>
+      </div>
+      <p class="apps">Works with GoPay, OVO, DANA, ShopeePay and any bank app.</p>
+      <p class="wait num"><span>Waiting for payment</span><span>Code expires in 4:52</span></p>
+      <div class="foot">
+        <a class="btn quiet touch-s" href="04-welcome.html">Back</a>
+        <a class="btn touch-s" href="06-capture.html">Staff code</a>
+      </div>
+    </aside>
+  </div>
+</main>
+</body>
+</html>

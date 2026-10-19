@@ -1,0 +1,159 @@
+/* QuickPic redesign — static UI phase.
+   Direction: "The product performs" (tasteskill v2, seed 372568938), type redrawn to Bricolage Grotesque.
+   Two grounds, one face, one accent:
+     paper  — operator screens (sign-in, setup, fleet): white sheet, black type, biro blue on the one action.
+     stage  — guest kiosk screens: the camera's black stage, white type, the same blue on the one action.
+   The printed 2x6 strip (1:3) and the DNP roll are the product's own objects and appear on every screen. */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/bricolage-grotesque.woff2") format("woff2-variations"), url("fonts/bricolage-grotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+}
+
+:root {
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --ink: #111111;
+  --muted: #6b6b6b;
+  --accent: #1a4be0;
+  --accent-press: #1238b0;
+  --accent-ink: #ffffff;
+  --line: #e6e6e6;
+  --rule: #efefef;
+  --control: #cfd2d6;
+  --active: #ececec;
+
+  --positive: #247b50; --negative: #c4242a; --warning: #92400e;
+  --pill-pos-bg: #dcfae5; --pill-pos-ink: #04250e;
+  --pill-neg-bg: #ffedea; --pill-neg-ink: #831c1e;
+  --pill-warn-bg: #fffbeb; --pill-warn-ink: #92400e;
+  --pill-bg: #ececec; --pill-ink: #3d3d3d;
+
+  --stage: #111111;
+  --stage-2: #1b1b1b;
+  --stage-3: #262626;
+  --stage-line: #2e2e2e;
+  --stage-ink: #ffffff;
+  --stage-muted: #a3a3a3;
+
+  --paper: #fbfaf7;           /* the dye-sub print's own white */
+
+  --font: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 4px;              /* one radius for every control and panel; prints keep square corners */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, p, figure, ul, ol, dl, dd, fieldset { margin: 0; }
+fieldset { padding: 0; border: 0; min-width: 0; }
+ul, ol { padding: 0; list-style: none; }
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num, table, .figure { font-variant-numeric: tabular-nums; }
+h1, h2, h3 { text-wrap: balance; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- the mark: a strip of three frames, the last one printing ---------- */
+.mark { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; text-decoration: none; }
+.mark svg { width: 14px; height: 36px; flex: none; }
+
+/* ---------- buttons: one shape everywhere ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: var(--radius); border: 1px solid var(--control); background: var(--bg); color: var(--ink); font-weight: 500; font-size: 15px; text-decoration: none; cursor: pointer; white-space: nowrap; transition: background-color 150ms ease, transform 120ms var(--ease); }
+.btn:hover { background: var(--surface); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-press); }
+.btn.quiet { border-color: transparent; background: transparent; }
+.btn.danger { color: var(--negative); }
+.btn[disabled] { cursor: not-allowed; color: var(--muted); background: var(--surface); }
+.link { color: var(--accent); text-decoration: none; font-weight: 500; }
+.link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.link.arrow::after { content: " →"; }
+
+/* ---------- fields ---------- */
+.field { display: grid; gap: 8px; }
+.field > label, .field > .label { font-size: 14px; font-weight: 500; }
+.field .hint { font-size: 13px; color: var(--muted); }
+.input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--bg); font-size: 15px; }
+.input::placeholder { color: var(--muted); }
+.input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+select.input { appearance: none; padding-right: 36px; background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23111' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") right 12px center / 12px no-repeat; }
+.segmented { display: inline-flex; padding: 2px; border-radius: var(--radius); background: var(--surface); }
+.segmented button { height: 36px; padding: 0 14px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+.segmented button[aria-pressed="true"] { background: var(--bg); color: var(--ink); font-weight: 500; outline: 1px solid var(--line); outline-offset: -1px; }
+.switch { appearance: none; width: 32px; height: 20px; margin: 0; border-radius: 999px; background: var(--control); position: relative; cursor: pointer; flex: none; transition: background-color 200ms ease; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 200ms var(--ease); }
+.switch:checked { background: var(--ink); }
+.switch:checked::after { transform: translateX(12px); }
+.check { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--control); border-radius: var(--radius); font-size: 15px; cursor: pointer; }
+.check input { accent-color: var(--ink); width: 16px; height: 16px; margin: 0; }
+.check:has(input:checked) { border-color: var(--ink); }
+
+/* ---------- pills ---------- */
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 13px; font-weight: 500; background: var(--pill-bg); color: var(--pill-ink); white-space: nowrap; }
+.pill.pos { background: var(--pill-pos-bg); color: var(--pill-pos-ink); }
+.pill.neg { background: var(--pill-neg-bg); color: var(--pill-neg-ink); }
+.pill.warn { background: var(--pill-warn-bg); color: var(--pill-warn-ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+/* ---------- the print: a 2x6 strip at 1:3, a 4x6 sheet at 2:3 ---------- */
+.strip { --w: 120px; width: var(--w); aspect-ratio: 1 / 3; background: var(--paper); padding: calc(var(--w) * 0.07); padding-bottom: 0; display: grid; grid-template-rows: repeat(var(--slots, 4), minmax(0, 1fr)) calc(var(--w) * 0.34); gap: calc(var(--w) * 0.05); color: #111; flex: none; }
+.strip > .foot { display: grid; align-content: center; justify-items: center; text-align: center; line-height: 1.1; font-size: calc(var(--w) * 0.075); font-weight: 600; letter-spacing: -0.01em; }
+.strip > .foot small { display: block; font-size: calc(var(--w) * 0.055); font-weight: 400; color: #555; margin-top: 2px; }
+.photo { position: relative; background: var(--tone, #4b4541) var(--src, none) center / cover no-repeat; min-height: 0; overflow: hidden; }
+.photo .n { position: absolute; left: 6px; bottom: 4px; font-size: 13px; color: rgba(255,255,255,.72); font-variant-numeric: tabular-nums; }
+.t1 { --tone: #4b4541; --src: url("photos/shot-1.jpg"); }
+.t2 { --tone: #3f4549; --src: url("photos/shot-2.jpg"); }
+.t3 { --tone: #57504a; --src: url("photos/shot-3.jpg"); }
+.t4 { --tone: #464a43; --src: url("photos/shot-4.jpg"); }
+.t5 { --tone: #4a4247; --src: url("photos/shot-5.jpg"); }
+.t6 { --tone: #3c4446; --src: url("photos/shot-6.jpg"); }
+.photo.empty { background: transparent; border: 1px dashed #b9b9b9; }
+.sheet4r { --w: 200px; width: var(--w); aspect-ratio: 2 / 3; background: var(--paper); padding: calc(var(--w) * 0.05); display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr calc(var(--w) * 0.18); gap: calc(var(--w) * 0.035); flex: none; }
+.sheet4r .foot { grid-column: 1 / -1; display: grid; place-items: center; color: #111; font-size: calc(var(--w) * 0.06); font-weight: 600; }
+
+/* ================================================================
+   PAPER — operator screens
+   ================================================================ */
+.paper { background: var(--bg); color: var(--ink); }
+
+/* top bar for the setup flow: product, scope, step, operator */
+.topbar { display: flex; align-items: center; gap: 24px; height: 64px; padding: 0 32px; border-bottom: 1px solid var(--line); }
+.topbar .scope { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; }
+.topbar .scope b { color: var(--ink); font-weight: 500; }
+.topbar .steps { display: flex; gap: 20px; margin-left: auto; font-size: 15px; color: var(--muted); }
+.topbar .steps [aria-current="step"] { color: var(--ink); font-weight: 500; }
+.topbar .steps span::before { content: attr(data-n) "  "; color: inherit; white-space: pre; }
+.topbar .who { display: flex; align-items: center; gap: 12px; padding-left: 24px; border-left: 1px solid var(--line); height: 32px; font-size: 15px; }
+
+.initial { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #dfe7ff; color: #12307f; font-size: 13px; font-weight: 600; flex: none; }
+
+/* action bar pinned to the foot of a setup step */
+.actionbar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 14px 32px; background: var(--bg); border-top: 1px solid var(--line); }
+.actionbar .status { color: var(--muted); font-size: 15px; margin-right: auto; }
+
+/* ================================================================
+   STAGE — guest kiosk screens (designed at 1920x1080, fluid)
+   ================================================================ */
+.stage { background: var(--stage); color: var(--stage-ink); min-height: 100svh; }
+.stage .btn { border-color: var(--stage-line); background: var(--stage-2); color: var(--stage-ink); }
+.stage .btn:hover { background: var(--stage-3); }
+.stage .btn.primary { background: var(--accent); border-color: transparent; }
+.stage .btn.primary:hover { background: var(--accent-press); }
+.stage .btn.quiet { background: transparent; border-color: transparent; }
+.btn.touch { height: 72px; padding: 0 32px; font-size: 22px; }
+.stage .muted { color: var(--stage-muted); }
+
+/* kiosk corner line: venue and booth, small, on every guest screen */
+.booth-line { display: flex; align-items: center; justify-content: space-between; gap: 24px; font-size: 15px; color: var(--stage-muted); }
+.booth-line .mark { color: var(--stage-ink); font-size: 16px; }
+.booth-line .mark svg { width: 10px; height: 26px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation: none !important; } }

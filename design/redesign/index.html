@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redesign screens · QuickPic</title>
+<link rel="stylesheet" href="quickpic.css">
+<style>
+  .idx { max-width: 1160px; margin: 0 auto; padding: 48px 32px 64px; }
+  .idx h1 { margin-top: 56px; font-size: clamp(32px, 4vw, 56px); line-height: 1; font-weight: 600; letter-spacing: -0.035em; }
+  .idx .lede { margin-top: 14px; max-width: 60ch; color: var(--muted); }
+  .groups { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+  .groups h2 { font-size: 18px; font-weight: 500; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .groups h2 small { display: block; font-size: 14px; font-weight: 400; color: var(--muted); }
+  .groups li a { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--rule); text-decoration: none; }
+  .groups li a:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  .groups .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .groups b { font-weight: 500; }
+  .groups span span { display: block; font-size: 14px; color: var(--muted); }
+  .groups .size { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  @media (max-width: 800px) { .groups { grid-template-columns: 1fr; } .idx { padding: 24px 20px; } }
+</style>
+</head>
+<body class="paper">
+<main class="idx">
+  <span class="mark"><svg viewBox="0 0 14 34" aria-hidden="true"><rect width="14" height="10" fill="currentColor"/><rect y="12" width="14" height="10" fill="currentColor"/><rect y="24" width="14" height="10" fill="#1a4be0"/></svg>QuickPic</span>
+  <h1>Redesign, static screens</h1>
+  <p class="lede">HTML and CSS only, no behaviour yet. Operator screens sit on white paper; guest screens sit on the camera's black stage. The printed strip is the object every screen is built around. Drop real booth photos into <b>photos/</b> as shot-1.jpg to shot-6.jpg and live.jpg and every screen fills with them.</p>
+
+  <div class="groups">
+    <section>
+      <h2>Operator<small>Laptop or kiosk in staff mode · 1440 × 900</small></h2>
+      <ul>
+        <li><a href="01-sign-in.html"><span><b>Sign in</b><span>Account, offline PIN, this kiosk's camera and printer</span></span><span class="size">1440</span></a></li>
+        <li><a href="02-setup-event.html"><span><b>Setup: event</b><span>Outlet, event, how guests pay, capture, welcome</span></span><span class="size">1440</span></a></li>
+        <li><a href="03-setup-layout.html"><span><b>Setup: layout and printer</b><span>Templates, window editor, timers, DNP roll</span></span><span class="size">1440</span></a></li>
+        <li><a href="10-fleet.html"><span><b>Fleet</b><span>Every booth's roll, takings and status tonight</span></span><span class="size">1440</span></a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Guest<small>Kiosk touchscreen · 1920 × 1080, and the guest's phone</small></h2>
+      <ul>
+        <li><a href="04-welcome.html"><span><b>Welcome</b><span>Event name, date, price, touch to start</span></span><span class="size">1920</span></a></li>
+        <li><a href="05-package.html"><span><b>Package and QRIS</b><span>What you take home, add-ons, scan to pay</span></span><span class="size">1920</span></a></li>
+        <li><a href="06-capture.html"><span><b>Capture</b><span>Live view, countdown, retake by tapping ×</span></span><span class="size">1920</span></a></li>
+        <li><a href="07-pick.html"><span><b>Pick photos</b><span>Six shots into four windows</span></span><span class="size">1920</span></a></li>
+        <li><a href="08-edit.html"><span><b>Filters and stickers</b><span>35 / 65 split editor</span></span><span class="size">1920</span></a></li>
+        <li><a href="09-result.html"><span><b>Printing and QR</b><span>Strips leave the printer, scan to keep</span></span><span class="size">1920</span></a></li>
+        <li><a href="11-gallery.html"><span><b>Phone gallery</b><span>Where the QR leads: save strip, GIF, poses</span></span><span class="size">390</span></a></li>
+      </ul>
+    </section>
+  </div>
+</main>
+</body>
+</html>
