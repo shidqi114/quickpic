@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { PHOTOBOOTH_PACKAGES } from '@/lib/constants';
 import { WelcomeScreenTheme, BoothOperatingMode } from '@/types/photobooth';
 
@@ -106,6 +106,8 @@ export interface WelcomeScreenProps {
   onStart: () => void;
   /** Guest-facing language; the guest can switch it on the screen */
   language?: WelcomeLanguage;
+  /** Called when the guest switches language on the screen */
+  onLanguageChange?: (language: WelcomeLanguage) => void;
   /** Optional custom class name */
   className?: string;
 }
@@ -119,10 +121,11 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   customWelcomeImageUrl,
   customHeadline,
   language = 'en',
+  onLanguageChange,
   onStart,
   className = '',
 }) => {
-  const [lang, setLang] = useState<WelcomeLanguage>(language);
+  const lang = language;
   const copy = COPY[lang];
   const fromPrice = Math.min(...PHOTOBOOTH_PACKAGES.map((pkg) => pkg.price));
   const priceText = `Rp ${fromPrice.toLocaleString('id-ID')}`;
@@ -190,7 +193,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setLang(lang === 'en' ? 'id' : 'en');
+                onLanguageChange?.(lang === 'en' ? 'id' : 'en');
               }}
               className="h-10 px-3 rounded border border-stage-muted/40 text-stage-ink cursor-pointer hover:bg-white/10"
             >

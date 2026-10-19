@@ -35,7 +35,7 @@ import {
   ExtendedOperatorSettings,
   OperatingMode,
 } from '@/components/ux/OperatorSetupWizard';
-import { WelcomeScreen } from '@/components/ux/WelcomeScreen';
+import { WelcomeScreen, WelcomeLanguage } from '@/components/ux/WelcomeScreen';
 import { PhotoPickSlots } from '@/components/ux/PhotoPickSlots';
 import { SplitFrameEditor } from '@/components/ux/SplitFrameEditor';
 import { StickerItem } from '@/components/ui/StickerCanvasLayer';
@@ -100,6 +100,7 @@ const DEFAULT_OPERATOR_SETTINGS: ExtendedOperatorSettings = {
 export default function PhotoboothKioskPage() {
   const [currentStep, setCurrentStep] = useState<KioskStep>('LOGIN');
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [guestLanguage, setGuestLanguage] = useState<WelcomeLanguage>('en');
   const [activeOutlet, setActiveOutlet] = useState<Outlet | null>(null);
 
   const [operatorSettings, setOperatorSettings] =
@@ -744,6 +745,8 @@ export default function PhotoboothKioskPage() {
           eventHashtag={operatorSettings.eventHashtag}
           customWelcomeImageUrl={operatorSettings.customWelcomeImageUrl}
           customHeadline={operatorSettings.customWelcomeHeadline}
+          language={guestLanguage}
+          onLanguageChange={setGuestLanguage}
           onStart={handleStartFromWelcome}
         />
       )}
@@ -991,6 +994,7 @@ export default function PhotoboothKioskPage() {
       {/* ========================================================================= */}
       <PackagePaymentModal
         isOpen={currentStep === 'PACKAGE_PAYMENT'}
+        language={guestLanguage}
         onPaymentSuccess={(pkg, payment, extraCopies) => {
           setSelectedPackage(pkg);
           setPaymentDetails(payment);
