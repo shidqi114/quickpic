@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { getRecentSessions } from '@/lib/firebase';
 import { PhotoSession } from '@/types/photobooth';
-import { Sparkles, ArrowLeft, RefreshCw, Maximize, Play, Pause } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Maximize, Play, Pause } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LiveSlideshowPage() {
@@ -50,74 +50,63 @@ export default function LiveSlideshowPage() {
   const currentPhoto = sessions[currentIndex];
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col justify-between p-6 select-none relative overflow-hidden">
-      
-      {/* Subtle Ambient Glow Background */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Top Header */}
-      <header className="flex items-center justify-between z-10">
-        <Link
-          href="/"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Booth
+    <main className="min-h-screen bg-stage text-stage-ink font-display flex flex-col select-none overflow-hidden">
+      <header className="flex items-center justify-between gap-4 px-6 md:px-10 py-6">
+        <Link href="/" className="flex items-center gap-2 h-11 px-4 rounded border border-stage-muted/50 text-[16px] text-stage-ink no-underline hover:bg-white/10">
+          <ArrowLeft className="w-4 h-4" /> Back to booth
         </Link>
 
-        <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-pink-300 text-xs font-bold uppercase tracking-wider">
-          <Sparkles className="w-3.5 h-3.5 animate-spin" /> Live Event Stream ({sessions.length} Photos)
-        </div>
+        <p className="text-[16px] text-stage-muted tabular-nums">
+          Live from the booth · {sessions.length} photos
+        </p>
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setIsPlaying(!isPlaying)}
-            className="p-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-white transition"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            className="w-11 h-11 rounded border border-stage-muted/50 flex items-center justify-center cursor-pointer hover:bg-white/10"
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </button>
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className="p-2 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-300 hover:text-white transition"
+            aria-label="Full screen"
+            className="w-11 h-11 rounded border border-stage-muted/50 flex items-center justify-center cursor-pointer hover:bg-white/10"
           >
             <Maximize className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* Center Slideshow Showcase */}
-      <section className="flex-1 flex items-center justify-center p-4 z-10">
+      <section className="flex-1 flex items-center justify-center px-6 md:px-10 min-h-0">
         {loading ? (
           <div className="flex flex-col items-center gap-3">
-            <RefreshCw className="w-8 h-8 text-pink-500 animate-spin" />
-            <p className="text-zinc-400 text-sm font-medium">Connecting to live photobooth stream...</p>
+            <RefreshCw className="w-6 h-6 animate-spin text-stage-muted" />
+            <p className="text-[16px] text-stage-muted">Connecting to the booth…</p>
           </div>
         ) : currentPhoto ? (
-          <div className="relative flex flex-col items-center max-h-[78vh] transition-all duration-700 animate-fade-in">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={currentPhoto.id}
-              src={currentPhoto.compositeUrl}
-              alt="Live Photobooth Stream"
-              className="max-h-[75vh] w-auto rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.9)] border border-zinc-800 object-contain transition duration-500 hover:scale-[1.02]"
-            />
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={currentPhoto.id}
+            src={currentPhoto.compositeUrl}
+            alt="A photo from the booth"
+            className="max-h-[72vh] w-auto object-contain"
+          />
         ) : (
-          <div className="text-center text-zinc-500">
-            <p className="text-lg font-semibold">No photos taken yet!</p>
-            <p className="text-sm mt-1">Photos will appear here live as guests use the booth.</p>
+          <div className="text-center">
+            <p className="text-[clamp(28px,3vw,48px)] font-semibold tracking-tight">No photos yet</p>
+            <p className="text-[18px] text-stage-muted mt-2">Photos appear here as guests finish their strips.</p>
           </div>
         )}
       </section>
 
-      {/* Bottom Ticker / Progress Indicator */}
-      <footer className="flex items-center justify-center gap-2 z-10">
+      <footer className="flex items-center justify-center gap-1.5 pb-8 pt-4">
         {sessions.slice(0, 15).map((_, idx) => (
-          <div
+          <span
             key={idx}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              idx === currentIndex ? 'w-8 bg-pink-500' : 'w-2 bg-zinc-800'
-            }`}
+            className={`h-1 transition-all duration-300 ${idx === currentIndex ? 'w-10 bg-stage-ink' : 'w-3 bg-stage-line'}`}
           />
         ))}
       </footer>
