@@ -39,6 +39,8 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useOperatorT } from '@/lib/operatorStrings';
+import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 
 // Seed default fleet booths for offline and development resilience
 const INITIAL_FLEET_BOOTHS: BoothSummary[] = [
@@ -91,6 +93,7 @@ const INITIAL_FLEET_BOOTHS: BoothSummary[] = [
 const CUSTOM_BOOTHS_STORAGE_KEY = 'quickpic_custom_booths';
 
 export default function AdminDashboardPage() {
+  const { t } = useOperatorT();
   const [selectedBoothId, setSelectedBoothId] = useState<'all' | string>('all');
   const [booths, setBooths] = useState<BoothSummary[]>(INITIAL_FLEET_BOOTHS);
   const [sessions, setSessions] = useState<ExtendedPhotoSession[]>([]);
@@ -436,26 +439,27 @@ export default function AdminDashboardPage() {
 
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-paper-line">
           <div className="flex items-start gap-4">
-            <Link href="/" title="Back to the booth" aria-label="Back to the booth" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center text-ink hover:bg-paper-surface shrink-0">
+            <Link href="/" title={t('admin.backToBooth')} aria-label={t('admin.backToBooth')} className="w-11 h-11 rounded border border-paper-control flex items-center justify-center text-ink hover:bg-paper-surface shrink-0">
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="text-[clamp(26px,2.6vw,36px)] leading-none font-semibold tracking-[-0.02em]">Fleet</h1>
+              <h1 className="text-[clamp(26px,2.6vw,36px)] leading-none font-semibold tracking-[-0.02em]">{t('admin.title')}</h1>
               <p className="text-[15px] text-muted mt-2 max-w-[60ch]">
-                Every booth, its takings, its roll and its hardware, in one place.
+                {t('admin.subtitle')}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <LanguageSwitch />
             <span className={`h-10 px-3 inline-flex items-center gap-2 text-[14px] ${isSupabaseConfigured ? 'text-positive' : 'text-warning'}`}>
               <Database className="w-4 h-4" />
               {dataSourceNotice}
             </span>
             <button type="button" onClick={() => setIsPairingModalOpen(true)} className="h-11 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer">
-              <span className="inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Pair a booth</span>
+              <span className="inline-flex items-center gap-2"><Plus className="w-4 h-4" /> {t('admin.pairBooth')}</span>
             </button>
-            <button type="button" onClick={fetchDashboardData} aria-label="Refresh fleet data" title="Refresh fleet data" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
+            <button type="button" onClick={fetchDashboardData} aria-label={t('admin.refresh')} title={t('admin.refresh')} className="w-11 h-11 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
@@ -468,10 +472,10 @@ export default function AdminDashboardPage() {
 
         <section className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-[20px] font-semibold tracking-tight">Booths ({booths.length})</h2>
+            <h2 className="text-[20px] font-semibold tracking-tight">{t('admin.booths', { n: booths.length })}</h2>
             {selectedBoothId !== 'all' && (
               <button type="button" onClick={() => setSelectedBoothId('all')} className="h-10 px-4 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface">
-                Show every booth
+                {t('admin.showAll')}
               </button>
             )}
           </div>
@@ -496,72 +500,75 @@ export default function AdminDashboardPage() {
 
         <nav aria-label="Tools" className="grid grid-cols-2 sm:grid-cols-4 border-y border-paper-line divide-x divide-paper-line">
           <Link href="/admin/devices" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
-            <span className="text-[16px] font-medium">Hardware health</span>
-            <span className="text-[14px] text-muted">Camera and printer</span>
+            <span className="text-[16px] font-medium">{t('admin.tool.hardware')}</span>
+            <span className="text-[14px] text-muted">{t('admin.tool.hardwareSub')}</span>
           </Link>
           <Link href="/admin/vouchers" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
-            <span className="text-[16px] font-medium">Vouchers</span>
-            <span className="text-[14px] text-muted">Discount codes</span>
+            <span className="text-[16px] font-medium">{t('admin.tool.vouchers')}</span>
+            <span className="text-[14px] text-muted">{t('admin.tool.vouchersSub')}</span>
           </Link>
           <Link href="/admin/pos" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
-            <span className="text-[16px] font-medium">Shop and queue</span>
-            <span className="text-[14px] text-muted">Merchandise and tickets</span>
+            <span className="text-[16px] font-medium">{t('admin.tool.shop')}</span>
+            <span className="text-[14px] text-muted">{t('admin.tool.shopSub')}</span>
           </Link>
           <Link href="/live" target="_blank" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
-            <span className="text-[16px] font-medium">Venue screen</span>
-            <span className="text-[14px] text-muted">Live slideshow</span>
+            <span className="text-[16px] font-medium">{t('admin.tool.venue')}</span>
+            <span className="text-[14px] text-muted">{t('admin.tool.venueSub')}</span>
           </Link>
         </nav>
 
         <section className="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-paper-line border border-paper-line">
           <div className={metricClass}>
-            <p className={panelLabel}>{selectedBoothId === 'all' ? 'Takings, all booths' : `Takings, ${activeBooth?.name || selectedBoothId}`}</p>
+            <p className={panelLabel}>{selectedBoothId === 'all' ? t('admin.takingsAll') : t('admin.takingsBooth', { name: activeBooth?.name || selectedBoothId })}</p>
             <p className="text-[clamp(30px,3vw,44px)] leading-none font-semibold tracking-[-0.02em] tabular-nums">
               Rp {totalRevenue.toLocaleString('id-ID')}
             </p>
             <p className="text-[14px] text-muted tabular-nums">
-              {filteredSessions.length} sessions in this view
+              {t('admin.sessionsInView', { n: filteredSessions.length })}
             </p>
           </div>
 
           <div className={metricClass}>
-            <p className={panelLabel}>How guests paid</p>
+            <p className={panelLabel}>{t('admin.howPaid')}</p>
             <div className="flex gap-8">
               <div>
                 <p className="text-[24px] font-semibold tabular-nums">{qrisTransactions.length}</p>
-                <p className="text-[14px] text-muted">by QRIS</p>
+                <p className="text-[14px] text-muted">{t('admin.byQris')}</p>
               </div>
               <div>
                 <p className="text-[24px] font-semibold tabular-nums">{cashBypassTransactions.length}</p>
-                <p className="text-[14px] text-muted">cash, with staff PIN</p>
+                <p className="text-[14px] text-muted">{t('admin.byCash')}</p>
               </div>
             </div>
           </div>
 
           {selectedBoothId === 'all' ? (
             <div className={metricClass}>
-              <p className={panelLabel}>Roll left, all booths</p>
+              <p className={panelLabel}>{t('admin.rollAll')}</p>
               <p className="text-[24px] font-semibold tabular-nums">
-                {fleetStats.totalCuts} <span className="text-[16px] font-normal text-muted">of {fleetStats.maxCapacity} prints ({fleetStats.avgRibbonPct}%)</span>
+                {fleetStats.totalCuts} <span className="text-[16px] font-normal text-muted">{t('admin.rollOf', { max: fleetStats.maxCapacity, pct: fleetStats.avgRibbonPct })}</span>
               </p>
               <div className="w-full h-2 bg-paper-surface overflow-hidden">
                 <div className="h-full bg-ink transition-all duration-500" style={{ width: `${fleetStats.avgRibbonPct}%` }} />
               </div>
               <p className="text-[14px] text-muted tabular-nums">
-                {fleetStats.onlineBooths} online · {fleetStats.maintenanceBooths} need attention · {fleetStats.offlineBooths} offline
+                {t('admin.fleetStatus', { on: fleetStats.onlineBooths, attn: fleetStats.maintenanceBooths, off: fleetStats.offlineBooths })}
               </p>
             </div>
           ) : (
             <div className={metricClass}>
-              <p className={panelLabel}>This booth</p>
+              <p className={panelLabel}>{t('admin.thisBooth')}</p>
               <p className="text-[24px] font-semibold tabular-nums">
-                {activeBooth?.ribbonRemaining ?? 700} <span className="text-[16px] font-normal text-muted">of 700 prints left</span>
+                {t('admin.printsLeftOf', { n: activeBooth?.ribbonRemaining ?? 700 })}
               </p>
               <div className="w-full h-2 bg-paper-surface overflow-hidden">
                 <div className="h-full bg-ink transition-all duration-500" style={{ width: `${activeBooth?.ribbonPercentage ?? 100}%` }} />
               </div>
               <p className="text-[14px] text-muted">
-                Camera {activeBooth?.cameraConnected ? 'connected' : 'not connected'} · Printer {activeBooth?.printerConnected ? 'ready' : 'offline'}
+                {t('admin.cameraStatus', {
+                  state: activeBooth?.cameraConnected ? t('admin.connected') : t('admin.notConnected'),
+                  printer: activeBooth?.printerConnected ? t('admin.ready') : t('admin.offline'),
+                })}
               </p>
             </div>
           )}
@@ -569,7 +576,7 @@ export default function AdminDashboardPage() {
 
         {selectedBoothId === 'all' && (
           <section className="flex flex-col gap-4">
-            <h2 className="text-[20px] font-semibold tracking-tight">At a glance</h2>
+            <h2 className="text-[20px] font-semibold tracking-tight">{t('admin.atAGlance')}</h2>
             <ul className="grid sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-paper-line">
               {booths.map((b) => {
                 const isLow = (b.ribbonRemaining ?? 700) < 100;
@@ -579,15 +586,15 @@ export default function AdminDashboardPage() {
                       <span className="flex items-center justify-between gap-3">
                         <span className="text-[13px] text-muted tabular-nums">{b.id}</span>
                         <span className={`text-[13px] ${b.status === 'online' ? 'text-positive' : b.status === 'maintenance' ? 'text-warning' : 'text-muted'}`}>
-                          {b.status === 'online' ? 'Online' : b.status === 'maintenance' ? 'Needs attention' : 'Offline'}
+                          {b.status === 'online' ? t('admin.online') : b.status === 'maintenance' ? t('admin.needsAttention') : t('admin.offline')}
                         </span>
                       </span>
                       <span className="flex flex-col gap-1">
                         <span className="text-[17px] font-medium">{b.name}</span>
-                        <span className="text-[14px] text-muted truncate">{b.location || 'Venue not set'}</span>
+                        <span className="text-[14px] text-muted truncate">{b.location || t('admin.venueNotSet')}</span>
                       </span>
                       <span className="flex items-center justify-between text-[14px] mt-auto">
-                        <span className="text-muted">Prints left</span>
+                        <span className="text-muted">{t('admin.printsLeft')}</span>
                         <span className={`tabular-nums ${isLow ? 'text-warning font-medium' : ''}`}>{b.ribbonRemaining ?? 700}</span>
                       </span>
                     </button>
@@ -601,19 +608,19 @@ export default function AdminDashboardPage() {
         <section className="flex flex-col gap-4">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-[20px] font-semibold tracking-tight">
-              Sessions ({filteredSessions.length})
+              {t('admin.sessions', { n: filteredSessions.length })}
               {selectedBoothId !== 'all' && <span className="text-[15px] font-normal text-muted"> · {activeBooth?.name || selectedBoothId}</span>}
             </h2>
-            <span className="text-[14px] text-muted">Newest first</span>
+            <span className="text-[14px] text-muted">{t('admin.newestFirst')}</span>
           </div>
 
           {filteredSessions.length === 0 ? (
             <div className="border border-dashed border-paper-control p-10 text-center">
-              <p className="text-[18px] font-medium">No sessions yet</p>
+              <p className="text-[18px] font-medium">{t('admin.noSessions')}</p>
               <p className="text-[15px] text-muted mt-1">
                 {selectedBoothId === 'all'
-                  ? 'Sessions appear here once guests finish at a booth.'
-                  : `No sessions have come from ${selectedBoothId} yet.`}
+                  ? t('admin.noSessionsHint')
+                  : t('admin.noSessionsFrom', { id: selectedBoothId })}
               </p>
             </div>
           ) : (
@@ -635,10 +642,10 @@ export default function AdminDashboardPage() {
                       Rp {(s.payment?.amount || 35000).toLocaleString('id-ID')}
                       <span className="block text-[13px] text-muted">{s.payment?.method || 'cash'}</span>
                     </span>
-                    <button type="button" onClick={() => handleDownloadImage(s.compositeUrl, s.id)} aria-label={`Download strip ${s.id}`} title="Download strip" className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
+                    <button type="button" onClick={() => handleDownloadImage(s.compositeUrl, s.id)} aria-label={t('admin.downloadStripId', { id: s.id })} title={t('admin.downloadStrip')} className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
                       <Download className="w-4 h-4" />
                     </button>
-                    <Link href={`/gallery/${s.id}`} target="_blank" aria-label={`Open gallery for ${s.id}`} title="Open the guest gallery" className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface">
+                    <Link href={`/gallery/${s.id}`} target="_blank" aria-label={t('admin.openGalleryId', { id: s.id })} title={t('admin.openGallery')}className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface">
                       <ExternalLink className="w-4 h-4" />
                     </Link>
                   </div>

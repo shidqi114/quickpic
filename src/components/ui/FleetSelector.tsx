@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { useOperatorT } from '@/lib/operatorStrings';
 
 export type BoothStatus = 'online' | 'offline' | 'maintenance';
 
@@ -81,6 +82,7 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
   disabled = false,
   label,
 }) => {
+  const { t } = useOperatorT();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -125,7 +127,7 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
   const dot = (status: BoothStatus) =>
     status === 'online' ? 'bg-positive' : status === 'maintenance' ? 'bg-warning' : 'bg-muted';
   const statusText = (status: BoothStatus) =>
-    status === 'online' ? 'Online' : status === 'maintenance' ? 'Needs attention' : 'Offline';
+    status === 'online' ? t('admin.online') : status === 'maintenance' ? t('admin.needsAttention') : t('admin.offline');
 
   // Filtered booth list based on search query
   const filteredBooths = booths.filter((b) => {
@@ -165,11 +167,11 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
       >
         <span className="min-w-0">
           <span className="block text-[16px] font-medium truncate">
-            {isFleetOverview ? 'All booths' : selectedBooth.name}
+            {isFleetOverview ? t('admin.fleet.all') : selectedBooth.name}
           </span>
           <span className="block text-[14px] text-muted truncate">
             {isFleetOverview
-              ? `${onlineCount} of ${booths.length} online`
+              ? t('admin.fleet.online', { n: onlineCount, m: booths.length })
               : `${statusText(selectedBooth.status)}${selectedBooth.location ? ` · ${selectedBooth.location}` : ''}`}
           </span>
         </span>
@@ -186,11 +188,11 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, venue or ID"
+                placeholder={t('admin.fleet.search')}
                 className="w-full h-11 pl-10 pr-10 rounded border border-paper-control bg-paper text-[15px] placeholder:text-muted focus:outline-2 focus:outline-accent"
               />
               {searchQuery && (
-                <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear search" className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-muted hover:text-ink cursor-pointer">
+                <button type="button" onClick={() => setSearchQuery('')} aria-label={t('admin.fleet.clear')} className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-muted hover:text-ink cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -206,8 +208,8 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
               className={`w-full px-4 py-3 flex items-center justify-between gap-3 text-left border-b border-paper-line cursor-pointer hover:bg-paper-surface ${isFleetOverview ? 'bg-paper-surface' : ''}`}
             >
               <span>
-                <span className="block text-[16px] font-medium">All booths</span>
-                <span className="block text-[14px] text-muted">{onlineCount} online · {maintenanceCount} need attention · {offlineCount} offline</span>
+                <span className="block text-[16px] font-medium">{t('admin.fleet.all')}</span>
+                <span className="block text-[14px] text-muted">{t('admin.fleetStatus', { on: onlineCount, attn: maintenanceCount, off: offlineCount })}</span>
               </span>
               {isFleetOverview && <Check className="w-4 h-4 text-accent" />}
             </button>
@@ -215,7 +217,7 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
 
           <div className="max-h-80 overflow-y-auto">
             {filteredBooths.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[15px] text-muted">No booth matches that search.</p>
+              <p className="px-4 py-6 text-center text-[15px] text-muted">{t('admin.fleet.noMatch')}</p>
             ) : (
               filteredBooths.map((booth) => {
                 const isSelected = selectedBoothId === booth.id;
@@ -231,8 +233,8 @@ export const FleetSelector: React.FC<FleetSelectorProps> = ({
                     <span className="min-w-0">
                       <span className="block text-[16px] font-medium truncate">{booth.name}</span>
                       <span className="block text-[14px] text-muted truncate">
-                        {booth.location || 'Venue not set'}
-                        {booth.ribbonRemaining !== undefined && <span className="tabular-nums"> · {booth.ribbonRemaining} prints left</span>}
+                        {booth.location || t('admin.venueNotSet')}
+                        {booth.ribbonRemaining !== undefined && <span className="tabular-nums"> · {t('admin.ribbon.printsLeft', { n: booth.ribbonRemaining })}</span>}
                       </span>
                     </span>
                     <span className="flex items-center gap-2 shrink-0 text-[14px]">

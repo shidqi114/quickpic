@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { useOperatorT } from '@/lib/operatorStrings';
 
 export interface LowRibbonBooth {
   id: string;
@@ -36,7 +37,7 @@ export interface RibbonAlertBannerProps {
   onAction?: (booth: LowRibbonBooth) => void;
   /** Callback fired when a booth is clicked */
   onSelectBooth?: (boothId: string) => void;
-  /** Action button label (default: 'Replace Ribbon') */
+  /** Action button label (default: translated 'Replace ribbon') */
   actionLabel?: string;
   /** Allow dismissing the alert */
   dismissible?: boolean;
@@ -52,11 +53,12 @@ export const RibbonAlertBanner: React.FC<RibbonAlertBannerProps> = ({
   threshold = 100,
   onAction,
   onSelectBooth,
-  actionLabel = 'Replace Ribbon',
+  actionLabel,
   dismissible = true,
   onDismiss,
   className = '',
 }) => {
+  const { t } = useOperatorT();
   const [isDismissed, setIsDismissed] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -109,12 +111,12 @@ export const RibbonAlertBanner: React.FC<RibbonAlertBannerProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="min-w-0 grid gap-2">
           <p className="text-[16px] font-medium">
-            Low on prints: {primaryBooth.name}
+            {t('admin.ribbon.low', { name: primaryBooth.name })}
             {primaryBooth.location && <span className="text-muted font-normal"> · {primaryBooth.location}</span>}
           </p>
           <p className="text-[15px] text-muted tabular-nums">
-            {primaryBooth.ribbonRemaining} prints left of {maxRoll} ({percentage}%)
-            {criticalBooths.length > 1 && ` · ${criticalBooths.length} booths need a new roll`}
+            {t('admin.ribbon.count', { n: primaryBooth.ribbonRemaining, max: maxRoll, pct: percentage })}
+            {criticalBooths.length > 1 && t('admin.ribbon.booths', { n: criticalBooths.length })}
           </p>
           <div className="w-full max-w-xs h-1.5 bg-paper-surface overflow-hidden">
             <div className="h-full bg-ink transition-all duration-500" style={{ width: `${Math.max(percentage, 5)}%` }} />
@@ -124,18 +126,18 @@ export const RibbonAlertBanner: React.FC<RibbonAlertBannerProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           {criticalBooths.length > 1 && (
             <button type="button" onClick={() => setExpanded((prev) => !prev)} className="h-10 px-4 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface">
-              {expanded ? 'Hide list' : `See all ${criticalBooths.length}`}
+              {expanded ? t('admin.ribbon.hide') : t('admin.ribbon.seeAll', { n: criticalBooths.length })}
             </button>
           )}
 
           {(onAction || onSelectBooth) && (
             <button type="button" onClick={() => handleAction(primaryBooth)} className="h-10 px-4 rounded bg-accent hover:bg-accent-press text-white text-[15px] font-medium cursor-pointer">
-              {actionLabel}
+              {actionLabel ?? t('admin.ribbon.replace')}
             </button>
           )}
 
           {dismissible && (
-            <button type="button" onClick={handleDismiss} aria-label="Dismiss alert" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+            <button type="button" onClick={handleDismiss} aria-label={t('admin.ribbon.dismiss')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -161,7 +163,7 @@ export const RibbonAlertBanner: React.FC<RibbonAlertBannerProps> = ({
                     <span className="block text-[14px] text-muted truncate">{booth.location || booth.id}</span>
                   </span>
                   <span className="text-[15px] tabular-nums shrink-0">
-                    {booth.ribbonRemaining} prints left
+                    {t('admin.ribbon.printsLeft', { n: booth.ribbonRemaining })}
                     <span className="block text-[13px] text-muted">{boothPercent}%</span>
                   </span>
                 </button>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, Clock, Copy, KeyRound, Monitor, QrCode, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { useOperatorT } from '@/lib/operatorStrings';
 
 export interface PairedBoothResult {
   id: string;
@@ -72,6 +73,7 @@ export const KioskPairingModal: React.FC<KioskPairingModalProps> = ({
   onPairSuccess,
   className = '',
 }) => {
+  const { t } = useOperatorT();
   const [pairingCode, setPairingCode] = useState<string>(
     initialCode || generateFallbackPin()
   );
@@ -198,12 +200,12 @@ export const KioskPairingModal: React.FC<KioskPairingModalProps> = ({
       <div className={`relative w-full max-w-xl bg-paper border border-paper-control rounded p-8 flex flex-col gap-6 max-h-[92vh] overflow-y-auto ${className}`}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 id="pairing-modal-title" className="text-[22px] font-semibold tracking-tight">Pair a booth</h2>
+            <h2 id="pairing-modal-title" className="text-[22px] font-semibold tracking-tight">{t('admin.pair.title')}</h2>
             <p className="text-[15px] text-muted mt-1">
-              Connect the booth at {location} to this fleet.
+              {t('admin.pair.intro', { location })}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close dialog" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer shrink-0">
+          <button type="button" onClick={onClose} aria-label={t('admin.pair.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -212,19 +214,19 @@ export const KioskPairingModal: React.FC<KioskPairingModalProps> = ({
           <p className="text-[15px]">
             {boothName} <span className="text-muted tabular-nums">· {boothId}</span>
           </p>
-          <div className="flex gap-2" role="group" aria-label="Pairing method">
+          <div className="flex gap-2" role="group" aria-label={t('admin.pair.method')}>
             <button type="button" onClick={() => setActiveTab('pin')} aria-pressed={activeTab === 'pin'} className={tabClass(activeTab === 'pin')}>
-              Code
+              {t('admin.pair.code')}
             </button>
             <button type="button" onClick={() => setActiveTab('qr')} aria-pressed={activeTab === 'qr'} className={tabClass(activeTab === 'qr')}>
-              QR
+              {t('admin.pair.qr')}
             </button>
           </div>
         </div>
 
         {activeTab === 'pin' ? (
           <div className="border border-paper-control p-6 flex flex-col items-center text-center gap-4">
-            <p className="text-[14px] text-muted">Code for the booth</p>
+            <p className="text-[14px] text-muted">{t('admin.pair.codeFor')}</p>
             <p className={`tabular-nums text-[clamp(36px,4vw,48px)] font-semibold tracking-[0.2em] leading-none ${isExpired ? 'text-muted line-through' : ''} select-all`}>
               {formattedPinDisplay}
             </p>
@@ -237,55 +239,55 @@ export const KioskPairingModal: React.FC<KioskPairingModalProps> = ({
               >
                 <span className="inline-flex items-center gap-2">
                   {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {isCopied ? 'Copied' : 'Copy code'}
+                  {isCopied ? t('admin.pair.copied') : t('admin.pair.copy')}
                 </span>
               </button>
               <span className={`inline-flex items-center gap-2 text-[14px] tabular-nums ${isExpired ? 'text-negative' : timeLeft < 180 ? 'text-warning' : 'text-muted'}`}>
                 <Clock className="w-4 h-4" />
-                {isExpired ? 'Expired' : `${formatCountdown(timeLeft)} left`}
+                {isExpired ? t('admin.pair.expired') : t('admin.pair.left', { t: formatCountdown(timeLeft) })}
               </span>
             </div>
           </div>
         ) : (
           <div className="border border-paper-control p-6 flex flex-col items-center text-center gap-3">
-            <p className="text-[14px] text-muted">Scan with the booth&apos;s camera</p>
+            <p className="text-[14px] text-muted">{t('admin.pair.scan')}</p>
             <div className="bg-white p-3">
               <QRCodeSVG value={qrPayload} size={160} level="M" />
             </div>
             <span className="inline-flex items-center gap-2 text-[14px] text-muted tabular-nums">
-              <Clock className="w-4 h-4" /> {formatCountdown(timeLeft)} left
+              <Clock className="w-4 h-4" /> {t('admin.pair.left', { t: formatCountdown(timeLeft) })}
             </span>
           </div>
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-[14px] text-muted">
-            {isExpired ? 'This code has expired. Make a new one.' : 'Codes last 15 minutes.'}
+            {isExpired ? t('admin.pair.expiredNote') : t('admin.pair.validNote')}
           </p>
           <button type="button" onClick={handleRegenerate} disabled={isRegenerating} className="h-10 px-4 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface disabled:opacity-40">
             <span className="inline-flex items-center gap-2">
               <RefreshCw className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
-              New code
+              {t('admin.pair.newCode')}
             </span>
           </button>
         </div>
 
         <div className="border-t border-paper-line pt-5 grid gap-3">
-          <p className="text-[16px] font-medium">On the booth</p>
+          <p className="text-[16px] font-medium">{t('admin.pair.stepsTitle')}</p>
           <ol className="grid gap-2 text-[15px] list-decimal pl-5 marker:text-muted">
-            <li>Open QuickPic on the booth computer.</li>
-            <li>Choose <span className="font-medium">Pair this booth</span> on the first screen.</li>
-            <li>Type the code shown above.</li>
-            <li>The booth connects and starts sending its status here.</li>
+            <li>{t('admin.pair.step1')}</li>
+            <li>{t('admin.pair.step2')}</li>
+            <li>{t('admin.pair.step3')}</li>
+            <li>{t('admin.pair.step4')}</li>
           </ol>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-paper-line pt-5">
           <span className="inline-flex items-center gap-2 text-[14px] text-muted">
-            <ShieldCheck className="w-4 h-4" /> The booth gets its own limited access.
+            <ShieldCheck className="w-4 h-4" /> {t('admin.pair.secure')}
           </span>
           <button type="button" onClick={handleDone} className="h-11 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer">
-            Done
+            {t('admin.pair.done')}
           </button>
         </div>
       </div>

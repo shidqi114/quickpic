@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { DeviceTelemetry } from '@/types/photobooth';
+import { useOperatorT } from '@/lib/operatorStrings';
 
 export interface HardwareStatusData {
   camera: {
@@ -112,6 +113,7 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
   showDiagnosticsToggle = true,
   className = '',
 }) => {
+  const { t } = useOperatorT();
   const [hardware, setHardware] = useState<HardwareStatusData>(DEFAULT_HARDWARE_STATE);
   const [isFlashing, setIsFlashing] = useState(false);
   const [shutterStatus, setShutterStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -236,7 +238,7 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
   const handleTestShutter = async () => {
     if (shutterStatus === 'testing') return;
     setShutterStatus('testing');
-    setActionFeedback('Triggering DSLR shutter...');
+    setActionFeedback(t('admin.hw.feedbackFiring'));
 
     // Screen flash visual feedback
     if (enableScreenFlashFeedback) {
@@ -261,14 +263,14 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
       }
 
       setShutterStatus('success');
-      setActionFeedback('Shutter & flash triggered successfully');
+      setActionFeedback(t('admin.hw.feedbackFired'));
       setTimeout(() => {
         setShutterStatus('idle');
         setActionFeedback(null);
       }, 2500);
     } catch {
       setShutterStatus('error');
-      setActionFeedback('Failed to trigger shutter');
+      setActionFeedback(t('admin.hw.feedbackShutterFailed'));
       setTimeout(() => {
         setShutterStatus('idle');
         setActionFeedback(null);
@@ -280,7 +282,7 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
   const handleTestPrint = async () => {
     if (printStatus === 'printing') return;
     setPrintStatus('printing');
-    setActionFeedback('Spooling test 2x6 strip print...');
+    setActionFeedback(t('admin.hw.feedbackSpooling'));
 
     try {
       if (onTestPrint) {
@@ -319,14 +321,14 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
       }));
 
       setPrintStatus('success');
-      setActionFeedback('DNP test print job enqueued');
+      setActionFeedback(t('admin.hw.feedbackPrinted'));
       setTimeout(() => {
         setPrintStatus('idle');
         setActionFeedback(null);
       }, 2500);
     } catch {
       setPrintStatus('error');
-      setActionFeedback('Failed to enqueue test print');
+      setActionFeedback(t('admin.hw.feedbackPrintFailed'));
       setTimeout(() => {
         setPrintStatus('idle');
         setActionFeedback(null);
@@ -351,7 +353,7 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
 
       <section
         className={`font-display text-ink border-y border-paper-line py-4 px-1 ${isLowRibbon ? 'border-warning' : ''} ${className}`}
-        aria-label="Hardware status"
+        aria-label={t('admin.hw.label')}
       >
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
           <div className="flex flex-wrap items-center gap-x-8 gap-y-3 min-w-0">
@@ -359,7 +361,7 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
               <span className={`w-2.5 h-2.5 rounded-full ${cameraDot}`} />
               <div>
                 <p className="text-[16px] font-medium">{hardware.camera.model}</p>
-                <p className="text-[14px] text-muted">{hardware.camera.connected ? 'Camera connected' : 'Camera not connected'}</p>
+                <p className="text-[14px] text-muted">{hardware.camera.connected ? t('admin.hw.cameraConnected') : t('admin.hw.cameraNot')}</p>
               </div>
             </div>
 
@@ -369,9 +371,9 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
                 <p className="text-[16px] font-medium truncate">{hardware.printer.name}</p>
                 <p
                   className={`text-[14px] tabular-nums ${isCriticalRibbon || isLowRibbon ? 'text-warning' : 'text-muted'}`}
-                  title={`${hardware.printer.ribbonRemaining} prints left out of ${hardware.printer.maxRibbon || 700}`}
+                  title={t('admin.hw.ofPrints', { n: hardware.printer.ribbonRemaining, max: hardware.printer.maxRibbon || 700, pct: ribbonPct })}
                 >
-                  {hardware.printer.ribbonRemaining} of {hardware.printer.maxRibbon || 700} prints left ({ribbonPct}%)
+                  {t('admin.hw.ofPrints', { n: hardware.printer.ribbonRemaining, max: hardware.printer.maxRibbon || 700, pct: ribbonPct })}
                 </p>
                 <div className="hidden md:block mt-1.5 w-40 h-1 bg-paper-surface overflow-hidden">
                   <div
@@ -384,18 +386,18 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-            <button type="button" onClick={handleTestShutter} disabled={shutterStatus === 'testing'} aria-label="Test the camera shutter and flash" className={actionButton}>
-              {shutterStatus === 'testing' ? 'Firing…' : shutterStatus === 'success' ? 'Fired' : 'Test shutter'}
+            <button type="button" onClick={handleTestShutter} disabled={shutterStatus === 'testing'} aria-label={t('admin.hw.testShutter')} className={actionButton}>
+              {shutterStatus === 'testing' ? t('admin.hw.firing') : shutterStatus === 'success' ? t('admin.hw.fired') : t('admin.hw.testShutter')}
             </button>
-            <button type="button" onClick={handleTestPrint} disabled={printStatus === 'printing'} aria-label="Send a test print" className={actionButton}>
-              {printStatus === 'printing' ? 'Sending…' : printStatus === 'success' ? 'Sent' : 'Test print'}
+            <button type="button" onClick={handleTestPrint} disabled={printStatus === 'printing'} aria-label={t('admin.hw.testPrint')} className={actionButton}>
+              {printStatus === 'printing' ? t('admin.hw.sending') : printStatus === 'success' ? t('admin.hw.sent') : t('admin.hw.testPrint')}
             </button>
             {showDiagnosticsToggle && (
               <button
                 type="button"
                 onClick={() => setIsExpanded((prev) => !prev)}
                 aria-expanded={isExpanded}
-                aria-label="Show hardware details"
+                aria-label={t('admin.hw.showDetails')}
                 className="w-10 h-10 rounded border border-paper-control flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer"
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -414,30 +416,30 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
         {isExpanded && (
           <div className="mt-4 pt-4 border-t border-paper-line grid gap-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[16px] font-medium">Hardware details</p>
+              <p className="text-[16px] font-medium">{t('admin.hw.details')}</p>
               <button type="button" onClick={fetchHardwareTelemetry} className="h-9 px-3 inline-flex items-center gap-2 text-[14px] cursor-pointer hover:bg-paper-surface rounded">
-                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                <RefreshCw className="w-3.5 h-3.5" /> {t('admin.hw.refresh')}
               </button>
             </div>
             <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-[15px]">
               <div>
-                <dt className="text-[14px] text-muted">Camera driver</dt>
-                <dd className="mt-1">Canon EDSDK v13</dd>
-                <dd className="text-[14px] text-muted">USB 3.0 direct</dd>
+                <dt className="text-[14px] text-muted">{t('admin.hw.driver')}</dt>
+                <dd className="mt-1">{t('admin.hw.driverValue')}</dd>
+                <dd className="text-[14px] text-muted">{t('admin.hw.usb')}</dd>
               </div>
               <div>
-                <dt className="text-[14px] text-muted">Print queue</dt>
-                <dd className="mt-1 tabular-nums">{hardware.printer.queueDepth ?? 0} jobs waiting</dd>
-                <dd className="text-[14px] text-muted">DNP 2 × 6 cut</dd>
+                <dt className="text-[14px] text-muted">{t('admin.hw.queue')}</dt>
+                <dd className="mt-1 tabular-nums">{t('admin.hw.jobs', { n: hardware.printer.queueDepth ?? 0 })}</dd>
+                <dd className="text-[14px] text-muted">{t('admin.hw.cut')}</dd>
               </div>
               <div>
-                <dt className="text-[14px] text-muted">Computer load</dt>
-                <dd className="mt-1 tabular-nums">CPU {hardware.system?.cpuPct ?? 14}%</dd>
-                <dd className="text-[14px] text-muted tabular-nums">Memory {hardware.system?.ramPct ?? 42}%</dd>
+                <dt className="text-[14px] text-muted">{t('admin.hw.load')}</dt>
+                <dd className="mt-1 tabular-nums">{t('admin.hw.cpu', { n: hardware.system?.cpuPct ?? 14 })}</dd>
+                <dd className="text-[14px] text-muted tabular-nums">{t('admin.hw.memory', { n: hardware.system?.ramPct ?? 42 })}</dd>
               </div>
               <div>
-                <dt className="text-[14px] text-muted">Connection to the booth</dt>
-                <dd className="mt-1">{hardware.system?.isDaemonOnline !== false ? 'Online' : 'Offline, showing test data'}</dd>
+                <dt className="text-[14px] text-muted">{t('admin.hw.connection')}</dt>
+                <dd className="mt-1">{hardware.system?.isDaemonOnline !== false ? t('admin.hw.daemonOnline') : t('admin.hw.daemonOffline')}</dd>
                 <dd className="text-[14px] text-muted truncate">{hardwareDaemonUrl}</dd>
               </div>
             </dl>
