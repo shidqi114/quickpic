@@ -1,22 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Camera,
-  Printer,
-  Zap,
-  RotateCw,
-  CheckCircle2,
-  AlertTriangle,
-  Info,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Cpu,
-  Activity,
-  HardDrive,
-  RefreshCw,
-} from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { DeviceTelemetry } from '@/types/photobooth';
 
 export interface HardwareStatusData {
@@ -352,326 +337,113 @@ export const HardwareStatusBar: React.FC<HardwareStatusBarProps> = ({
   const isLowRibbon = hardware.printer.ribbonRemaining < 100;
   const isCriticalRibbon = hardware.printer.ribbonRemaining < 30;
 
+  const cameraDot = hardware.camera.connected ? 'bg-positive' : 'bg-warning';
+  const printerDot = hardware.printer.connected ? 'bg-positive' : 'bg-muted';
+  const ribbonPct = hardware.printer.ribbonPercentage ??
+    Math.round((hardware.printer.ribbonRemaining / (hardware.printer.maxRibbon || 700)) * 100);
+  const actionButton = 'h-10 px-4 rounded border border-paper-control text-[15px] text-ink cursor-pointer hover:bg-paper-surface disabled:opacity-40 disabled:cursor-not-allowed';
+
   return (
     <>
-      {/* Visual Screen Flash Feedback Overlay */}
       {isFlashing && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-[9999] bg-white animate-flash"
-        />
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[9999] bg-white animate-flash" />
       )}
 
-      <div
-        className={`relative overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-950/85 backdrop-blur-xl shadow-2xl transition-all duration-200 ${
-          isLowRibbon ? 'border-amber-500/40' : 'border-zinc-800'
-        } ${className}`}
-        role="region"
-        aria-label="Hardware Status Bar"
+      <section
+        className={`font-display text-ink border-y border-paper-line py-4 px-1 ${isLowRibbon ? 'border-warning' : ''} ${className}`}
+        aria-label="Hardware status"
       >
-        {/* Subtle decorative edge lighting */}
-        <div
-          className={`pointer-events-none absolute -top-10 -left-10 h-28 w-28 rounded-full blur-3xl ${
-            isLowRibbon ? 'bg-amber-500/10' : 'bg-pink-500/10'
-          }`}
-        />
-        <div className="pointer-events-none absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-cyan-500/10 blur-3xl" />
-
-        {/* Main Status Bar Container */}
-        <div
-          className={`flex flex-wrap items-center justify-between gap-3 p-2.5 sm:p-3.5 ${
-            compact ? 'py-2 px-3 text-xs' : ''
-          }`}
-        >
-          {/* Left Cluster: Hardware Indicators */}
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 min-w-0">
-            {/* 1. Camera Indicator Badge */}
-            <div
-              className={`flex items-center gap-2 rounded-xl px-3 py-1.5 border transition-all ${
-                hardware.camera.connected
-                  ? 'bg-zinc-900/90 border-zinc-700/60 shadow-xs'
-                  : 'bg-amber-950/30 border-amber-500/30 text-amber-300'
-              }`}
-            >
-              {/* Camera Pulse Icon */}
-              <div className="relative flex items-center justify-center">
-                {hardware.camera.connected ? (
-                  <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-xs shadow-emerald-500/60" />
-                  </span>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-                )}
-              </div>
-
-              <Camera
-                className={`w-4 h-4 shrink-0 ${
-                  hardware.camera.connected ? 'text-zinc-200' : 'text-amber-400'
-                }`}
-              />
-
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-xs font-bold text-zinc-100 truncate max-w-[130px] sm:max-w-[180px]">
-                  {hardware.camera.model}
-                </span>
-
-                <span
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-                    hardware.camera.connected
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  }`}
-                >
-                  {hardware.camera.connected ? 'DSLR Live' : 'Simulated'}
-                </span>
+        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-3 min-w-0">
+            <div className="flex items-center gap-3">
+              <span className={`w-2.5 h-2.5 rounded-full ${cameraDot}`} />
+              <div>
+                <p className="text-[16px] font-medium">{hardware.camera.model}</p>
+                <p className="text-[14px] text-muted">{hardware.camera.connected ? 'Camera connected' : 'Camera not connected'}</p>
               </div>
             </div>
 
-            {/* 2. DNP Printer Indicator Badge */}
-            <div
-              className={`flex items-center gap-2 rounded-xl px-3 py-1.5 border transition-all ${
-                isLowRibbon
-                  ? 'bg-gradient-to-r from-amber-950/40 via-zinc-900/90 to-zinc-900/90 border-amber-500/40 shadow-xs'
-                  : 'bg-zinc-900/90 border-zinc-700/60 shadow-xs'
-              }`}
-            >
-              {/* Printer Pulse Icon */}
-              <div className="relative flex items-center justify-center">
-                {hardware.printer.connected ? (
-                  <span className="relative flex h-2.5 w-2.5 items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-xs shadow-emerald-500/60" />
-                  </span>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-500" />
-                )}
-              </div>
-
-              <Printer
-                className={`w-4 h-4 shrink-0 ${
-                  hardware.printer.connected ? 'text-zinc-200' : 'text-zinc-500'
-                }`}
-              />
-
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs font-bold text-zinc-100 truncate hidden sm:inline max-w-[120px]">
-                  {hardware.printer.name}
-                </span>
-
-                {/* Ribbon Remaining Cuts Pill */}
-                <div
-                  className={`flex items-center gap-1.5 text-xs font-mono font-bold px-2 py-0.5 rounded-lg border transition-colors ${
-                    isCriticalRibbon
-                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-                      : isLowRibbon
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                      : 'bg-zinc-800/90 text-emerald-300 border-zinc-700/50'
-                  }`}
-                  title={`${hardware.printer.ribbonRemaining} cuts remaining out of ${
-                    hardware.printer.maxRibbon || 700
-                  }`}
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`w-2.5 h-2.5 rounded-full ${printerDot}`} />
+              <div className="min-w-0">
+                <p className="text-[16px] font-medium truncate">{hardware.printer.name}</p>
+                <p
+                  className={`text-[14px] tabular-nums ${isCriticalRibbon || isLowRibbon ? 'text-warning' : 'text-muted'}`}
+                  title={`${hardware.printer.ribbonRemaining} prints left out of ${hardware.printer.maxRibbon || 700}`}
                 >
-                  {isLowRibbon && <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />}
-                  <span>
-                    {hardware.printer.ribbonRemaining} / {hardware.printer.maxRibbon || 700} cuts
-                  </span>
-                </div>
-
-                {/* Mini Stock Bar */}
-                <div className="hidden md:flex items-center w-14 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                  {hardware.printer.ribbonRemaining} of {hardware.printer.maxRibbon || 700} prints left ({ribbonPct}%)
+                </p>
+                <div className="hidden md:block mt-1.5 w-40 h-1 bg-paper-surface overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isCriticalRibbon
-                        ? 'bg-rose-500'
-                        : isLowRibbon
-                        ? 'bg-amber-400'
-                        : 'bg-emerald-400'
-                    }`}
-                    style={{
-                      width: `${Math.max(
-                        5,
-                        hardware.printer.ribbonPercentage ??
-                          Math.round(
-                            (hardware.printer.ribbonRemaining / (hardware.printer.maxRibbon || 700)) *
-                              100
-                          )
-                      )}%`,
-                    }}
+                    className="h-full bg-ink transition-all duration-500"
+                    style={{ width: `${Math.max(5, ribbonPct)}%` }}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Cluster: Micro Action Buttons & Diagnostics Toggle */}
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center ml-auto">
-            {/* Micro Button: Test Shutter */}
-            <button
-              type="button"
-              onClick={handleTestShutter}
-              disabled={shutterStatus === 'testing'}
-              aria-label="Test Camera Shutter and Flash"
-              className={`group relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                shutterStatus === 'success'
-                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
-                  : shutterStatus === 'error'
-                  ? 'bg-rose-950/60 border-rose-500/50 text-rose-300'
-                  : 'bg-zinc-900/90 hover:bg-zinc-800/90 border-zinc-700/70 hover:border-pink-500/40 text-zinc-200 hover:text-white'
-              }`}
-            >
-              {shutterStatus === 'testing' ? (
-                <RotateCw className="w-3.5 h-3.5 animate-spin text-pink-400" />
-              ) : shutterStatus === 'success' ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Zap className="w-3.5 h-3.5 text-pink-400 group-hover:scale-110 transition-transform" />
-              )}
-              <span>
-                {shutterStatus === 'testing'
-                  ? 'Firing...'
-                  : shutterStatus === 'success'
-                  ? 'Fired!'
-                  : 'Test Shutter'}
-              </span>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <button type="button" onClick={handleTestShutter} disabled={shutterStatus === 'testing'} aria-label="Test the camera shutter and flash" className={actionButton}>
+              {shutterStatus === 'testing' ? 'Firing…' : shutterStatus === 'success' ? 'Fired' : 'Test shutter'}
             </button>
-
-            {/* Micro Button: Test Print */}
-            <button
-              type="button"
-              onClick={handleTestPrint}
-              disabled={printStatus === 'printing'}
-              aria-label="Test DNP Sublimation Print"
-              className={`group relative flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                printStatus === 'success'
-                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
-                  : printStatus === 'error'
-                  ? 'bg-rose-950/60 border-rose-500/50 text-rose-300'
-                  : 'bg-zinc-900/90 hover:bg-zinc-800/90 border-zinc-700/70 hover:border-cyan-500/40 text-zinc-200 hover:text-white'
-              }`}
-            >
-              {printStatus === 'printing' ? (
-                <RotateCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-              ) : printStatus === 'success' ? (
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-              ) : (
-                <Printer className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
-              )}
-              <span>
-                {printStatus === 'printing'
-                  ? 'Spooling...'
-                  : printStatus === 'success'
-                  ? 'Queued!'
-                  : 'Test Print'}
-              </span>
+            <button type="button" onClick={handleTestPrint} disabled={printStatus === 'printing'} aria-label="Send a test print" className={actionButton}>
+              {printStatus === 'printing' ? 'Sending…' : printStatus === 'success' ? 'Sent' : 'Test print'}
             </button>
-
-            {/* Diagnostics Drawer Toggle */}
             {showDiagnosticsToggle && (
               <button
                 type="button"
                 onClick={() => setIsExpanded((prev) => !prev)}
                 aria-expanded={isExpanded}
-                aria-label="Toggle hardware diagnostics info"
-                className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
-                  isExpanded
-                    ? 'bg-zinc-800 border-zinc-600 text-zinc-100'
-                    : 'bg-zinc-900/60 hover:bg-zinc-800/80 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                }`}
+                aria-label="Show hardware details"
+                className="w-10 h-10 rounded border border-paper-control flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer"
               >
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
+                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
             )}
           </div>
         </div>
 
-        {/* Live Action Feedback Toast Bar */}
         {actionFeedback && (
-          <div className="px-3.5 py-1.5 bg-zinc-900/95 border-t border-zinc-800/80 text-[11px] font-medium text-zinc-300 flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
-            <div className="flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-pink-400 animate-pulse" />
-              <span>{actionFeedback}</span>
-            </div>
-            <span className="text-[10px] font-mono text-zinc-500">
-              {lastUpdated.toLocaleTimeString()}
-            </span>
-          </div>
+          <p className="mt-3 text-[14px] text-muted flex flex-wrap justify-between gap-2">
+            <span>{actionFeedback}</span>
+            <span className="tabular-nums">{lastUpdated.toLocaleTimeString()}</span>
+          </p>
         )}
 
-        {/* Expandable Telemetry / Diagnostics Drawer */}
         {isExpanded && (
-          <div className="px-3.5 py-3 bg-zinc-900/60 border-t border-zinc-800/80 space-y-2.5 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              <div className="flex items-center gap-1.5">
-                <Info className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Local Hardware Daemon Diagnostics</span>
-              </div>
-              <button
-                type="button"
-                onClick={fetchHardwareTelemetry}
-                className="flex items-center gap-1 text-zinc-400 hover:text-white transition cursor-pointer text-[10px] font-medium"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Refresh
+          <div className="mt-4 pt-4 border-t border-paper-line grid gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[16px] font-medium">Hardware details</p>
+              <button type="button" onClick={fetchHardwareTelemetry} className="h-9 px-3 inline-flex items-center gap-2 text-[14px] cursor-pointer hover:bg-paper-surface rounded">
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
               </button>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {/* Camera Connection */}
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase">Camera Driver</div>
-                <div className="font-bold text-zinc-100 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Canon EDSDK v13</span>
-                </div>
-                <div className="text-[10px] font-mono text-zinc-400">USB 3.0 Direct</div>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-[15px]">
+              <div>
+                <dt className="text-[14px] text-muted">Camera driver</dt>
+                <dd className="mt-1">Canon EDSDK v13</dd>
+                <dd className="text-[14px] text-muted">USB 3.0 direct</dd>
               </div>
-
-              {/* DNP Spooler Queue */}
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase">Print Spooler</div>
-                <div className="font-bold text-zinc-100 flex items-center gap-1.5">
-                  <HardDrive className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{hardware.printer.queueDepth ?? 0} jobs queued</span>
-                </div>
-                <div className="text-[10px] font-mono text-zinc-400">DNP 2x6 Cut Active</div>
+              <div>
+                <dt className="text-[14px] text-muted">Print queue</dt>
+                <dd className="mt-1 tabular-nums">{hardware.printer.queueDepth ?? 0} jobs waiting</dd>
+                <dd className="text-[14px] text-muted">DNP 2 × 6 cut</dd>
               </div>
-
-              {/* Host CPU */}
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase">Host CPU Load</div>
-                <div className="font-bold text-zinc-100 flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-violet-400" />
-                  <span>{hardware.system?.cpuPct ?? 14}%</span>
-                </div>
-                <div className="text-[10px] font-mono text-zinc-400">RAM: {hardware.system?.ramPct ?? 42}%</div>
+              <div>
+                <dt className="text-[14px] text-muted">Computer load</dt>
+                <dd className="mt-1 tabular-nums">CPU {hardware.system?.cpuPct ?? 14}%</dd>
+                <dd className="text-[14px] text-muted tabular-nums">Memory {hardware.system?.ramPct ?? 42}%</dd>
               </div>
-
-              {/* Daemon Status */}
-              <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-1">
-                <div className="text-[10px] text-zinc-400 font-semibold uppercase">Daemon Bridge</div>
-                <div className="font-bold text-zinc-100 flex items-center gap-1.5">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      hardware.system?.isDaemonOnline !== false
-                        ? 'bg-emerald-400 shadow-xs shadow-emerald-400/50'
-                        : 'bg-amber-400'
-                    }`}
-                  />
-                  <span>{hardware.system?.isDaemonOnline !== false ? ':8000 Online' : 'Mock Bridge'}</span>
-                </div>
-                <div className="text-[10px] font-mono text-zinc-400 truncate">
-                  {hardwareDaemonUrl}
-                </div>
+              <div>
+                <dt className="text-[14px] text-muted">Connection to the booth</dt>
+                <dd className="mt-1">{hardware.system?.isDaemonOnline !== false ? 'Online' : 'Offline, showing test data'}</dd>
+                <dd className="text-[14px] text-muted truncate">{hardwareDaemonUrl}</dd>
               </div>
-            </div>
+            </dl>
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 };

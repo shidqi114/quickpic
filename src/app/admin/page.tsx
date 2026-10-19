@@ -427,84 +427,51 @@ export default function AdminDashboardPage() {
     fetchDashboardData();
   };
 
-  return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 md:p-10 flex flex-col items-center select-none">
-      <div className="w-full max-w-7xl space-y-6 md:space-y-8">
+  const metricClass = 'flex flex-col gap-3 p-6 min-w-0';
+  const panelLabel = 'text-[14px] text-muted';
 
-        {/* Top Header */}
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-zinc-800">
-          <div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer"
-                title="Return to Kiosk"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Link>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-                  Multi-Booth Fleet Executive Dashboard
-                </h1>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Real-time multi-tenant supervision, gross revenue audits, consumable tracking, and hardware heartbeats.
-                </p>
-              </div>
+  return (
+    <main className="min-h-screen bg-paper text-ink font-display select-none">
+      <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 flex flex-col gap-10">
+
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-paper-line">
+          <div className="flex items-start gap-4">
+            <Link href="/" title="Back to the booth" aria-label="Back to the booth" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center text-ink hover:bg-paper-surface shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div>
+              <h1 className="text-[clamp(26px,2.6vw,36px)] leading-none font-semibold tracking-[-0.02em]">Fleet</h1>
+              <p className="text-[15px] text-muted mt-2 max-w-[60ch]">
+                Every booth, its takings, its roll and its hardware, in one place.
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Database / Cloud Status Badge */}
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                isSupabaseConfigured
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              }`}
-            >
-              <Database className="w-3.5 h-3.5" />
-              <span>{dataSourceNotice}</span>
-            </div>
-
-            {/* Pair New Kiosk Button */}
-            <button
-              onClick={() => setIsPairingModalOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white text-xs font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Pair New Kiosk</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className={`h-10 px-3 inline-flex items-center gap-2 text-[14px] ${isSupabaseConfigured ? 'text-positive' : 'text-warning'}`}>
+              <Database className="w-4 h-4" />
+              {dataSourceNotice}
+            </span>
+            <button type="button" onClick={() => setIsPairingModalOpen(true)} className="h-11 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer">
+              <span className="inline-flex items-center gap-2"><Plus className="w-4 h-4" /> Pair a booth</span>
             </button>
-
-            {/* Refresh Data */}
-            <button
-              onClick={fetchDashboardData}
-              className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition cursor-pointer"
-              title="Refresh Fleet Data"
-            >
+            <button type="button" onClick={fetchDashboardData} aria-label="Refresh fleet data" title="Refresh fleet data" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </header>
 
-        {/* Consumable & Hardware Ribbon Alert Banner */}
         <RibbonAlertBanner
           alerts={ribbonAlerts}
           onSelectBooth={(id: string) => setSelectedBoothId(id)}
         />
 
-        {/* Multi-Booth Fleet Selector */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-3.5 h-3.5 text-pink-400" />
-              Station Fleet Filter ({booths.length} Photobooths Configured)
-            </span>
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-[20px] font-semibold tracking-tight">Booths ({booths.length})</h2>
             {selectedBoothId !== 'all' && (
-              <button
-                onClick={() => setSelectedBoothId('all')}
-                className="text-xs text-pink-400 hover:text-pink-300 font-semibold cursor-pointer"
-              >
-                Reset to Consolidated Fleet
+              <button type="button" onClick={() => setSelectedBoothId('all')} className="h-10 px-4 rounded border border-paper-control text-[15px] cursor-pointer hover:bg-paper-surface">
+                Show every booth
               </button>
             )}
           </div>
@@ -515,336 +482,173 @@ export default function AdminDashboardPage() {
             onSelectBooth={(id) => setSelectedBoothId(id)}
           />
 
-          {/* Real-time Hardware Status Bar for Selected Booth / Local Daemon */}
           <HardwareStatusBar
             cameraConnected={activeBooth ? activeBooth.cameraConnected : undefined}
-            cameraModel={activeBooth ? (activeBooth.cameraConnected ? 'Canon EOS R100' : 'Simulated (Offline)') : undefined}
+            cameraModel={activeBooth ? (activeBooth.cameraConnected ? 'Canon EOS R100' : 'Simulated (offline)') : undefined}
             printerConnected={activeBooth ? activeBooth.printerConnected : undefined}
-            printerModel={activeBooth ? (activeBooth.printerConnected ? 'DNP DS-RX1HS' : 'Simulated (Offline)') : undefined}
+            printerModel={activeBooth ? (activeBooth.printerConnected ? 'DNP DS-RX1HS' : 'Simulated (offline)') : undefined}
             ribbonRemaining={activeBooth ? activeBooth.ribbonRemaining : undefined}
             autoPoll={selectedBoothId === 'all'}
             pollIntervalMs={4000}
             className="w-full"
           />
-        </div>
+        </section>
 
-        {/* Quick Hub Navigation Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Link
-            href="/admin/devices"
-            className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-cyan-500/50 transition flex items-center gap-3 group"
-          >
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:scale-105 transition">
-              <Cpu className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-xs text-white">Hardware Health</div>
-              <div className="text-[10px] text-zinc-400">DSLR & DNP Spooler</div>
-            </div>
+        <nav aria-label="Tools" className="grid grid-cols-2 sm:grid-cols-4 border-y border-paper-line divide-x divide-paper-line">
+          <Link href="/admin/devices" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
+            <span className="text-[16px] font-medium">Hardware health</span>
+            <span className="text-[14px] text-muted">Camera and printer</span>
           </Link>
-
-          <Link
-            href="/admin/vouchers"
-            className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-pink-500/50 transition flex items-center gap-3 group"
-          >
-            <div className="p-2.5 rounded-xl bg-pink-500/10 text-pink-400 border border-pink-500/20 group-hover:scale-105 transition">
-              <Tag className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-xs text-white">Vouchers & Promos</div>
-              <div className="text-[10px] text-zinc-400">Discount Codes</div>
-            </div>
+          <Link href="/admin/vouchers" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
+            <span className="text-[16px] font-medium">Vouchers</span>
+            <span className="text-[14px] text-muted">Discount codes</span>
           </Link>
-
-          <Link
-            href="/admin/pos"
-            className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/50 transition flex items-center gap-3 group"
-          >
-            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:scale-105 transition">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-xs text-white">POS & Queue</div>
-              <div className="text-[10px] text-zinc-400">Merch & Ticketing</div>
-            </div>
+          <Link href="/admin/pos" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
+            <span className="text-[16px] font-medium">Shop and queue</span>
+            <span className="text-[14px] text-muted">Merchandise and tickets</span>
           </Link>
-
-          <Link
-            href="/live"
-            target="_blank"
-            className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-purple-500/50 transition flex items-center gap-3 group"
-          >
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:scale-105 transition">
-              <Tv className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-bold text-xs text-white">Live Projector</div>
-              <div className="text-[10px] text-zinc-400">Venue TV Stream</div>
-            </div>
+          <Link href="/live" target="_blank" className="p-5 flex flex-col gap-1 no-underline hover:bg-paper-surface">
+            <span className="text-[16px] font-medium">Venue screen</span>
+            <span className="text-[14px] text-muted">Live slideshow</span>
           </Link>
-        </div>
+        </nav>
 
-        {/* Analytics & Key Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <section className="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-paper-line border border-paper-line">
+          <div className={metricClass}>
+            <p className={panelLabel}>{selectedBoothId === 'all' ? 'Takings, all booths' : `Takings, ${activeBooth?.name || selectedBoothId}`}</p>
+            <p className="text-[clamp(30px,3vw,44px)] leading-none font-semibold tracking-[-0.02em] tabular-nums">
+              Rp {totalRevenue.toLocaleString('id-ID')}
+            </p>
+            <p className="text-[14px] text-muted tabular-nums">
+              {filteredSessions.length} sessions in this view
+            </p>
+          </div>
 
-          {/* Metric 1: Revenue Card */}
-          <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between">
+          <div className={metricClass}>
+            <p className={panelLabel}>How guests paid</p>
+            <div className="flex gap-8">
               <div>
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-                  {selectedBoothId === 'all' ? 'Consolidated Fleet Revenue' : `${activeBooth?.name || selectedBoothId} Revenue`}
-                </span>
-                <div className="text-[10px] text-zinc-500 mt-0.5">
-                  {selectedBoothId === 'all' ? 'Aggregated across all stations' : (activeBooth?.location || 'Assigned Station')}
-                </div>
+                <p className="text-[24px] font-semibold tabular-nums">{qrisTransactions.length}</p>
+                <p className="text-[14px] text-muted">by QRIS</p>
               </div>
-              <div className="p-2 rounded-xl bg-pink-500/10 text-pink-400">
-                <TrendingUp className="w-4 h-4" />
+              <div>
+                <p className="text-[24px] font-semibold tabular-nums">{cashBypassTransactions.length}</p>
+                <p className="text-[14px] text-muted">cash, with staff PIN</p>
               </div>
             </div>
-            <div className="mt-4">
-              <div className="text-3xl font-black text-pink-400">
-                Rp {totalRevenue.toLocaleString('id-ID')}
+          </div>
+
+          {selectedBoothId === 'all' ? (
+            <div className={metricClass}>
+              <p className={panelLabel}>Roll left, all booths</p>
+              <p className="text-[24px] font-semibold tabular-nums">
+                {fleetStats.totalCuts} <span className="text-[16px] font-normal text-muted">of {fleetStats.maxCapacity} prints ({fleetStats.avgRibbonPct}%)</span>
+              </p>
+              <div className="w-full h-2 bg-paper-surface overflow-hidden">
+                <div className="h-full bg-ink transition-all duration-500" style={{ width: `${fleetStats.avgRibbonPct}%` }} />
               </div>
-              <p className="text-[11px] text-zinc-500 mt-1">
-                {filteredSessions.length} total sessions recorded in this view
+              <p className="text-[14px] text-muted tabular-nums">
+                {fleetStats.onlineBooths} online · {fleetStats.maintenanceBooths} need attention · {fleetStats.offlineBooths} offline
               </p>
             </div>
-          </div>
-
-          {/* Metric 2: Payment Breakdown Card */}
-          <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Payment Breakdown</span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                <CreditCard className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between text-xs">
-              <div>
-                <div className="text-zinc-400">QRIS Dynamic:</div>
-                <div className="font-bold text-white text-base">{qrisTransactions.length} orders</div>
-              </div>
-              <div className="text-right">
-                <div className="text-zinc-400">Cash / Staff PIN:</div>
-                <div className="font-bold text-amber-400 text-base">{cashBypassTransactions.length} orders</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Metric 3: Fleet Health Overview ('all' mode) OR Booth Telemetry (specific mode) */}
-          {selectedBoothId === 'all' ? (
-            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Fleet Health Overview</span>
-                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
-                  <Server className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-zinc-400">Consumables Capacity:</span>
-                  <span className="font-mono font-bold text-white">
-                    {fleetStats.totalCuts} / {fleetStats.maxCapacity} cuts ({fleetStats.avgRibbonPct}%)
-                  </span>
-                </div>
-                {/* Progress bar */}
-                <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      fleetStats.avgRibbonPct < 25 ? 'bg-amber-500' : 'bg-cyan-500'
-                    }`}
-                    style={{ width: `${fleetStats.avgRibbonPct}%` }}
-                  />
-                </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-400">
-                  <span className="text-emerald-400 font-semibold">{fleetStats.onlineBooths} Online</span>
-                  <span className="text-amber-400 font-semibold">{fleetStats.maintenanceBooths} Warning</span>
-                  <span className="text-zinc-500 font-semibold">{fleetStats.offlineBooths} Offline</span>
-                </div>
-              </div>
-            </div>
           ) : (
-            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Station Hardware & Ribbon</span>
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-                  <Printer className="w-4 h-4" />
-                </div>
+            <div className={metricClass}>
+              <p className={panelLabel}>This booth</p>
+              <p className="text-[24px] font-semibold tabular-nums">
+                {activeBooth?.ribbonRemaining ?? 700} <span className="text-[16px] font-normal text-muted">of 700 prints left</span>
+              </p>
+              <div className="w-full h-2 bg-paper-surface overflow-hidden">
+                <div className="h-full bg-ink transition-all duration-500" style={{ width: `${activeBooth?.ribbonPercentage ?? 100}%` }} />
               </div>
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="text-zinc-400">DNP DS-RX1HS Ribbon:</span>
-                  <span className={`font-mono font-bold ${(activeBooth?.ribbonRemaining ?? 700) < 100 ? 'text-amber-400' : 'text-white'}`}>
-                    {activeBooth?.ribbonRemaining ?? 700} / 700 cuts
-                  </span>
-                </div>
-                <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      (activeBooth?.ribbonRemaining ?? 700) < 100 ? 'bg-amber-500' : 'bg-pink-500'
-                    }`}
-                    style={{ width: `${activeBooth?.ribbonPercentage ?? 100}%` }}
-                  />
-                </div>
-                <div className="mt-3 flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-400">
-                    Camera:{' '}
-                    <span className={activeBooth?.cameraConnected ? 'text-emerald-400 font-bold' : 'text-rose-400'}>
-                      {activeBooth?.cameraConnected ? 'USB Online' : 'Disconnected'}
-                    </span>
-                  </span>
-                  <span className="text-zinc-400">
-                    Printer:{' '}
-                    <span className={activeBooth?.printerConnected ? 'text-emerald-400 font-bold' : 'text-rose-400'}>
-                      {activeBooth?.printerConnected ? 'Ready' : 'Offline'}
-                    </span>
-                  </span>
-                </div>
-              </div>
+              <p className="text-[14px] text-muted">
+                Camera {activeBooth?.cameraConnected ? 'connected' : 'not connected'} · Printer {activeBooth?.printerConnected ? 'ready' : 'offline'}
+              </p>
             </div>
           )}
+        </section>
 
-        </div>
-
-        {/* Consolidated Fleet Stations Grid ('all' mode only) */}
         {selectedBoothId === 'all' && (
-          <div className="space-y-3">
-            <h2 className="font-bold text-white text-sm flex items-center gap-2">
-              <Store className="w-4 h-4 text-pink-400" />
-              Active Fleet Photobooths ({booths.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <section className="flex flex-col gap-4">
+            <h2 className="text-[20px] font-semibold tracking-tight">At a glance</h2>
+            <ul className="grid sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-paper-line">
               {booths.map((b) => {
                 const isLow = (b.ribbonRemaining ?? 700) < 100;
                 return (
-                  <div
-                    key={b.id}
-                    onClick={() => setSelectedBoothId(b.id)}
-                    className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-pink-500/50 transition cursor-pointer flex flex-col justify-between group shadow-md"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span
-                          className={`w-2.5 h-2.5 rounded-full ${
-                            b.status === 'online'
-                              ? 'bg-emerald-400 ring-2 ring-emerald-400/20'
-                              : b.status === 'maintenance'
-                              ? 'bg-amber-400 ring-2 ring-amber-400/20'
-                              : 'bg-zinc-600'
-                          }`}
-                        />
-                        <span className="text-[10px] uppercase font-bold text-zinc-500">
-                          {b.id}
+                  <li key={b.id} className="border-r border-b border-paper-line">
+                    <button type="button" onClick={() => setSelectedBoothId(b.id)} className="w-full h-full p-5 text-left flex flex-col gap-4 cursor-pointer hover:bg-paper-surface">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="text-[13px] text-muted tabular-nums">{b.id}</span>
+                        <span className={`text-[13px] ${b.status === 'online' ? 'text-positive' : b.status === 'maintenance' ? 'text-warning' : 'text-muted'}`}>
+                          {b.status === 'online' ? 'Online' : b.status === 'maintenance' ? 'Needs attention' : 'Offline'}
                         </span>
-                      </div>
-                      <div className="font-bold text-xs text-white group-hover:text-pink-300 transition-colors">
-                        {b.name}
-                      </div>
-                      <div className="text-[11px] text-zinc-400 truncate mt-0.5">
-                        {b.location || 'Assigned Venue'}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
-                      <span className="text-zinc-500">Ribbon:</span>
-                      <span className={`font-mono font-bold ${isLow ? 'text-amber-400' : 'text-zinc-300'}`}>
-                        {b.ribbonRemaining ?? 700} cuts
                       </span>
-                    </div>
-                  </div>
+                      <span className="flex flex-col gap-1">
+                        <span className="text-[17px] font-medium">{b.name}</span>
+                        <span className="text-[14px] text-muted truncate">{b.location || 'Venue not set'}</span>
+                      </span>
+                      <span className="flex items-center justify-between text-[14px] mt-auto">
+                        <span className="text-muted">Prints left</span>
+                        <span className={`tabular-nums ${isLow ? 'text-warning font-medium' : ''}`}>{b.ribbonRemaining ?? 700}</span>
+                      </span>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
-          </div>
+            </ul>
+          </section>
         )}
 
-        {/* Transaction History & Session Feed */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="font-bold text-white text-base">
-                Session Gallery & Audit Log ({filteredSessions.length})
-              </h2>
-              {selectedBoothId !== 'all' && (
-                <span className="px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 text-xs font-bold">
-                  Filtered: {activeBooth?.name || selectedBoothId}
-                </span>
-              )}
-            </div>
-
-            <span className="text-xs text-zinc-400">
-              Showing newest guest captures
-            </span>
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-[20px] font-semibold tracking-tight">
+              Sessions ({filteredSessions.length})
+              {selectedBoothId !== 'all' && <span className="text-[15px] font-normal text-muted"> · {activeBooth?.name || selectedBoothId}</span>}
+            </h2>
+            <span className="text-[14px] text-muted">Newest first</span>
           </div>
 
           {filteredSessions.length === 0 ? (
-            <div className="p-12 text-center text-zinc-500">
-              <Camera className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
-              <p className="font-semibold text-white">No sessions recorded for this selection</p>
-              <p className="text-xs text-zinc-400 mt-1">
+            <div className="border border-dashed border-paper-control p-10 text-center">
+              <p className="text-[18px] font-medium">No sessions yet</p>
+              <p className="text-[15px] text-muted mt-1">
                 {selectedBoothId === 'all'
-                  ? 'Launch the Kiosk at the root page to take photos.'
-                  : `No sessions have been submitted yet from station ${selectedBoothId}.`}
+                  ? 'Sessions appear here once guests finish at a booth.'
+                  : `No sessions have come from ${selectedBoothId} yet.`}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-zinc-800/80">
+            <ul className="divide-y divide-paper-line border-y border-paper-line">
               {filteredSessions.map((s) => (
-                <div key={s.id} className="p-5 flex items-center justify-between hover:bg-zinc-800/30 transition">
-                  <div className="flex items-center gap-4">
+                <li key={s.id} className="py-4 flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={s.compositeUrl}
-                      alt="Thumbnail"
-                      className="w-12 h-16 object-cover rounded-lg border border-zinc-700 bg-zinc-950"
-                    />
-                    <div>
-                      <div className="font-bold text-sm text-white flex items-center gap-2">
-                        {s.id}
-                        <span className="px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-400 text-[10px] font-bold uppercase">
-                          {s.layout}
-                        </span>
-                        {/* Station / Booth Tag */}
-                        <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono font-medium">
-                          {s.boothId || s.eventId || 'booth-jkt-01'}
-                        </span>
-                      </div>
-                      <div className="text-xs text-zinc-400 mt-0.5">
-                        {new Date(s.createdAt).toLocaleString()} &bull;{' '}
-                        <span className="text-emerald-400">
-                          Rp {(s.payment?.amount || 35000).toLocaleString('id-ID')} ({s.payment?.method || 'cash'})
-                        </span>
-                      </div>
+                    <img src={s.compositeUrl} alt="" className="w-12 h-16 object-cover bg-paper-surface outline-1 outline-paper-line shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[16px] font-medium tabular-nums truncate">{s.id}</p>
+                      <p className="text-[14px] text-muted tabular-nums">
+                        {new Date(s.createdAt).toLocaleString()} · {s.boothId || s.eventId || 'booth-jkt-01'} · {s.layout}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleDownloadImage(s.compositeUrl, s.id)}
-                      className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
-                      title="Download Strip"
-                    >
+                  <div className="flex items-center gap-4">
+                    <span className="text-[16px] tabular-nums">
+                      Rp {(s.payment?.amount || 35000).toLocaleString('id-ID')}
+                      <span className="block text-[13px] text-muted">{s.payment?.method || 'cash'}</span>
+                    </span>
+                    <button type="button" onClick={() => handleDownloadImage(s.compositeUrl, s.id)} aria-label={`Download strip ${s.id}`} title="Download strip" className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface cursor-pointer">
                       <Download className="w-4 h-4" />
                     </button>
-                    <Link
-                      href={`/gallery/${s.id}`}
-                      target="_blank"
-                      className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition cursor-pointer"
-                      title="Open Web Gallery"
-                    >
+                    <Link href={`/gallery/${s.id}`} target="_blank" aria-label={`Open gallery for ${s.id}`} title="Open the guest gallery" className="w-10 h-10 rounded border border-paper-control flex items-center justify-center hover:bg-paper-surface">
                       <ExternalLink className="w-4 h-4" />
                     </Link>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-        </div>
-
+        </section>
       </div>
 
-      {/* Kiosk Pairing Modal */}
       <KioskPairingModal
         isOpen={isPairingModalOpen}
         onClose={() => setIsPairingModalOpen(false)}
