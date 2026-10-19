@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { DeviceTelemetry } from '@/types/photobooth';
 import { useOperatorT } from '@/lib/operatorStrings';
-import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
@@ -89,7 +88,6 @@ export default function DeviceMonitoringPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <LanguageSwitch />
             <span className="text-[14px] text-muted tabular-nums">{t('devices.updated', { time: lastUpdated || t('devices.justNow') })}</span>
             <button type="button" onClick={fetchTelemetry} className="h-11 px-4 rounded border border-paper-control text-[16px] cursor-pointer hover:bg-paper-surface">
               <span className="inline-flex items-center gap-2">

@@ -40,7 +40,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useOperatorT } from '@/lib/operatorStrings';
-import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 
 // Seed default fleet booths for offline and development resilience
 const INITIAL_FLEET_BOOTHS: BoothSummary[] = [
@@ -451,7 +450,6 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <LanguageSwitch />
             <span className={`h-10 px-3 inline-flex items-center gap-2 text-[14px] ${isSupabaseConfigured ? 'text-positive' : 'text-warning'}`}>
               <Database className="w-4 h-4" />
               {dataSourceNotice}

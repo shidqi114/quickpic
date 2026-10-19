@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { POSItem, QueueTicket } from '@/types/photobooth';
 import { INITIAL_POS_ITEMS } from '@/lib/constants';
 import { useOperatorT } from '@/lib/operatorStrings';
-import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 import { Plus, Minus, ArrowLeft } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Link from 'next/link';
@@ -109,7 +108,6 @@ export default function POSAndQueuePage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <LanguageSwitch />
             <div className="flex gap-2" role="tablist">
               <button type="button" role="tab" aria-selected={activeTab === 'pos'} onClick={() => setActiveTab('pos')} className={tab(activeTab === 'pos')}>{t('pos.tabShop')}</button>
               <button type="button" role="tab" aria-selected={activeTab === 'queue'} onClick={() => setActiveTab('queue')} className={tab(activeTab === 'queue')}>{t('pos.tabQueue')}</button>

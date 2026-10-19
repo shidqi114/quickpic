@@ -49,13 +49,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
       <div className="w-full max-w-2xl bg-paper text-ink font-display border border-paper-control rounded flex flex-col max-h-[92vh]">
         <div className="flex items-center justify-between px-8 py-6 border-b border-paper-line">
-          <div className="flex items-center gap-4"><h2 className="text-[22px] font-semibold tracking-tight">{t('settings.title')}</h2><LanguageSwitch /></div>
+          <h2 className="text-[22px] font-semibold tracking-tight">{t('settings.title')}</h2>
           <button type="button" onClick={onClose} aria-label={t('settings.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
             <span className="text-[22px] leading-none">×</span>
           </button>
         </div>
 
         <div className="p-8 flex flex-col gap-8 overflow-y-auto">
+          <section className="grid gap-4">
+            <h3 className="text-[18px] font-semibold tracking-tight">{t('settings.language')}</h3>
+            <LanguageSwitch />
+          </section>
+
           <section className="grid gap-4">
             <h3 className="text-[18px] font-semibold tracking-tight">{t('settings.event')}</h3>
             <label className="grid gap-2">

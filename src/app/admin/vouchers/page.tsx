@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { VoucherCode } from '@/types/photobooth';
 import { INITIAL_VOUCHERS } from '@/lib/constants';
 import { useOperatorT } from '@/lib/operatorStrings';
-import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 import { Plus, ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -68,7 +67,6 @@ export default function VoucherManagerPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <LanguageSwitch />
             <button type="button" onClick={() => setIsCreating(true)} className="h-11 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer">
               <span className="inline-flex items-center gap-2"><Plus className="w-4 h-4" /> {t('vouchers.new')}</span>
             </button>

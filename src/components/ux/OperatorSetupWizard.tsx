@@ -124,7 +124,6 @@ const DEFAULT_EVENT_PROFILES: EventProfile[] = [
 ];
 
 import { SettingsModal } from '@/components/SettingsModal';
-import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
 import { useOperatorT } from '@/lib/operatorStrings';
 
 const INPUT = 'h-11 w-full px-3 rounded border border-paper-control bg-paper text-[16px] text-ink placeholder:text-muted focus:outline-2 focus:outline-accent';
@@ -983,7 +982,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <LanguageSwitch />
               <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
                 {t('settings.open')}
               </button>
@@ -1179,7 +1177,6 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               <h1 className="text-[clamp(26px,2.4vw,36px)] leading-none font-semibold tracking-[-0.02em] mt-1">{t('wizard.page2.title')}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <LanguageSwitch />
               <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
                 {t('settings.open')}
               </button>
