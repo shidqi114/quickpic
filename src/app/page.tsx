@@ -24,7 +24,6 @@ import {
   Clock,
   ChevronLeft
 } from 'lucide-react';
-import { CameraViewfinder } from '@/components/CameraViewfinder';
 import { SettingsModal } from '@/components/SettingsModal';
 import { PackagePaymentModal } from '@/components/Payment/PackagePaymentModal';
 import { ConsentModal } from '@/components/ConsentModal';
@@ -36,6 +35,7 @@ import {
   OperatingMode,
 } from '@/components/ux/OperatorSetupWizard';
 import { WelcomeScreen, WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+import { CameraSessionPanel } from '@/components/ux/CameraSessionPanel';
 import { PhotoPickSlots } from '@/components/ux/PhotoPickSlots';
 import { SplitFrameEditor } from '@/components/ux/SplitFrameEditor';
 import { StickerItem } from '@/components/ui/StickerCanvasLayer';
@@ -755,185 +755,34 @@ export default function PhotoboothKioskPage() {
       {/* 3. CAMERA SESSION (With Retake Auto-Start & Review Duration Countdown) */}
       {/* ========================================================================= */}
       {currentStep === 'CAMERA_SESSION' && (
-        <section className="flex-1 max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center justify-center gap-6 my-4 z-10 animate-fade-in">
-          
-          {/* Viewfinder Container */}
-          <div className="relative w-full max-w-4xl aspect-4/3 flex items-center justify-center">
-            <CameraViewfinder
-              countdown={countdown}
-              isCapturing={isCapturing}
-              filter={operatorSettings.selectedFilter}
-              mirror={operatorSettings.mirrorCamera}
-              playAudio={operatorSettings.playAudioCues}
-              onToggleAudio={() =>
-                setOperatorSettings((s) => ({ ...s, playAudioCues: !s.playAudioCues }))
-              }
-            />
-
-            {/* Mirror Toggle */}
-            <button
-              onClick={() =>
-                setOperatorSettings((s) => ({ ...s, mirrorCamera: !s.mirrorCamera }))
-              }
-              className="absolute top-4 left-4 z-20 px-3.5 py-1.5 rounded-full bg-zinc-900/80 backdrop-blur-md border border-zinc-700 text-xs font-semibold text-zinc-300 hover:text-white transition"
-            >
-              {operatorSettings.mirrorCamera ? 'Mirror: ON' : 'Mirror: OFF'}
-            </button>
-
-            {/* Shooting Sequence Status */}
-            {isCapturing && (
-              <div className="absolute top-4 right-16 z-20 px-4 py-1.5 rounded-full bg-pink-500 text-white text-xs font-black uppercase tracking-wider shadow-lg animate-pulse">
-                Pose {(earliestEmptySlot !== -1 ? earliestEmptySlot : currentShotIndex) + 1} of{' '}
-                {totalShotsRequired}
-              </div>
-            )}
-
-            {/* Review Duration Countdown Banner */}
-            {isReviewing && reviewCountdown !== null && (
-              <div className="absolute inset-x-4 bottom-6 z-30 p-4 bg-zinc-950/90 backdrop-blur-md border-2 border-yellow-400 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-yellow-400/20 text-yellow-400 flex items-center justify-center font-mono font-bold text-xl">
-                    {reviewCountdown}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                      <Eye className="w-4 h-4 text-yellow-400" /> Reviewing your shots ({reviewCountdown}s)
-                    </h4>
-                    <p className="text-xs text-zinc-400">
-                      Tap <span className="text-rose-400 font-bold">&apos;X&apos;</span> on any pose to retake, or tap Continue.
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    clearAllActiveTimers();
-                    setIsReviewing(false);
-                    setCurrentStep('PHOTO_PICK_SLOTS');
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-bold text-xs uppercase tracking-wider shadow-lg active:scale-95 transition"
-                >
-                  Continue to Frame ➔
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Captured Photos Strip & Retake Cross Buttons */}
-          <div className="flex flex-col items-center gap-3 w-full lg:w-auto">
-            <div className="flex lg:flex-col items-center gap-3 p-3 bg-zinc-900/90 border border-zinc-800 rounded-3xl shadow-xl">
-              <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider text-center hidden lg:block mb-1">
-                Your Poses ({filledPhotosCount}/{totalShotsRequired})
-              </div>
-
-              {Array.from({ length: totalShotsRequired }).map((_, idx) => {
-                const photo = capturedPhotos[idx];
-                const isHighlightSlot = isCapturing && earliestEmptySlot === idx;
-
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      if (!photo && !isCapturing) {
-                        triggerUniversalCapture(idx);
-                      }
-                    }}
-                    className={`group relative w-24 h-20 lg:w-28 lg:h-22 rounded-2xl overflow-hidden border-2 flex flex-col items-center justify-between bg-zinc-950 transition-all ${
-                      isHighlightSlot
-                        ? 'border-pink-500 ring-4 ring-pink-500/40 scale-105 shadow-xl shadow-pink-500/25'
-                        : photo
-                        ? 'border-zinc-700 hover:border-pink-400'
-                        : 'border-zinc-800 hover:border-zinc-700 cursor-pointer'
-                    }`}
-                  >
-                    {photo ? (
-                      <>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={photo}
-                          alt={`Pose ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-
-                        {/* Pose Number Badge */}
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-xs">
-                          #{idx + 1}
-                        </span>
-
-                        {/* Retake Auto-Start Cross Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePhoto(idx);
-                          }}
-                          title={`Clear Pose #${idx + 1} and auto-retake`}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-2xl flex items-center justify-center transition-all duration-200 active:scale-90 z-30 ring-2 ring-black/70 animate-pulse hover:scale-115 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5 stroke-[3]" />
-                        </button>
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 group-hover:text-pink-400 transition-colors">
-                        <Camera
-                          className={`w-4 h-4 mb-1 transition-all ${
-                            isHighlightSlot
-                              ? 'text-pink-400 animate-bounce'
-                              : 'opacity-40 group-hover:opacity-80'
-                          }`}
-                        />
-                        <span
-                          className={`text-[11px] font-bold ${
-                            isHighlightSlot ? 'text-pink-300' : ''
-                          }`}
-                        >
-                          Pose #{idx + 1}
-                        </span>
-                        <span
-                          className={`text-[9px] font-medium ${
-                            isHighlightSlot ? 'text-pink-400 font-bold' : 'text-zinc-500'
-                          }`}
-                        >
-                          {isHighlightSlot ? 'Shooting...' : 'Empty'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Action Button Below Strip */}
-            {!isCapturing && !isReviewing && (
-              <div className="w-full flex items-center justify-center">
-                {filledPhotosCount === 0 ? (
-                  <button
-                    onClick={startCaptureSequence}
-                    title={`Start Capture (${totalShotsRequired} Poses)`}
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white shadow-xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center cursor-pointer group"
-                  >
-                    <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  </button>
-                ) : isAllShotsCompleted ? (
-                  <button
-                    onClick={() => setCurrentStep('PHOTO_PICK_SLOTS')}
-                    title="Proceed to Step 1: Assign Slots"
-                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white shadow-xl shadow-pink-500/30 active:scale-95 transition flex items-center justify-center cursor-pointer group"
-                  >
-                    <Check className="w-6 h-6 stroke-[3] group-hover:scale-110 transition-transform" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => triggerUniversalCapture()}
-                    title={`Take Pose #${earliestEmptySlot + 1}`}
-                    className="w-full py-4 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white shadow-lg shadow-pink-500/25 active:scale-95 transition flex items-center justify-center cursor-pointer group"
-                  >
-                    <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        <CameraSessionPanel
+          language={guestLanguage}
+          countdown={countdown}
+          isCapturing={isCapturing}
+          isReviewing={isReviewing}
+          reviewCountdown={reviewCountdown}
+          filter={operatorSettings.selectedFilter}
+          mirror={operatorSettings.mirrorCamera}
+          playAudio={operatorSettings.playAudioCues}
+          capturedPhotos={capturedPhotos}
+          totalShots={totalShotsRequired}
+          currentShotIndex={currentShotIndex}
+          earliestEmptySlot={earliestEmptySlot}
+          filledCount={filledPhotosCount}
+          allShotsCompleted={isAllShotsCompleted}
+          onToggleAudio={() => setOperatorSettings((s) => ({ ...s, playAudioCues: !s.playAudioCues }))}
+          onToggleMirror={() => setOperatorSettings((s) => ({ ...s, mirrorCamera: !s.mirrorCamera }))}
+          onStart={startCaptureSequence}
+          onTakeNext={() => triggerUniversalCapture()}
+          onTakeSlot={(idx) => triggerUniversalCapture(idx)}
+          onRemovePhoto={handleRemovePhoto}
+          onProceed={() => setCurrentStep('PHOTO_PICK_SLOTS')}
+          onContinueReview={() => {
+            clearAllActiveTimers();
+            setIsReviewing(false);
+            setCurrentStep('PHOTO_PICK_SLOTS');
+          }}
+        />
       )}
 
       {/* ========================================================================= */}
