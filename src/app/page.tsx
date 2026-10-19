@@ -619,6 +619,7 @@ export default function PhotoboothKioskPage() {
         const separator = finalGuestUrl.includes('?') ? '&' : '?';
         finalGuestUrl = `${finalGuestUrl}${separator}img=${encodeURIComponent(compositeUrl)}`;
       }
+      finalGuestUrl = `${finalGuestUrl}${finalGuestUrl.includes('?') ? '&' : '?'}lang=${guestLanguage}`;
       setGuestUrl(finalGuestUrl);
 
       if (operatorSettings.playAudioCues) {
