@@ -612,21 +612,21 @@
     "semantic_hash": ""
   },
   "hardware-daemon/app.py": {
-    "mtime": 1790923214.922002,
-    "seen": 1791217879.0229068,
-    "ast_hash": "bc01ccbd65e8cc75a6692b2de51a8e2d",
+    "mtime": 1791355161.0040221,
+    "seen": 1791355201.143239,
+    "ast_hash": "23c8f08ee2e19339eef039b602643a3b",
     "semantic_hash": ""
   },
   "hardware-daemon/camera_controller.py": {
-    "mtime": 1790923214.9222965,
-    "seen": 1791217879.0229068,
-    "ast_hash": "fa04ff615e6717beb7449b69a9e657c6",
+    "mtime": 1791355161.0041997,
+    "seen": 1791355201.14324,
+    "ast_hash": "eb047e4f223c8b6cb1c5083d7dfbebb0",
     "semantic_hash": ""
   },
   "hardware-daemon/dnp_spooler.py": {
-    "mtime": 1790923214.9225209,
-    "seen": 1791217879.0229068,
-    "ast_hash": "4c0fc0664eadd8e1fa416382956eeb67",
+    "mtime": 1791355161.00451,
+    "seen": 1791355201.143243,
+    "ast_hash": "bfb482e61ef968eb6cc0dcbf45e2da69",
     "semantic_hash": ""
   },
   "next.config.ts": {
@@ -1824,9 +1824,9 @@
     "semantic_hash": ""
   },
   "hardware-daemon/README.md": {
-    "mtime": 1790923214.921788,
-    "seen": 1791217879.022987,
-    "ast_hash": "d9c43444e37651c9c6f5a11ad8bca9c7",
+    "mtime": 1791355161.003713,
+    "seen": 1791355201.147403,
+    "ast_hash": "6fcf6cee5cd339dd74549f2a5a64af87",
     "semantic_hash": ""
   },
   "hardware-daemon/requirements.txt": {
@@ -1869,6 +1869,36 @@
     "mtime": 1791219015.7913473,
     "seen": 1791219041.9846761,
     "ast_hash": "d673163b78519806e5d36f79be1ae723",
+    "semantic_hash": ""
+  },
+  "hardware-daemon/create-macos-dmg.sh": {
+    "mtime": 1791355161.0043263,
+    "seen": 1791355201.143242,
+    "ast_hash": "21da296d9b53126ee6cd5c0b86191417",
+    "semantic_hash": ""
+  },
+  "hardware-daemon/install-linux.sh": {
+    "mtime": 1791355161.0046375,
+    "seen": 1791355201.143243,
+    "ast_hash": "4eaeb94566c9c1cf60717b8999cd1cd9",
+    "semantic_hash": ""
+  },
+  "hardware-daemon/install-macos.sh": {
+    "mtime": 1791355161.0047574,
+    "seen": 1791355201.143244,
+    "ast_hash": "71c877890179499988475b76e0acf849",
+    "semantic_hash": ""
+  },
+  ".github/workflows/build-hardware-daemon-installers.yml": {
+    "mtime": 1791355161.0031838,
+    "seen": 1791355201.1473432,
+    "ast_hash": "5f98e9cd3b984720534f6b43d0a19e9e",
+    "semantic_hash": ""
+  },
+  "hardware-daemon/INSTALLER_BUILD.md": {
+    "mtime": 1791355161.0033388,
+    "seen": 1791355201.147402,
+    "ast_hash": "f64438c3e682cf211433c9c0744f98ef",
     "semantic_hash": ""
   }
 }
