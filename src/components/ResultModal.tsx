@@ -2,31 +2,62 @@
 
 import React, { useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, RefreshCw, Printer, Share2, Sparkles, Check, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { PhotoSession } from '@/types/photobooth';
+import { PhotoSession, WelcomeLanguage } from '@/types/photobooth';
 
 interface ResultModalProps {
   session: PhotoSession | null;
   guestUrl: string;
+  language?: WelcomeLanguage;
   onReset: () => void;
   onPrint?: () => void;
 }
 
+const COPY: Record<WelcomeLanguage, {
+  kicker: string;
+  title: string;
+  qrCaption: string;
+  save: string;
+  print: string;
+  newShot: string;
+  alt: string;
+}> = {
+  en: {
+    kicker: 'Your photos are ready',
+    title: 'Scan to get your photos',
+    qrCaption: 'Point your phone camera here for full-size photos',
+    save: 'Save to device',
+    print: 'Print',
+    newShot: 'New session',
+    alt: 'Your photo strip',
+  },
+  id: {
+    kicker: 'Foto Anda sudah siap',
+    title: 'Pindai untuk mendapat foto Anda',
+    qrCaption: 'Arahkan kamera ponsel ke sini untuk foto ukuran penuh',
+    save: 'Simpan ke perangkat',
+    print: 'Cetak',
+    newShot: 'Sesi baru',
+    alt: 'Strip foto Anda',
+  },
+};
+
 export const ResultModal: React.FC<ResultModalProps> = ({
   session,
   guestUrl,
+  language = 'en',
   onReset,
   onPrint,
 }) => {
+  const copy = COPY[language];
+
   useEffect(() => {
     if (session) {
-      // Fire festive photobooth confetti
       confetti({
         particleCount: 80,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#ec4899', '#8b5cf6', '#06b6d4', '#fbbf24'],
+        colors: ['#1a4be0', '#ffffff', '#111111'],
       });
     }
   }, [session]);
@@ -67,74 +98,53 @@ export const ResultModal: React.FC<ResultModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-5xl bg-zinc-900 border border-zinc-700/60 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[92vh]">
-        
-        {/* Left Side: Photo Strip Preview */}
-        <div className="flex-1 bg-zinc-950 p-6 flex items-center justify-center overflow-y-auto">
-          <div className="relative group max-h-[75vh] flex justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={session.compositeUrl}
-              alt="Photobooth Strip"
-              className="max-h-[70vh] w-auto rounded-lg shadow-2xl border border-zinc-800 object-contain transition duration-300"
-            />
-          </div>
+    <div className="fixed inset-0 z-50 bg-stage text-stage-ink font-display select-none overflow-y-auto">
+      <div className="min-h-screen grid lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
+        <div className="bg-stage-2 p-8 flex items-center justify-center min-h-[60vh]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={session.compositeUrl}
+            alt={copy.alt}
+            className="max-h-[84vh] w-auto object-contain"
+          />
         </div>
 
-        {/* Right Side: QR Share & Actions */}
-        <div className="w-full md:w-96 bg-zinc-900 p-6 md:p-8 flex flex-col justify-between border-t md:border-t-0 md:border-l border-zinc-800">
-          <div>
-            <div className="flex items-center gap-2 text-pink-400 text-sm font-semibold tracking-wide uppercase mb-1">
-              <Sparkles className="w-4 h-4" />
-              Your Photos Are Ready!
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-6">Scan QR to Download</h2>
-
-            {/* QR Code Card */}
-            <div className="flex flex-col items-center justify-center bg-white p-6 rounded-2xl shadow-xl mb-6">
-              <QRCodeSVG
-                value={guestUrl || window.location.href}
-                size={180}
-                level="M"
-                includeMargin={false}
-              />
-              <p className="text-zinc-700 text-xs font-semibold mt-3 text-center">
-                Point your phone camera here to get high-res photos
-              </p>
+        <div className="p-8 md:p-10 flex flex-col justify-between gap-10 border-t lg:border-t-0 lg:border-l border-stage-line">
+          <div className="grid gap-5">
+            <p className="text-[18px] text-stage-muted">{copy.kicker}</p>
+            <h2 className="text-[clamp(36px,3.4vw,56px)] leading-none font-semibold tracking-[-0.03em]">{copy.title}</h2>
+            <div className="bg-white text-ink p-6 rounded grid justify-items-center gap-3">
+              <QRCodeSVG value={guestUrl || window.location.href} size={220} level="M" includeMargin={false} />
+              <p className="text-[15px] text-center text-muted">{copy.qrCaption}</p>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3">
+          <div className="grid gap-3">
             <button
+              type="button"
               onClick={handleDownload}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-semibold rounded-xl transition shadow-lg shadow-pink-500/25 active:scale-[0.98]"
+              className="h-16 rounded bg-accent hover:bg-accent-press text-white text-[19px] font-medium cursor-pointer active:translate-y-px"
             >
-              <Download className="w-5 h-5" />
-              Save to Device
+              {copy.save}
             </button>
-
             <div className="grid grid-cols-2 gap-3">
               <button
+                type="button"
                 onClick={handlePrint}
-                className="flex items-center justify-center gap-2 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-xl border border-zinc-700 transition active:scale-[0.98]"
+                className="h-16 rounded border border-stage-muted/50 text-[19px] cursor-pointer hover:bg-white/10"
               >
-                <Printer className="w-4 h-4" />
-                Print
+                {copy.print}
               </button>
-
               <button
+                type="button"
                 onClick={onReset}
-                className="flex items-center justify-center gap-2 py-3 px-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-xl border border-zinc-700 transition active:scale-[0.98]"
+                className="h-16 rounded border border-stage-muted/50 text-[19px] cursor-pointer hover:bg-white/10"
               >
-                <RefreshCw className="w-4 h-4" />
-                New Shot
+                {copy.newShot}
               </button>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

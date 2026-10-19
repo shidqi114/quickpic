@@ -860,6 +860,7 @@ export default function PhotoboothKioskPage() {
       {/* ========================================================================= */}
       <ConsentModal
         isOpen={currentStep === 'CONSENT_MODAL'}
+        language={guestLanguage}
         onConfirmConsent={handleFinalizeSession}
       />
 
@@ -869,6 +870,7 @@ export default function PhotoboothKioskPage() {
       <ResultModal
         session={currentSession}
         guestUrl={guestUrl}
+        language={guestLanguage}
         onReset={handleResetKiosk}
         onPrint={handleManualPrint}
       />
