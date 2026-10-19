@@ -125,6 +125,7 @@ const DEFAULT_EVENT_PROFILES: EventProfile[] = [
 
 import { SettingsModal } from '@/components/SettingsModal';
 import { LanguageSwitch } from '@/components/ui/LanguageSwitch';
+import { useOperatorT } from '@/lib/operatorStrings';
 
 const INPUT = 'h-11 w-full px-3 rounded border border-paper-control bg-paper text-[16px] text-ink placeholder:text-muted focus:outline-2 focus:outline-accent';
 const LABEL = 'text-[14px] font-medium text-ink';
@@ -141,6 +142,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   onSignOut,
   onOutletChange,
 }) => {
+  const { t } = useOperatorT();
+  const deleteLabel = (name: string) => t('wizard.deleteNamed', { name });
   // Page 1 vs Page 2 navigation state
   const [currentPage, setCurrentPage] = useState<1 | 2>(1);
   const [isBoothSettingsOpen, setIsBoothSettingsOpen] = useState(false);
@@ -485,11 +488,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const handleDeleteOutlet = async (e: React.MouseEvent, outletId: string) => {
     e.stopPropagation();
     if (outlets.length <= 1) {
-      alert('Cannot delete the only remaining outlet. At least one outlet is required.');
+      alert(t('wizard.outlet.cannotDeleteAlert'));
       return;
     }
     const target = outlets.find((o) => o.id === outletId);
-    const confirmed = window.confirm(`Are you sure you want to delete outlet "${target?.name || outletId}"?`);
+    const confirmed = window.confirm(t('wizard.outlet.confirmDelete', { name: target?.name || outletId }));
     if (!confirmed) return;
 
     await deleteOutlet(currentUserId, outletId);
@@ -546,13 +549,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         signal: AbortSignal.timeout(3000),
       });
       if (res.ok) {
-        setPrintTestMessage(`✨ Test pattern sent to ${selectedPrinterModel} (${selectedPaperFormat}) successfully!`);
+        setPrintTestMessage(t('wizard.printer.sentMsg', { model: selectedPrinterModel, format: selectedPaperFormat }));
         setPrinterRibbonCuts((prev) => Math.max(0, prev - (selectedPaperFormat === 'strip-2x6' ? 2 : 1)));
       } else {
-        setPrintTestMessage(`✨ Test print queued for ${selectedPrinterModel} (simulated spooler).`);
+        setPrintTestMessage(t('wizard.printer.queuedMsg', { model: selectedPrinterModel }));
       }
     } catch {
-      setPrintTestMessage(`✨ Test print dispatched to ${selectedPrinterModel} (offline spooler simulation).`);
+      setPrintTestMessage(t('wizard.printer.dispatchedMsg', { model: selectedPrinterModel }));
     } finally {
       setIsTestingPrint(false);
       setTimeout(() => setPrintTestMessage(null), 5000);
@@ -764,7 +767,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     if (!file) return;
 
     setIsAnalyzingTemplate(true);
-    setDetectionBanner('Analyzing custom template & scanning slot windows...');
+    setDetectionBanner(t('wizard.detect.analyzing'));
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -811,11 +814,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         if (newCustomTemplate.slots.length > 0) {
           setSelectedSlotId(newCustomTemplate.slots[0].id);
         }
-        setDetectionBanner(`✨ Auto-detected ${detection.detectedCount} slots (${detection.category.toUpperCase()} • ${detection.layout})!`);
+        setDetectionBanner(t('wizard.detect.done', { n: detection.detectedCount, category: detection.category.toUpperCase(), layout: detection.layout }));
         setTimeout(() => setDetectionBanner(null), 5000);
       } catch (err) {
         console.error('Template slot detection error:', err);
-        setDetectionBanner('⚠️ Failed to auto-detect slots. Default layout applied.');
+        setDetectionBanner(t('wizard.detect.failed'));
         setTimeout(() => setDetectionBanner(null), 4000);
       } finally {
         setIsAnalyzingTemplate(false);
@@ -842,14 +845,14 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
     if (template.id === templateId) {
       handleSelectPreset(updated.length > 0 ? updated[0] : FRAME_TEMPLATES[0]);
     }
-    setDetectionBanner('🗑️ Custom template deleted');
+    setDetectionBanner(t('wizard.detect.deleted'));
     setTimeout(() => setDetectionBanner(null), 2500);
   };
 
   const handleReDetectCurrentTemplate = async () => {
     if (!template.overlayPngUrl) return;
     setIsAnalyzingTemplate(true);
-    setDetectionBanner('Re-scanning template & detecting slots...');
+    setDetectionBanner(t('wizard.detect.rescanning'));
     try {
       const detection = await detectTemplateSlots(template.overlayPngUrl);
       const updatedTemplate: FrameTemplate = {
@@ -868,11 +871,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       if (detection.slots.length > 0) {
         setSelectedSlotId(detection.slots[0].id);
       }
-      setDetectionBanner(`✨ Re-detected ${detection.detectedCount} slots!`);
+      setDetectionBanner(t('wizard.detect.redone', { n: detection.detectedCount }));
       setTimeout(() => setDetectionBanner(null), 4000);
     } catch (err) {
       console.error('Re-detection failed:', err);
-      setDetectionBanner('⚠️ Re-detection failed.');
+      setDetectionBanner(t('wizard.detect.redoFailed'));
       setTimeout(() => setDetectionBanner(null), 3000);
     } finally {
       setIsAnalyzingTemplate(false);
@@ -902,11 +905,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
           <header className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-paper-line">
             <div className="flex items-center gap-6 flex-wrap">
               <div>
-                <p className="text-[14px] text-muted">Operator</p>
+                <p className="text-[14px] text-muted">{t('wizard.operator')}</p>
                 <p className="text-[16px] font-medium">{userAccountName}</p>
               </div>
               <div className="relative" ref={outletDropdownRef}>
-                <p className="text-[14px] text-muted">Outlet</p>
+                <p className="text-[14px] text-muted">{t('wizard.outlet')}</p>
                 <button
                   type="button"
                   onClick={() => setIsOutletDropdownOpen(!isOutletDropdownOpen)}
@@ -919,7 +922,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                 {isOutletDropdownOpen && (
                   <div className="absolute top-full left-0 mt-2 w-[360px] bg-paper border border-paper-control rounded z-50 flex flex-col overflow-hidden">
                     <div className="px-4 py-3 border-b border-paper-line flex items-center justify-between text-[14px] text-muted">
-                      <span>Choose an outlet</span>
+                      <span>{t('wizard.outlet.choose')}</span>
                       <span className="tabular-nums">{outlets.length}</span>
                     </div>
                     <div className="max-h-72 overflow-y-auto">
@@ -943,8 +946,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                               <button
                                 type="button"
                                 onClick={(e) => handleOpenEditOutlet(e, outlet)}
-                                title={`Edit ${outlet.name}`}
-                                aria-label={`Edit ${outlet.name}`}
+                                title={t('wizard.editNamed', { name: outlet.name })}
+                                aria-label={t('wizard.editNamed', { name: outlet.name })}
                                 className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-control/40 cursor-pointer"
                               >
                                 <Pencil className="w-4 h-4" />
@@ -953,8 +956,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                                 type="button"
                                 onClick={(e) => handleDeleteOutlet(e, outlet.id)}
                                 disabled={outlets.length <= 1}
-                                title={outlets.length <= 1 ? 'Cannot delete the only outlet' : `Delete ${outlet.name}`}
-                                aria-label={`Delete ${outlet.name}`}
+                                title={outlets.length <= 1 ? t('wizard.outlet.cannotDeleteOnly') : t('wizard.deleteNamed', { name: outlet.name })}
+                                aria-label={t('wizard.deleteNamed', { name: outlet.name })}
                                 className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-negative disabled:opacity-30 cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -972,7 +975,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                       }}
                       className="h-12 px-4 text-left text-[16px] font-medium text-accent border-t border-paper-line hover:bg-paper-surface cursor-pointer flex items-center gap-2"
                     >
-                      <Plus className="w-4 h-4" /> Add an outlet
+                      <Plus className="w-4 h-4" /> {t('wizard.outlet.add')}
                     </button>
                   </div>
                 )}
@@ -982,10 +985,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
             <div className="flex flex-wrap items-center gap-3">
               <LanguageSwitch />
               <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
-                Booth settings
+                {t('settings.open')}
               </button>
-              <button type="button" onClick={() => onSignOut?.()} title="Sign out of operator session" className={BTN_S}>
-                Sign out
+              <button type="button" onClick={() => onSignOut?.()} title={t('wizard.signOutTitle')} className={BTN_S}>
+                {t('wizard.signOut')}
               </button>
             </div>
           </header>
@@ -993,9 +996,9 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
           <div className="grid lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] gap-10 flex-1 min-h-0">
             <section className="flex flex-col gap-4 min-h-0">
               <div className="flex items-center justify-between">
-                <h2 className="text-[20px] font-semibold tracking-tight">Events</h2>
-                <button type="button" onClick={() => setIsAddEventModalOpen(true)} title="Add a new event" className="h-10 px-3 rounded border border-paper-control text-[15px] font-medium cursor-pointer hover:bg-paper-surface">
-                  <span className="inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New event</span>
+                <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.events')}</h2>
+                <button type="button" onClick={() => setIsAddEventModalOpen(true)} title={t('wizard.event.newTitle')} className="h-10 px-3 rounded border border-paper-control text-[15px] font-medium cursor-pointer hover:bg-paper-surface">
+                  <span className="inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> {t('wizard.event.new')}</span>
                 </button>
               </div>
 
@@ -1017,8 +1020,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                         type="button"
                         onClick={(e) => handleDeleteEvent(e, ev.id)}
                         disabled={events.length <= 1}
-                        title={events.length <= 1 ? 'Cannot delete the last event' : `Delete ${ev.name}`}
-                        aria-label={`Delete ${ev.name}`}
+                        title={events.length <= 1 ? t('wizard.event.cannotDeleteLast') : t('wizard.deleteNamed', { name: ev.name })}
+                        aria-label={t('wizard.deleteNamed', { name: ev.name })}
                         className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-negative disabled:opacity-30 cursor-pointer shrink-0"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1029,13 +1032,13 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               </ul>
 
               <p className="text-[14px] text-muted pt-3 border-t border-paper-line">
-                Printed on the strip: <span className="text-ink">{settings.eventName}</span>, {settings.eventDate}, {settings.eventHashtag}
+                {t('wizard.event.strip')} <span className="text-ink">{settings.eventName}</span>, {settings.eventDate}, {settings.eventHashtag}
               </p>
             </section>
 
             <section className="flex flex-col gap-8 min-w-0">
               <div className="flex flex-col gap-3">
-                <h2 className="text-[20px] font-semibold tracking-tight">Mode</h2>
+                <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.mode')}</h2>
                 <div className="grid md:grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -1043,8 +1046,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     aria-pressed={settings.operatingMode === 'event'}
                     className={`p-4 rounded border text-left cursor-pointer ${settings.operatingMode === 'event' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
                   >
-                    <p className="text-[18px] font-medium">Event</p>
-                    <p className="text-[15px] text-muted mt-1">Free sessions, no payment screen.</p>
+                    <p className="text-[18px] font-medium">{t('wizard.mode.event')}</p>
+                    <p className="text-[15px] text-muted mt-1">{t('wizard.mode.eventDesc')}</p>
                   </button>
                   <button
                     type="button"
@@ -1052,20 +1055,20 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     aria-pressed={settings.operatingMode === 'regular'}
                     className={`p-4 rounded border text-left cursor-pointer ${settings.operatingMode === 'regular' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
                   >
-                    <p className="text-[18px] font-medium">Regular</p>
-                    <p className="text-[15px] text-muted mt-1">Guests pay by QRIS before the session.</p>
+                    <p className="text-[18px] font-medium">{t('wizard.mode.regular')}</p>
+                    <p className="text-[15px] text-muted mt-1">{t('wizard.mode.regularDesc')}</p>
                   </button>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3">
-                <h2 className="text-[20px] font-semibold tracking-tight">What to capture</h2>
+                <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.capture')}</h2>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { id: 'photo' as CaptureModeType, name: 'Photos' },
-                    { id: 'boomerang' as CaptureModeType, name: 'Boomerang' },
-                    { id: 'gif' as CaptureModeType, name: 'GIF' },
-                    { id: 'video' as CaptureModeType, name: 'Video' },
+                    { id: 'photo' as CaptureModeType, name: t('wizard.capture.photo') },
+                    { id: 'boomerang' as CaptureModeType, name: t('wizard.capture.boomerang') },
+                    { id: 'gif' as CaptureModeType, name: t('wizard.capture.gif') },
+                    { id: 'video' as CaptureModeType, name: t('wizard.capture.video') },
                   ].map((mode) => {
                     const isSelected = settings.activeCaptureModes.includes(mode.id);
                     return (
@@ -1085,8 +1088,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
               <div className="flex flex-col gap-3 min-w-0">
                 <div className="flex items-baseline justify-between gap-4">
-                  <h2 className="text-[20px] font-semibold tracking-tight">Welcome screen</h2>
-                  <span className="text-[14px] text-muted">{settings.customWelcomeImageUrl ? 'Your photo is on the screen' : 'Pick a colour, or upload a photo'}</span>
+                  <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.welcome')}</h2>
+                  <span className="text-[14px] text-muted">{settings.customWelcomeImageUrl ? t('wizard.welcome.hasPhoto') : t('wizard.welcome.pickOrUpload')}</span>
                 </div>
 
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
@@ -1113,11 +1116,11 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                         welcomeFileInputRef.current.click();
                       }
                     }}
-                    title="Your own photo as the welcome screen"
+                    title={t('wizard.welcome.ownPhotoTitle')}
                     aria-pressed={settings.welcomeTheme === 'custom' || !!settings.customWelcomeImageUrl}
                     className={`p-3 rounded border text-left text-[14px] cursor-pointer ${settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
                   >
-                    Own photo
+                    {t('wizard.welcome.ownPhoto')}
                   </button>
                 </div>
 
@@ -1127,37 +1130,37 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded border border-paper-control">
                     <div className="flex items-center gap-3 min-w-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={settings.customWelcomeImageUrl} alt="Your welcome photo" className="w-14 h-14 object-cover bg-paper-surface" />
-                      <p className="text-[15px]">Photo on the welcome screen</p>
+                      <img src={settings.customWelcomeImageUrl} alt={t('wizard.welcome.alt')} className="w-14 h-14 object-cover bg-paper-surface" />
+                      <p className="text-[15px]">{t('wizard.welcome.photoOn')}</p>
                     </div>
                     <div className="flex gap-2">
-                      <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>Replace</button>
-                      <button type="button" onClick={handleRemoveWelcomeImage} className={BTN_S}>Remove</button>
+                      <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>{t('wizard.replace')}</button>
+                      <button type="button" onClick={handleRemoveWelcomeImage} className={BTN_S}>{t('wizard.remove')}</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[14px] text-muted">A landscape photo at least 1920 × 1080 works best.</p>
-                    <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>Upload a photo</button>
+                    <p className="text-[14px] text-muted">{t('wizard.welcome.hint')}</p>
+                    <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>{t('wizard.welcome.upload')}</button>
                   </div>
                 )}
 
                 <label className="flex flex-col gap-2">
-                  <span className={LABEL}>Headline on the welcome screen (optional)</span>
+                  <span className={LABEL}>{t('wizard.welcome.headline')}</span>
                   <input
                     type="text"
                     value={settings.customWelcomeHeadline || ''}
                     onChange={(e) => setSettings((s) => ({ ...s, customWelcomeHeadline: e.target.value }))}
-                    placeholder="e.g. Maya and Alex's wedding"
+                    placeholder={t('wizard.welcome.headlinePlaceholder')}
                     className={INPUT}
                   />
                 </label>
               </div>
 
               <div className="mt-auto pt-6 border-t border-paper-line flex flex-wrap items-center justify-between gap-4">
-                <p className="text-[15px] text-muted">Step 1 of 2</p>
+                <p className="text-[15px] text-muted">{t('wizard.step1')}</p>
                 <button type="button" onClick={() => setCurrentPage(2)} className={BTN_P}>
-                  Next: layout and printer
+                  {t('wizard.nextLayout')}
                 </button>
               </div>
             </section>
@@ -1172,19 +1175,19 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         <div className="flex flex-col h-full min-h-0 gap-5 p-6 md:p-8 animate-fade-in">
           <header className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-[14px] text-muted">Step 2 of 2</p>
-              <h1 className="text-[clamp(26px,2.4vw,36px)] leading-none font-semibold tracking-[-0.02em] mt-1">Layout and printer</h1>
+              <p className="text-[14px] text-muted">{t('wizard.step2')}</p>
+              <h1 className="text-[clamp(26px,2.4vw,36px)] leading-none font-semibold tracking-[-0.02em] mt-1">{t('wizard.page2.title')}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <LanguageSwitch />
               <button type="button" onClick={() => setIsBoothSettingsOpen(true)} className={BTN_S}>
-                Booth settings
+                {t('settings.open')}
               </button>
               <button type="button" onClick={() => setCurrentPage(1)} className={BTN_S}>
-                <span className="inline-flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</span>
+                <span className="inline-flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> {t('wizard.back')}</span>
               </button>
               <button type="button" onClick={() => onSaveAndLaunch(settings, template)} className={BTN_P}>
-                <span className="inline-flex items-center gap-2"><Check className="w-4 h-4" /> Launch photobooth</span>
+                <span className="inline-flex items-center gap-2"><Check className="w-4 h-4" /> {t('wizard.launch')}</span>
               </button>
             </div>
           </header>
@@ -1200,7 +1203,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   >
                     <span className="truncate font-medium">{template.name}</span>
                     <span className="flex items-center gap-2 shrink-0 text-[14px] text-muted tabular-nums">
-                      {template.slotCount} slots
+                      {t('wizard.slotsCount', { n: template.slotCount })}
                       <ChevronDown className={`w-4 h-4 transition-transform ${isTemplateDropdownOpen ? 'rotate-180' : ''}`} />
                     </span>
                   </button>
@@ -1209,7 +1212,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     <div className="absolute top-full left-0 right-0 mt-2 max-h-72 overflow-y-auto bg-paper border border-paper-control rounded z-50">
                       {customTemplates.length > 0 && (
                         <div className="py-1">
-                          <p className="px-4 py-2 text-[13px] text-muted">Your frames</p>
+                          <p className="px-4 py-2 text-[13px] text-muted">{t('wizard.frames.yours')}</p>
                           {customTemplates.map((t) => {
                             const isSelected = template.id === t.id;
                             return (
@@ -1218,7 +1221,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                                   <span className="truncate">{t.name}</span>
                                   {isSelected && <Check className="w-4 h-4 text-accent shrink-0" />}
                                 </button>
-                                <button type="button" onClick={(e) => handleDeleteCustomTemplate(e, t.id)} aria-label={`Delete ${t.name}`} className="w-9 h-9 flex items-center justify-center text-muted hover:text-negative cursor-pointer">
+                                <button type="button" onClick={(e) => handleDeleteCustomTemplate(e, t.id)} aria-label={deleteLabel(t.name)} className="w-9 h-9 flex items-center justify-center text-muted hover:text-negative cursor-pointer">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
@@ -1227,7 +1230,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                         </div>
                       )}
                       <div className="py-1 border-t border-paper-line">
-                        <p className="px-4 py-2 text-[13px] text-muted">Built in</p>
+                        <p className="px-4 py-2 text-[13px] text-muted">{t('wizard.frames.builtIn')}</p>
                         {FRAME_TEMPLATES.map((t) => {
                           const isSelected = template.id === t.id;
                           return (
@@ -1252,7 +1255,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                           }}
                           className="w-full h-11 rounded border border-paper-control text-[15px] flex items-center justify-center gap-2 cursor-pointer hover:bg-paper-surface"
                         >
-                          <Upload className="w-4 h-4" /> Upload a frame
+                          <Upload className="w-4 h-4" /> {t('wizard.frame.upload')}
                         </button>
                       </div>
                     </div>
@@ -1263,9 +1266,9 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={handleAddSlot} disabled={template.slots.length >= 8} className={`${BTN_S} disabled:opacity-40`}>
-                    <span className="inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> Window</span>
+                    <span className="inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> {t('wizard.window.add')}</span>
                   </button>
-                  <button type="button" onClick={() => handleRemoveSlot(selectedSlotId)} disabled={template.slots.length <= 1} aria-label="Remove the selected window" title="Remove the selected window" className="w-12 h-12 rounded border border-paper-control flex items-center justify-center text-muted hover:text-negative disabled:opacity-40 cursor-pointer">
+                  <button type="button" onClick={() => handleRemoveSlot(selectedSlotId)} disabled={template.slots.length <= 1} aria-label={t('wizard.window.removeTitle')} title={t('wizard.window.removeTitle')} className="w-12 h-12 rounded border border-paper-control flex items-center justify-center text-muted hover:text-negative disabled:opacity-40 cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1274,16 +1277,16 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-3 relative z-20">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-[14px] text-muted tabular-nums">
-                    {template.category} · {template.slots.length} windows
+                    {t('wizard.windowsCount', { category: template.category, n: template.slots.length })}
                   </span>
                   {template.overlayPngUrl && (
-                    <button type="button" onClick={handleReDetectCurrentTemplate} disabled={isAnalyzingTemplate} title="Find the photo windows again" className="h-9 px-3 rounded border border-paper-control text-[14px] cursor-pointer hover:bg-paper-surface disabled:opacity-40">
-                      Find windows again
+                    <button type="button" onClick={handleReDetectCurrentTemplate} disabled={isAnalyzingTemplate} title={t('wizard.frame.findAgainTitle')} className="h-9 px-3 rounded border border-paper-control text-[14px] cursor-pointer hover:bg-paper-surface disabled:opacity-40">
+                      {t('wizard.frame.findAgain')}
                     </button>
                   )}
                   {template.isCustom && (
-                    <button type="button" onClick={(e) => handleDeleteCustomTemplate(e, template.id)} title="Delete this frame" className="h-9 px-3 rounded text-[14px] text-negative cursor-pointer hover:bg-paper-surface">
-                      Delete frame
+                    <button type="button" onClick={(e) => handleDeleteCustomTemplate(e, template.id)} title={t('wizard.frame.deleteTitle')} className="h-9 px-3 rounded text-[14px] text-negative cursor-pointer hover:bg-paper-surface">
+                      {t('wizard.frame.delete')}
                     </button>
                   )}
                 </div>
@@ -1295,39 +1298,39 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     aria-expanded={isSlotCustomizationOpen}
                     className="h-9 px-3 rounded border border-paper-control text-[14px] cursor-pointer hover:bg-paper-surface flex items-center gap-2"
                   >
-                    Window {template.slots.findIndex((s) => s.id === currentSlot?.id) + 1} size and position
+                    {t('wizard.window.sizePosition', { n: template.slots.findIndex((s) => s.id === currentSlot?.id) + 1 })}
                     <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isSlotCustomizationOpen ? 'rotate-180' : ''}`} />
                   </button>
 
                   {isSlotCustomizationOpen && (
                     <div className="absolute top-11 right-0 w-[340px] bg-paper border border-paper-control rounded p-5 z-50 grid gap-4">
                       <div className="flex items-center justify-between">
-                        <p className="text-[16px] font-medium">Window {template.slots.findIndex((s) => s.id === currentSlot?.id) + 1}</p>
-                        <button type="button" onClick={() => setIsSlotCustomizationOpen(false)} aria-label="Close" className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+                        <p className="text-[16px] font-medium">{t('wizard.window.title', { n: template.slots.findIndex((s) => s.id === currentSlot?.id) + 1 })}</p>
+                        <button type="button" onClick={() => setIsSlotCustomizationOpen(false)} aria-label={t('wizard.close')} className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                           <X className="w-4 h-4" />
                         </button>
                       </div>
                       <div className="flex items-center gap-4 text-[14px]">
-                        <label className="flex items-center gap-2">Frame colour <input type="color" value={template.backgroundColor} onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))} title="Frame colour" className="w-8 h-8 cursor-pointer bg-transparent" /></label>
-                        <label className="flex items-center gap-2">Edge colour <input type="color" value={template.accentColor} onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))} title="Edge colour" className="w-8 h-8 cursor-pointer bg-transparent" /></label>
+                        <label className="flex items-center gap-2">{t('wizard.frame.colour')} <input type="color" value={template.backgroundColor} onChange={(e) => setTemplate((prev) => ({ ...prev, backgroundColor: e.target.value }))} title={t('wizard.frame.colour')} className="w-8 h-8 cursor-pointer bg-transparent" /></label>
+                        <label className="flex items-center gap-2">{t('wizard.frame.edgeColour')} <input type="color" value={template.accentColor} onChange={(e) => setTemplate((prev) => ({ ...prev, accentColor: e.target.value }))} title={t('wizard.frame.edgeColour')} className="w-8 h-8 cursor-pointer bg-transparent" /></label>
                       </div>
 
                       {currentSlot && (
                         <div className="grid grid-cols-2 gap-4 text-[14px]">
                           <label className="grid gap-2">
-                            <span className="flex justify-between text-muted"><span>Left</span><span className="tabular-nums text-ink">{Math.round(currentSlot.x)}%</span></span>
+                            <span className="flex justify-between text-muted"><span>{t('wizard.slot.left')}</span><span className="tabular-nums text-ink">{Math.round(currentSlot.x)}%</span></span>
                             <input type="range" min="0" max={100 - currentSlot.width} value={currentSlot.x} onChange={(e) => handleSlotPositionChange(currentSlot.id, { x: parseFloat(e.target.value) })} className="w-full accent-ink cursor-pointer" />
                           </label>
                           <label className="grid gap-2">
-                            <span className="flex justify-between text-muted"><span>Top</span><span className="tabular-nums text-ink">{Math.round(currentSlot.y)}%</span></span>
+                            <span className="flex justify-between text-muted"><span>{t('wizard.slot.top')}</span><span className="tabular-nums text-ink">{Math.round(currentSlot.y)}%</span></span>
                             <input type="range" min="0" max={100 - currentSlot.height} value={currentSlot.y} onChange={(e) => handleSlotPositionChange(currentSlot.id, { y: parseFloat(e.target.value) })} className="w-full accent-ink cursor-pointer" />
                           </label>
                           <label className="grid gap-2">
-                            <span className="flex justify-between text-muted"><span>Width</span><span className="tabular-nums text-ink">{Math.round(currentSlot.width)}%</span></span>
+                            <span className="flex justify-between text-muted"><span>{t('wizard.slot.width')}</span><span className="tabular-nums text-ink">{Math.round(currentSlot.width)}%</span></span>
                             <input type="range" min="15" max="96" value={currentSlot.width} onChange={(e) => handleSlotPositionChange(currentSlot.id, { width: parseFloat(e.target.value) })} className="w-full accent-ink cursor-pointer" />
                           </label>
                           <label className="grid gap-2">
-                            <span className="flex justify-between text-muted"><span>Height</span><span className="tabular-nums text-ink">{Math.round(currentSlot.height)}%</span></span>
+                            <span className="flex justify-between text-muted"><span>{t('wizard.slot.height')}</span><span className="tabular-nums text-ink">{Math.round(currentSlot.height)}%</span></span>
                             <input type="range" min="10" max="80" value={currentSlot.height} onChange={(e) => handleSlotPositionChange(currentSlot.id, { height: parseFloat(e.target.value) })} className="w-full accent-ink cursor-pointer" />
                           </label>
                         </div>
@@ -1358,7 +1361,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
                   {template.overlayPngUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={template.overlayPngUrl} alt="Frame artwork" className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10 select-none" />
+                    <img src={template.overlayPngUrl} alt={t('wizard.frame.artwork')} className="absolute inset-0 w-full h-full object-fill pointer-events-none z-10 select-none" />
                   )}
 
                   {template.slots.map((slot, idx) => {
@@ -1377,8 +1380,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
                   {isAnalyzingTemplate && (
                     <div className="absolute inset-0 z-40 bg-paper/90 flex flex-col items-center justify-center gap-2">
-                      <p className="text-[16px] font-medium">Finding the windows…</p>
-                      <p className="text-[14px] text-muted">This takes a moment.</p>
+                      <p className="text-[16px] font-medium">{t('wizard.finding')}</p>
+                      <p className="text-[14px] text-muted">{t('wizard.takesMoment')}</p>
                     </div>
                   )}
 
@@ -1398,7 +1401,7 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     onChange={(e) => setTemplate((prev) => ({ ...prev, includeText: e.target.checked }))}
                     className="w-4 h-4 accent-ink cursor-pointer"
                   />
-                  Print text on the strip
+                  {t('wizard.textOnStrip')}
                 </label>
                 {template.includeText !== false && (
                   <div className="flex items-center gap-2 flex-1 min-w-[220px]">
@@ -1406,10 +1409,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                       type="text"
                       value={template.customText ?? settings.eventName ?? ''}
                       onChange={(e) => setTemplate((prev) => ({ ...prev, customText: e.target.value }))}
-                      placeholder="Text at the foot of the strip"
+                      placeholder={t('wizard.textPlaceholder')}
                       className={`${INPUT} flex-1`}
                     />
-                    <input type="color" value={template.textColor} onChange={(e) => setTemplate((prev) => ({ ...prev, textColor: e.target.value }))} title="Text colour" className="w-11 h-11 cursor-pointer bg-transparent" />
+                    <input type="color" value={template.textColor} onChange={(e) => setTemplate((prev) => ({ ...prev, textColor: e.target.value }))} title={t('wizard.textColour')} className="w-11 h-11 cursor-pointer bg-transparent" />
                   </div>
                 )}
               </div>
@@ -1418,25 +1421,25 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
             <section className="flex flex-col gap-6 min-h-0 min-w-0 overflow-y-auto">
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-[20px] font-semibold tracking-tight">Camera</h2>
+                  <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.camera')}</h2>
                   <span className="text-[14px] text-muted">
-                    {cameraStatus === 'connected' ? (dslrConnected && settings.useDslr ? 'Canon ready' : 'Connected') : cameraStatus === 'checking' ? 'Checking…' : 'Not connected'}
+                    {cameraStatus === 'connected' ? (dslrConnected && settings.useDslr ? t('wizard.camera.canonReady') : t('wizard.camera.connected')) : cameraStatus === 'checking' ? t('wizard.camera.checking') : t('wizard.camera.notConnected')}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <select value={selectedDeviceId} onChange={(e) => handleDeviceChange(e.target.value)} className={`${INPUT} flex-1`} aria-label="Camera">
+                  <select value={selectedDeviceId} onChange={(e) => handleDeviceChange(e.target.value)} className={`${INPUT} flex-1`} aria-label={t('wizard.camera')}>
                     {videoDevices.length === 0 ? (
-                      <option value="">Default camera</option>
+                      <option value="">{t('wizard.camera.default')}</option>
                     ) : (
                       videoDevices.map((dev, i) => (
                         <option key={dev.deviceId || i} value={dev.deviceId}>
-                          {dev.label || `Camera ${i + 1}`}
+                          {dev.label || t('wizard.camera.fallback', { n: i + 1 })}
                         </option>
                       ))
                     )}
                   </select>
-                  <button type="button" onClick={refreshCameraDevices} title="Look for cameras again" aria-label="Look for cameras again" className="w-11 h-11 rounded border border-paper-control flex items-center justify-center cursor-pointer hover:bg-paper-surface shrink-0">
+                  <button type="button" onClick={refreshCameraDevices} title={t('wizard.camera.lookAgainTitle')} aria-label={t('wizard.camera.lookAgainTitle')} className="w-11 h-11 rounded border border-paper-control flex items-center justify-center cursor-pointer hover:bg-paper-surface shrink-0">
                     <RefreshCw className={`w-4 h-4 ${isProbingDevices ? 'animate-spin' : ''}`} />
                   </button>
                 </div>
@@ -1444,10 +1447,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                 {settings.useDslr && (
                   <div className="flex items-center justify-between gap-3 p-3 border border-paper-control rounded">
                     <div>
-                      <p className="text-[15px] font-medium">{dslrConnected ? dslrModel : 'No Canon camera found'}</p>
-                      <p className="text-[14px] text-muted">{dslrConnected ? 'Connected by USB' : 'Connect the camera by USB, then look again'}</p>
+                      <p className="text-[15px] font-medium">{dslrConnected ? dslrModel : t('wizard.camera.noCanon')}</p>
+                      <p className="text-[14px] text-muted">{dslrConnected ? t('devices.usbConnected') : t('wizard.camera.usbHint')}</p>
                     </div>
-                    <button type="button" onClick={refreshCameraDevices} className={BTN_S}>Look again</button>
+                    <button type="button" onClick={refreshCameraDevices} className={BTN_S}>{t('wizard.lookAgain')}</button>
                   </div>
                 )}
 
@@ -1456,27 +1459,27 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                     <>
                       <video ref={previewVideoRef} autoPlay playsInline muted style={{ transform: settings.mirrorCamera ? 'scaleX(-1)' : 'none' }} className="w-full h-full object-cover" />
                       {!previewStreamActive && (
-                        <div className="absolute inset-0 flex items-center justify-center text-[15px] text-stage-muted">Starting the camera…</div>
+                        <div className="absolute inset-0 flex items-center justify-center text-[15px] text-stage-muted">{t('wizard.camera.starting')}</div>
                       )}
                     </>
                   ) : dslrConnected ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src="http://localhost:8000/camera/liveview" alt="Canon live view" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
+                    <img src="http://localhost:8000/camera/liveview" alt={t('wizard.camera.liveViewAlt')} className="w-full h-full object-cover" onError={(e) => { (e.currentTarget as HTMLElement).style.display = 'none'; }} />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-[15px] text-stage-muted">No Canon live view</div>
+                    <div className="absolute inset-0 flex items-center justify-center text-[15px] text-stage-muted">{t('wizard.camera.noLiveView')}</div>
                   )}
                 </div>
               </div>
 
               <div className="flex flex-col gap-4">
-                <h2 className="text-[20px] font-semibold tracking-tight">Timing</h2>
+                <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.timing')}</h2>
                 <div className="grid sm:grid-cols-2 gap-6">
                   <label className="grid gap-2">
-                    <span className="flex justify-between text-[15px]"><span>Pose countdown</span><span className="tabular-nums">{settings.countdownSeconds} s</span></span>
+                    <span className="flex justify-between text-[15px]"><span>{t('wizard.timing.pose')}</span><span className="tabular-nums">{t('wizard.seconds', { n: settings.countdownSeconds })}</span></span>
                     <input type="range" min="2" max="10" step="1" value={settings.countdownSeconds} onChange={(e) => setSettings((s) => ({ ...s, countdownSeconds: parseInt(e.target.value) }))} className="w-full accent-ink cursor-pointer" />
                   </label>
                   <label className="grid gap-2">
-                    <span className="flex justify-between text-[15px]"><span>Time to review shots</span><span className="tabular-nums">{settings.reviewDurationSeconds || 5} s</span></span>
+                    <span className="flex justify-between text-[15px]"><span>{t('wizard.timing.review')}</span><span className="tabular-nums">{t('wizard.seconds', { n: settings.reviewDurationSeconds || 5 })}</span></span>
                     <input type="range" min="3" max="12" step="1" value={settings.reviewDurationSeconds || 5} onChange={(e) => setSettings((s) => ({ ...s, reviewDurationSeconds: parseInt(e.target.value) }))} className="w-full accent-ink cursor-pointer" />
                   </label>
                 </div>
@@ -1484,30 +1487,30 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
               <div className="flex flex-wrap items-center justify-between gap-3 p-4 border border-paper-control rounded">
                 <div>
-                  <p className="text-[14px] text-muted">Printer</p>
+                  <p className="text-[14px] text-muted">{t('wizard.printer')}</p>
                   <p className="text-[16px] font-medium">{selectedPrinterModel}</p>
                 </div>
-                <button type="button" onClick={() => setIsPrinterModalOpen(true)} className={BTN_S}>Printer setup</button>
+                <button type="button" onClick={() => setIsPrinterModalOpen(true)} className={BTN_S}>{t('wizard.printer.setup')}</button>
               </div>
 
               <div className="flex flex-col gap-3">
-                <h2 className="text-[20px] font-semibold tracking-tight">Options</h2>
+                <h2 className="text-[20px] font-semibold tracking-tight">{t('wizard.options')}</h2>
                 <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-[15px]">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" checked={settings.playAudioCues} onChange={(e) => setSettings((s) => ({ ...s, playAudioCues: e.target.checked }))} className="w-4 h-4 accent-ink cursor-pointer" />
-                    Beeps during countdown
+                    {t('wizard.opt.beeps')}
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" checked={settings.showFlashEffect} onChange={(e) => setSettings((s) => ({ ...s, showFlashEffect: e.target.checked }))} className="w-4 h-4 accent-ink cursor-pointer" />
-                    Flash when shooting
+                    {t('wizard.opt.flash')}
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" checked={settings.mirrorCamera} onChange={(e) => setSettings((s) => ({ ...s, mirrorCamera: e.target.checked }))} className="w-4 h-4 accent-ink cursor-pointer" />
-                    Mirror the camera
+                    {t('wizard.opt.mirror')}
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" checked={settings.printEnabled} onChange={(e) => setSettings((s) => ({ ...s, printEnabled: e.target.checked }))} className="w-4 h-4 accent-ink cursor-pointer" />
-                    Print on the DNP printer
+                    {t('wizard.opt.print')}
                   </label>
                 </div>
               </div>
@@ -1530,33 +1533,33 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
           <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-[22px] font-semibold tracking-tight">New event</h3>
-              <button type="button" onClick={() => setIsAddEventModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+              <h3 className="text-[22px] font-semibold tracking-tight">{t('wizard.event.new')}</h3>
+              <button type="button" onClick={() => setIsAddEventModalOpen(false)} aria-label={t('wizard.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateEvent} className="grid gap-4">
               <label className="grid gap-2">
-                <span className={LABEL}>Event name</span>
-                <input type="text" required placeholder="e.g. Summer Gala 2026" value={newEventName} onChange={(e) => setNewEventName(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.event.name')}</span>
+                <input type="text" required placeholder={t('wizard.event.namePlaceholder')} value={newEventName} onChange={(e) => setNewEventName(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Date shown on the strip</span>
-                <input type="text" placeholder="e.g. OCT 2026" value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.event.date')}</span>
+                <input type="text" placeholder={t('wizard.event.datePlaceholder')} value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Hashtag</span>
-                <input type="text" placeholder="e.g. #QuickPicSummer" value={newEventHashtag} onChange={(e) => setNewEventHashtag(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.event.hashtag')}</span>
+                <input type="text" placeholder={t('wizard.event.hashtagPlaceholder')} value={newEventHashtag} onChange={(e) => setNewEventHashtag(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Text printed at the foot of the strip</span>
-                <input type="text" placeholder="e.g. Summer Gala, Jakarta" value={newEventFooterText} onChange={(e) => setNewEventFooterText(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.event.footer')}</span>
+                <input type="text" placeholder={t('wizard.event.footerPlaceholder')} value={newEventFooterText} onChange={(e) => setNewEventFooterText(e.target.value)} className={INPUT} />
               </label>
 
               <div className="flex flex-wrap justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsAddEventModalOpen(false)} className={BTN_S}>Cancel</button>
-                <button type="submit" className={BTN_P}>Save and select</button>
+                <button type="button" onClick={() => setIsAddEventModalOpen(false)} className={BTN_S}>{t('wizard.cancel')}</button>
+                <button type="submit" className={BTN_P}>{t('wizard.event.save')}</button>
               </div>
             </form>
           </div>
@@ -1570,29 +1573,29 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
           <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-[22px] font-semibold tracking-tight">Add an outlet</h3>
-              <button type="button" onClick={() => setIsAddOutletModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+              <h3 className="text-[22px] font-semibold tracking-tight">{t('wizard.outlet.add')}</h3>
+              <button type="button" onClick={() => setIsAddOutletModalOpen(false)} aria-label={t('wizard.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateOutlet} className="grid gap-4">
               <label className="grid gap-2">
-                <span className={LABEL}>Outlet name</span>
-                <input type="text" required placeholder="e.g. Grand Indonesia, Flagship" value={newOutletName} onChange={(e) => setNewOutletName(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.outlet.name')}</span>
+                <input type="text" required placeholder={t('wizard.outlet.namePlaceholder')} value={newOutletName} onChange={(e) => setNewOutletName(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Address or venue details</span>
-                <input type="text" placeholder="e.g. West Mall, Level 3, Jakarta" value={newOutletLocation} onChange={(e) => setNewOutletLocation(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.outlet.location')}</span>
+                <input type="text" placeholder={t('wizard.outlet.locationPlaceholder')} value={newOutletLocation} onChange={(e) => setNewOutletLocation(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Branch code</span>
-                <input type="text" placeholder="e.g. GI-01" value={newOutletCode} onChange={(e) => setNewOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
+                <span className={LABEL}>{t('wizard.outlet.code')}</span>
+                <input type="text" placeholder={t('wizard.outlet.codePlaceholder')} value={newOutletCode} onChange={(e) => setNewOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
               </label>
 
               <div className="flex flex-wrap justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsAddOutletModalOpen(false)} className={BTN_S}>Cancel</button>
-                <button type="submit" className={BTN_P}>Save outlet</button>
+                <button type="button" onClick={() => setIsAddOutletModalOpen(false)} className={BTN_S}>{t('wizard.cancel')}</button>
+                <button type="submit" className={BTN_P}>{t('wizard.outlet.save')}</button>
               </div>
             </form>
           </div>
@@ -1603,29 +1606,29 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
           <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-[22px] font-semibold tracking-tight">Edit outlet</h3>
-              <button type="button" onClick={() => setIsEditOutletModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+              <h3 className="text-[22px] font-semibold tracking-tight">{t('wizard.outlet.edit')}</h3>
+              <button type="button" onClick={() => setIsEditOutletModalOpen(false)} aria-label={t('wizard.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleUpdateOutlet} className="grid gap-4">
               <label className="grid gap-2">
-                <span className={LABEL}>Outlet name</span>
-                <input type="text" required placeholder="e.g. Grand Indonesia, Flagship" value={editOutletName} onChange={(e) => setEditOutletName(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.outlet.name')}</span>
+                <input type="text" required placeholder={t('wizard.outlet.namePlaceholder')} value={editOutletName} onChange={(e) => setEditOutletName(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Address or venue details</span>
-                <input type="text" placeholder="e.g. West Mall, Level 3, Jakarta" value={editOutletLocation} onChange={(e) => setEditOutletLocation(e.target.value)} className={INPUT} />
+                <span className={LABEL}>{t('wizard.outlet.location')}</span>
+                <input type="text" placeholder={t('wizard.outlet.locationPlaceholder')} value={editOutletLocation} onChange={(e) => setEditOutletLocation(e.target.value)} className={INPUT} />
               </label>
               <label className="grid gap-2">
-                <span className={LABEL}>Branch code</span>
-                <input type="text" placeholder="e.g. GI-01" value={editOutletCode} onChange={(e) => setEditOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
+                <span className={LABEL}>{t('wizard.outlet.code')}</span>
+                <input type="text" placeholder={t('wizard.outlet.codePlaceholder')} value={editOutletCode} onChange={(e) => setEditOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
               </label>
 
               <div className="flex flex-wrap justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsEditOutletModalOpen(false)} className={BTN_S}>Cancel</button>
-                <button type="submit" className={BTN_P}>Update outlet</button>
+                <button type="button" onClick={() => setIsEditOutletModalOpen(false)} className={BTN_S}>{t('wizard.cancel')}</button>
+                <button type="submit" className={BTN_P}>{t('wizard.outlet.update')}</button>
               </div>
             </form>
           </div>
@@ -1639,8 +1642,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
         <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
           <div className="w-full max-w-xl bg-paper border border-paper-control rounded p-8 flex flex-col gap-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h3 className="text-[22px] font-semibold tracking-tight">Printer setup</h3>
-              <button type="button" onClick={() => setIsPrinterModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
+              <h3 className="text-[22px] font-semibold tracking-tight">{t('wizard.printer.setup')}</h3>
+              <button type="button" onClick={() => setIsPrinterModalOpen(false)} aria-label={t('wizard.close')} className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1648,16 +1651,16 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
             <div className="grid gap-3 p-4 border border-paper-control rounded">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[16px] font-medium">
-                  {printerUsbStatus === 'connected' ? 'Printer connected and ready' : 'Looking for the printer…'}
+                  {printerUsbStatus === 'connected' ? t('wizard.printer.connected') : t('wizard.printer.looking')}
                 </p>
                 <button type="button" onClick={handleScanUsbPrinters} disabled={isScanningPrinters} className={BTN_S}>
-                  {isScanningPrinters ? 'Looking…' : 'Look again'}
+                  {isScanningPrinters ? t('wizard.printer.scanning') : t('wizard.lookAgain')}
                 </button>
               </div>
               <div className="grid gap-2">
                 <div className="flex justify-between text-[14px] text-muted">
-                  <span>Ribbon and paper left</span>
-                  <span className="tabular-nums text-ink">{printerRibbonCuts} of {printerTotalCapacity} prints ({Math.round((printerRibbonCuts / printerTotalCapacity) * 100)}%)</span>
+                  <span>{t('wizard.printer.ribbon')}</span>
+                  <span className="tabular-nums text-ink">{t('wizard.printer.count', { n: printerRibbonCuts, max: printerTotalCapacity, pct: Math.round((printerRibbonCuts / printerTotalCapacity) * 100) })}</span>
                 </div>
                 <div className="w-full h-2 bg-paper-surface overflow-hidden">
                   <div className="h-full bg-ink transition-all duration-500" style={{ width: `${Math.round((printerRibbonCuts / printerTotalCapacity) * 100)}%` }} />
@@ -1666,18 +1669,18 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
             </div>
 
             <label className="grid gap-2">
-              <span className={LABEL}>Printer</span>
+              <span className={LABEL}>{t('wizard.printer')}</span>
               <select value={selectedPrinterModel} onChange={(e) => setSelectedPrinterModel(e.target.value)} className={INPUT}>
-                <option value="DNP DS-RX1HS">DNP DS-RX1HS (standard kiosk printer)</option>
-                <option value="Citizen CY-02">Citizen CY-02 (commercial dye-sub printer)</option>
-                <option value="DNP QW410">DNP QW410 (compact event printer)</option>
-                <option value="DNP DS620A">DNP DS620A (studio dye-sub printer)</option>
-                <option value="System Default Spooler">System default printer</option>
+                <option value="DNP DS-RX1HS">{t('wizard.printer.opt.rx1hs')}</option>
+                <option value="Citizen CY-02">{t('wizard.printer.opt.cy02')}</option>
+                <option value="DNP QW410">{t('wizard.printer.opt.qw410')}</option>
+                <option value="DNP DS620A">{t('wizard.printer.opt.ds620a')}</option>
+                <option value="System Default Spooler">{t('wizard.printer.opt.system')}</option>
               </select>
             </label>
 
             <div className="grid gap-2">
-              <span className={LABEL}>Paper</span>
+              <span className={LABEL}>{t('wizard.paper')}</span>
               <div className="grid sm:grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -1685,8 +1688,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   aria-pressed={selectedPaperFormat === 'strip-2x6'}
                   className={`p-4 rounded border text-left cursor-pointer ${selectedPaperFormat === 'strip-2x6' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
                 >
-                  <p className="text-[16px] font-medium">Two 2 × 6 in strips</p>
-                  <p className="text-[14px] text-muted mt-1">One 4 × 6 sheet, cut in two.</p>
+                  <p className="text-[16px] font-medium">{t('wizard.paper.strip')}</p>
+                  <p className="text-[14px] text-muted mt-1">{t('wizard.paper.stripDesc')}</p>
                 </button>
                 <button
                   type="button"
@@ -1694,8 +1697,8 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
                   aria-pressed={selectedPaperFormat === 'photo-4x6'}
                   className={`p-4 rounded border text-left cursor-pointer ${selectedPaperFormat === 'photo-4x6' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
                 >
-                  <p className="text-[16px] font-medium">One 4 × 6 in print</p>
-                  <p className="text-[14px] text-muted mt-1">A single postcard-size print.</p>
+                  <p className="text-[16px] font-medium">{t('wizard.paper.photo')}</p>
+                  <p className="text-[14px] text-muted mt-1">{t('wizard.paper.photoDesc')}</p>
                 </button>
               </div>
             </div>
@@ -1706,10 +1709,10 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-paper-line">
               <button type="button" onClick={handleSendTestPrint} disabled={isTestingPrint} className={BTN_S}>
-                {isTestingPrint ? 'Sending…' : 'Send a test print'}
+                {isTestingPrint ? t('wizard.printer.sending') : t('wizard.printer.testPrint')}
               </button>
               <button type="button" onClick={() => setIsPrinterModalOpen(false)} className={BTN_P}>
-                Save and close
+                {t('wizard.saveClose')}
               </button>
             </div>
           </div>
