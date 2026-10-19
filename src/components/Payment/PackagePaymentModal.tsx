@@ -5,7 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { PhotoboothPackage, PaymentDetails, VoucherCode } from '@/types/photobooth';
 import { PHOTOBOOTH_PACKAGES } from '@/lib/constants';
 import { validateVoucher, generateDynamicQRIS, verifyStaffPin } from '@/lib/payments';
-import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+import type { WelcomeLanguage } from '@/types/photobooth';
 
 interface PackagePaymentModalProps {
   isOpen: boolean;

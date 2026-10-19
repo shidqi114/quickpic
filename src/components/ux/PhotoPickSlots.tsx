@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FrameTemplate, SlotAdjustment } from '@/types/photobooth';
-import type { WelcomeLanguage } from '@/components/ux/WelcomeScreen';
+import type { WelcomeLanguage } from '@/types/photobooth';
 
 const COPY: Record<WelcomeLanguage, {
   kicker: string;

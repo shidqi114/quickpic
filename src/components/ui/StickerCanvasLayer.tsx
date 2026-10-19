@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { WelcomeLanguage } from '@/types/photobooth';
 import {
   RotateCw,
   Trash2,
@@ -84,6 +85,11 @@ export const STICKER_CATALOG: StickerLibraryItem[] = [
   { id: 'b-diamond', category: 'vip', label: 'Diamond Pass', content: '💎', type: 'emoji' },
   { id: 'b-vip-gold', category: 'vip', label: 'VIP Gold Seal', content: '👑 TOP TIER VIP 👑', type: 'stamp', badgeColor: 'bg-yellow-500/30 border-yellow-400 text-yellow-200' },
 ];
+
+const PICKER_COPY: Record<WelcomeLanguage, { all: string; emojis: string; stamps: string; shades: string; party: string; vip: string; clear: string }> = {
+  en: { all: 'All', emojis: 'Emojis', stamps: 'Stamps', shades: 'Shades', party: 'Party', vip: 'VIP badges', clear: 'Clear' },
+  id: { all: 'Semua', emojis: 'Emoji', stamps: 'Cap', shades: 'Kacamata', party: 'Pesta', vip: 'Lencana VIP', clear: 'Hapus' },
+};
 
 export interface StickerCanvasLayerProps {
   /** Array of active stickers placed on the canvas */
@@ -390,7 +396,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
           >
             {/* Active Bounding Box Highlight */}
             {isSelected && (
-              <div className="absolute -inset-3 border-2 border-pink-500 rounded-xl ring-2 ring-pink-500/30 bg-pink-500/5 pointer-events-none shadow-lg shadow-pink-500/20" />
+              <div className="absolute -inset-3 border-2 border-white rounded-xl pointer-events-none" />
             )}
 
             {/* Sticker Visual Content with proportional cqw sizing */}
@@ -432,7 +438,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
                   onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -top-3 -left-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  className="absolute -top-3 -left-3 w-4 h-4 bg-white border-2 border-accent rounded-full cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
                   style={{
                     transform: `translate(-50%, -50%) scale(${1 / sticker.scale})`,
                     transformOrigin: 'center center',
@@ -444,7 +450,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
                   onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -top-3 -right-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  className="absolute -top-3 -right-3 w-4 h-4 bg-white border-2 border-accent rounded-full cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
                   style={{
                     transform: `translate(50%, -50%) scale(${1 / sticker.scale})`,
                     transformOrigin: 'center center',
@@ -456,7 +462,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
                   onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -bottom-3 -left-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  className="absolute -bottom-3 -left-3 w-4 h-4 bg-white border-2 border-accent rounded-full cursor-nesw-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
                   style={{
                     transform: `translate(-50%, 50%) scale(${1 / sticker.scale})`,
                     transformOrigin: 'center center',
@@ -468,7 +474,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                   onPointerDown={(e) => handleScalePointerDown(e, sticker)}
                   onClick={(e) => e.stopPropagation()}
                   title="Drag to resize / Tap to cycle size"
-                  className="absolute -bottom-3 -right-3 w-4 h-4 bg-white border-2 border-pink-500 rounded-full shadow-lg cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
+                  className="absolute -bottom-3 -right-3 w-4 h-4 bg-white border-2 border-accent rounded-full cursor-nwse-resize hover:scale-125 active:scale-110 transition-transform z-30 pointer-events-auto"
                   style={{
                     transform: `translate(50%, 50%) scale(${1 / sticker.scale})`,
                     transformOrigin: 'center center',
@@ -478,7 +484,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
 
                 {/* Canva Rotate Handle (Stem & Circular Button) - Constant size */}
                 <div
-                  className="absolute -bottom-3 left-1/2 w-0.5 h-4 bg-pink-500 pointer-events-none"
+                  className="absolute -bottom-3 left-1/2 w-0.5 h-4 bg-white pointer-events-none"
                   style={{
                     transform: `translateX(-50%) scaleY(${1 / sticker.scale})`,
                     transformOrigin: 'top center',
@@ -489,7 +495,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                   onPointerDown={(e) => handleRotatePointerDown(e, sticker)}
                   onClick={(e) => e.stopPropagation()}
                   title="Drag to rotate 360° / Tap to rotate +45°"
-                  className="absolute -bottom-3 left-1/2 bg-pink-500 text-white rounded-full p-1.5 shadow-lg cursor-grab hover:scale-110 active:cursor-grabbing flex items-center justify-center transition-transform z-30 pointer-events-auto"
+                  className="absolute -bottom-3 left-1/2 bg-accent text-white rounded-full p-1.5 cursor-grab hover:scale-110 active:cursor-grabbing flex items-center justify-center transition-transform z-30 pointer-events-auto"
                   style={{
                     transform: `translate(-50%, calc(16px * ${1 / sticker.scale})) scale(${1 / sticker.scale})`,
                     transformOrigin: 'top center',
@@ -502,7 +508,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                 {/* Quick Action Buttons (Duplicate & Delete Pill on Top) - Constant size */}
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute -top-3 left-1/2 flex items-center gap-1 bg-zinc-950/95 border border-pink-500/40 rounded-full p-1 shadow-xl backdrop-blur-md z-30 pointer-events-auto"
+                  className="absolute -top-3 left-1/2 flex items-center gap-1 bg-stage border border-stage-line rounded-full p-1 z-30 pointer-events-auto"
                   style={{
                     transform: `translate(-50%, calc(-100% - 10px * ${1 / sticker.scale})) scale(${1 / sticker.scale})`,
                     transformOrigin: 'bottom center',
@@ -515,7 +521,7 @@ export const StickerCanvasLayer: React.FC<StickerCanvasLayerProps> = ({
                       handleDuplicateSticker(sticker.id);
                     }}
                     title="Duplicate Sticker"
-                    className="p-1 hover:bg-zinc-800 text-pink-300 hover:text-white rounded-full transition"
+                    className="p-1 hover:bg-stage-3 text-white rounded-full transition"
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
@@ -550,6 +556,7 @@ export interface StickerPickerDrawerProps {
   stickersCount?: number;
   className?: string;
   headerRight?: React.ReactNode;
+  language?: WelcomeLanguage;
 }
 
 export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
@@ -558,16 +565,18 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
   stickersCount = 0,
   className = '',
   headerRight,
+  language = 'en',
 }) => {
+  const copy = PICKER_COPY[language];
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   const categories = [
-    { id: 'all', label: 'All', icon: Sparkles },
-    { id: 'emoji', label: 'Emojis', icon: Smile },
-    { id: 'stamp', label: 'Stamps', icon: Stamp },
-    { id: 'sunglasses', label: 'Shades', icon: Glasses },
-    { id: 'party', label: 'Party', icon: PartyPopper },
-    { id: 'vip', label: 'VIP Badges', icon: Award },
+    { id: 'all', label: copy.all, icon: Sparkles },
+    { id: 'emoji', label: copy.emojis, icon: Smile },
+    { id: 'stamp', label: copy.stamps, icon: Stamp },
+    { id: 'sunglasses', label: copy.shades, icon: Glasses },
+    { id: 'party', label: copy.party, icon: PartyPopper },
+    { id: 'vip', label: copy.vip, icon: Award },
   ];
 
   const filtered = activeCategory === 'all'
@@ -576,8 +585,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
 
   return (
     <div className={`flex flex-col gap-2.5 ${className}`}>
-      {/* Category Pills, Clear All & Header Right (X button) in the same row */}
-      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+      <div className="flex items-center justify-between gap-2 border-b border-stage-line pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5 min-w-0">
           {categories.map((cat) => {
             const Icon = cat.icon;
@@ -589,7 +597,7 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-pink-500 text-white shadow-md shadow-pink-500/25'
+                    ? 'bg-accent text-white'
                     : 'bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
                 }`}
               >
@@ -603,10 +611,10 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
             <button
               type="button"
               onClick={onClearAll}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg transition whitespace-nowrap ml-1 flex-shrink-0"
+              className="flex items-center gap-1 px-2 py-1 text-[13px] font-semibold text-red-400 hover:text-red-300 rounded transition whitespace-nowrap ml-1 flex-shrink-0"
             >
               <Trash2 className="w-3 h-3" />
-              Clear ({stickersCount})
+              {copy.clear} ({stickersCount})
             </button>
           )}
         </div>
@@ -625,12 +633,12 @@ export const StickerPickerDrawer: React.FC<StickerPickerDrawerProps> = ({
             key={item.id}
             type="button"
             onClick={() => onSelectSticker(item)}
-            className="flex flex-col items-center justify-center p-2 rounded-xl bg-zinc-900/60 hover:bg-pink-500/10 border border-zinc-800/60 hover:border-pink-500/40 hover:scale-105 active:scale-95 transition group"
+            className="flex flex-col items-center justify-center p-2 rounded bg-stage-2 hover:bg-stage-3 border border-stage-line active:scale-95 transition group"
           >
             {item.type === 'emoji' ? (
               <span className="text-2xl filter group-hover:drop-shadow-md">{item.content}</span>
             ) : (
-              <span className="text-[10px] font-black tracking-tight text-center text-pink-400 uppercase leading-tight line-clamp-2">
+              <span className="text-[11px] font-semibold tracking-tight text-center text-white uppercase leading-tight line-clamp-2">
                 {item.label}
               </span>
             )}

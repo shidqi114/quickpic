@@ -809,6 +809,7 @@ export default function PhotoboothKioskPage() {
       {/* ========================================================================= */}
       {currentStep === 'SPLIT_FRAME_EDITOR' && (
         <SplitFrameEditor
+          language={guestLanguage}
           capturedPhotos={capturedPhotos.map((p) => p || '')}
           selectedTemplate={selectedTemplate}
           slotAdjustments={slotAdjustments}
