@@ -19,6 +19,9 @@
   --color-accent: #1a4be0;
   --color-accent-press: #1238b0;
   --color-negative: #c4242a;
+  --color-stage: #111111;
+  --color-stage-ink: #ffffff;
+  --color-stage-muted: #a3a3a3;
 }
 
 :root {
