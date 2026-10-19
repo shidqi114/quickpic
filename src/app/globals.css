@@ -22,6 +22,9 @@
   --color-stage: #111111;
   --color-stage-ink: #ffffff;
   --color-stage-muted: #a3a3a3;
+  --color-stage-2: #1b1b1b;
+  --color-stage-3: #262626;
+  --color-stage-line: #2e2e2e;
 }
 
 :root {
