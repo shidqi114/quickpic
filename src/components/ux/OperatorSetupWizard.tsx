@@ -123,6 +123,11 @@ const DEFAULT_EVENT_PROFILES: EventProfile[] = [
   },
 ];
 
+const INPUT = 'h-11 w-full px-3 rounded border border-paper-control bg-paper text-[16px] text-ink placeholder:text-muted focus:outline-2 focus:outline-accent';
+const LABEL = 'text-[14px] font-medium text-ink';
+const BTN_P = 'h-12 px-5 rounded bg-accent hover:bg-accent-press text-white text-[16px] font-medium cursor-pointer';
+const BTN_S = 'h-12 px-5 rounded border border-paper-control text-[16px] text-ink cursor-pointer hover:bg-paper-surface';
+
 export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   initialSettings,
   currentTemplate,
@@ -881,514 +886,274 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
   const currentSlot = template.slots.find((s) => s.id === selectedSlotId) || template.slots[0];
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-950 text-zinc-100 flex flex-col select-none overflow-hidden h-screen w-screen p-3 md:p-4">
+    <div
+      className={`fixed inset-0 z-50 flex flex-col select-none overflow-hidden h-screen w-screen font-display ${
+        currentPage === 1 ? 'bg-paper text-ink' : 'bg-zinc-950 text-zinc-100 p-3 md:p-4'
+      }`}
+    >
 
       {/* ========================================================================= */}
       {/* PAGE 1: EVENT FILES, OPERATING MODE, CAPTURE CAPABILITIES & THEMES        */}
       {/* ========================================================================= */}
       {currentPage === 1 && (
-        <div className="grid grid-cols-12 gap-3.5 flex-1 h-full min-h-0 overflow-hidden animate-fade-in">
-
-          {/* LEFT SIDE: Event Files Tray with Independent Auto-Scroll (col-span-3) */}
-          <div className="col-span-12 lg:col-span-3 bg-zinc-900/90 border border-zinc-800/80 rounded-3xl p-4 flex flex-col h-full min-h-0 overflow-hidden shadow-xl">
-            {/* Header with '+' button */}
-            <div className="flex items-center justify-between pb-3 mb-2 border-b border-zinc-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-pink-400" />
-                <span className="text-xs font-black uppercase tracking-wider text-white">
-                  Event Files ({events.length})
-                </span>
+        <div className="flex flex-col h-full min-h-0 gap-6 p-6 md:p-8 overflow-y-auto animate-fade-in">
+          <header className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-paper-line">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div>
+                <p className="text-[14px] text-muted">Operator</p>
+                <p className="text-[16px] font-medium">{userAccountName}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddEventModalOpen(true)}
-                title="Add New Event Profile"
-                className="p-1.5 rounded-xl bg-pink-500 hover:bg-pink-600 text-white shadow-md shadow-pink-500/25 active:scale-90 transition flex items-center justify-center cursor-pointer"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-              </button>
-            </div>
+              <div className="relative" ref={outletDropdownRef}>
+                <p className="text-[14px] text-muted">Outlet</p>
+                <button
+                  type="button"
+                  onClick={() => setIsOutletDropdownOpen(!isOutletDropdownOpen)}
+                  className="mt-1 h-11 px-4 rounded border border-paper-control flex items-center gap-3 text-[16px] font-medium cursor-pointer hover:bg-paper-surface"
+                >
+                  <span className="truncate max-w-[260px]">{selectedOutlet?.name || outletName}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isOutletDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-            {/* Event Cards Tray with Independent Auto-Scroll */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0 divide-y-0">
-              {events.map((ev) => {
-                const isSelected = activeEventId === ev.id;
-                return (
-                  <div
-                    key={ev.id}
-                    onClick={() => handleSelectEvent(ev)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${isSelected
-                      ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30 text-white'
-                      : 'bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-                      }`}
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="text-xs font-bold truncate text-white mb-0.5">
-                        {ev.name}
-                      </div>
-                      <div className="text-[10px] text-zinc-400 truncate">
-                        {ev.date} • {ev.hashtag}
-                      </div>
+                {isOutletDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-[360px] bg-paper border border-paper-control rounded z-50 flex flex-col overflow-hidden">
+                    <div className="px-4 py-3 border-b border-paper-line flex items-center justify-between text-[14px] text-muted">
+                      <span>Choose an outlet</span>
+                      <span className="tabular-nums">{outlets.length}</span>
                     </div>
-
-                    {/* Trash Delete Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeleteEvent(e, ev.id)}
-                      disabled={events.length <= 1}
-                      title={events.length <= 1 ? 'Cannot delete last event' : `Delete ${ev.name}`}
-                      className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 disabled:opacity-20 transition cursor-pointer shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Active Event Branding Snippet (Pinned at bottom of tray) */}
-            <div className="mt-3 pt-2.5 border-t border-zinc-800/80 shrink-0 bg-zinc-950/80 p-2.5 rounded-2xl border border-zinc-800/60 text-[10px] text-zinc-400">
-              <span className="uppercase font-bold text-pink-400 block mb-0.5">
-                Active Print Title:
-              </span>
-              <span className="font-bold text-white block truncate">{settings.eventName}</span>
-              <span className="text-zinc-500 block truncate">{settings.eventDate} • {settings.eventHashtag}</span>
-            </div>
-          </div>
-
-          {/* RIGHT 9 COLUMNS: Account Header Tray + Middle Config + Next Action */}
-          <div className="col-span-12 lg:col-span-9 flex flex-col gap-3.5 h-full min-h-0 overflow-hidden justify-between">
-            {/* TOP TRAY: User Account Name, Outlet Dropdown & Sign Out Button */}
-            <div className="p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md z-30">
-              <div className="flex items-center gap-4 text-xs">
-                {/* User Account */}
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block uppercase font-bold tracking-wider leading-none">Operator Account</span>
-                    <span className="font-bold text-white text-xs">{userAccountName}</span>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-zinc-800 hidden sm:block" />
-
-                {/* Outlet Dropdown Selector */}
-                <div className="relative" ref={outletDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsOutletDropdownOpen(!isOutletDropdownOpen)}
-                    className="flex items-center gap-2.5 p-1.5 px-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/70 hover:border-amber-500/50 transition cursor-pointer text-left"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold shrink-0">
-                      <Store className="w-4 h-4" />
-                    </div>
-                    <div className="flex flex-col min-w-0 pr-1">
-                      <span className="text-[9px] text-zinc-400 block uppercase font-bold tracking-wider leading-none">Outlet Location</span>
-                      <span className="font-bold text-zinc-100 text-xs truncate max-w-[160px] sm:max-w-[220px]">
-                        {selectedOutlet?.name || outletName}
-                      </span>
-                    </div>
-                    <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform ${isOutletDropdownOpen ? 'rotate-180 text-amber-400' : ''}`} />
-                  </button>
-
-                  {/* Fixed-Size, Auto-Scrolling Dropdown Modal */}
-                  {isOutletDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1.5 w-72 sm:w-80 bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-fade-in">
-                      <div className="p-2 border-b border-zinc-800/80 flex items-center justify-between text-[11px] font-bold text-zinc-400 px-3 bg-zinc-950/40">
-                        <span>Select Outlet</span>
-                        <span className="text-[10px] text-zinc-500 font-normal">{outlets.length} available</span>
-                      </div>
-
-                      {/* Scrollable outlets list with fixed max height */}
-                      <div className="max-h-60 overflow-y-auto p-1.5 flex flex-col gap-1">
-                        {outlets.map((outlet) => {
-                          const isSelected = selectedOutlet?.id === outlet.id;
-                          return (
-                            <div
-                              key={outlet.id}
-                              onClick={() => handleSelectOutlet(outlet)}
-                              className={`p-2.5 rounded-xl text-left flex items-center justify-between gap-2 transition cursor-pointer group ${
-                                isSelected
-                                  ? 'bg-amber-500/20 border border-amber-500/50 text-white'
-                                  : 'hover:bg-zinc-800/70 text-zinc-300 border border-transparent'
-                              }`}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-xs truncate">{outlet.name}</span>
-                                  {outlet.code && (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-zinc-800 text-amber-400 border border-amber-500/20 shrink-0">
-                                      {outlet.code}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-[10px] text-zinc-400 truncate mt-0.5">{outlet.location}</div>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 mr-0.5" />}
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleOpenEditOutlet(e, outlet)}
-                                  title={`Edit ${outlet.name}`}
-                                  className="p-1 rounded-lg text-zinc-400 hover:text-amber-300 hover:bg-amber-500/15 transition cursor-pointer"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteOutlet(e, outlet.id)}
-                                  disabled={outlets.length <= 1}
-                                  title={outlets.length <= 1 ? 'Cannot delete the only outlet' : `Delete ${outlet.name}`}
-                                  className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/15 disabled:opacity-20 transition cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {outlets.map((outlet) => {
+                        const isSelected = selectedOutlet?.id === outlet.id;
+                        return (
+                          <div
+                            key={outlet.id}
+                            onClick={() => handleSelectOutlet(outlet)}
+                            className={`px-4 py-3 flex items-center justify-between gap-3 cursor-pointer border-b border-paper-line last:border-0 ${isSelected ? 'bg-paper-surface' : 'hover:bg-paper-surface'}`}
+                          >
+                            <div className="min-w-0">
+                              <p className="text-[16px] font-medium truncate">
+                                {outlet.name}
+                                {outlet.code && <span className="ml-2 text-[13px] text-muted font-normal tabular-nums">{outlet.code}</span>}
+                              </p>
+                              <p className="text-[14px] text-muted truncate">{outlet.location}</p>
                             </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Add an outlet Button at the Very Bottom of Dropdown Modal */}
-                      <div className="p-2 border-t border-zinc-800 bg-zinc-950/60">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsOutletDropdownOpen(false);
-                            setIsAddOutletModalOpen(true);
-                          }}
-                          className="w-full py-2 px-3 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/40 hover:border-pink-500 text-pink-300 hover:text-pink-200 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer active:scale-95"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add an outlet</span>
-                        </button>
-                      </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {isSelected && <Check className="w-4 h-4 text-accent mr-1" />}
+                              <button
+                                type="button"
+                                onClick={(e) => handleOpenEditOutlet(e, outlet)}
+                                title={`Edit ${outlet.name}`}
+                                aria-label={`Edit ${outlet.name}`}
+                                className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-control/40 cursor-pointer"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteOutlet(e, outlet.id)}
+                                disabled={outlets.length <= 1}
+                                title={outlets.length <= 1 ? 'Cannot delete the only outlet' : `Delete ${outlet.name}`}
+                                aria-label={`Delete ${outlet.name}`}
+                                className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-negative disabled:opacity-30 cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Functional Sign Out Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  onSignOut?.();
-                }}
-                title="Sign out of operator session"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-rose-950/60 border border-zinc-700/70 hover:border-rose-800 text-zinc-300 hover:text-rose-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-
-            {/* Main Middle & Next Layout Grid (2 Columns: Config col-span-8 + Next Action col-span-4) */}
-            <div className="grid grid-cols-12 gap-3.5 flex-1 min-h-0 overflow-hidden">
-
-              {/* Middle Configuration Section (col-span-8) */}
-              <div className="col-span-12 lg:col-span-8 flex flex-col gap-3 h-full min-h-0 justify-between">
-
-                {/* Operating Mode */}
-                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-pink-400" /> 1. Operating Mode
-                  </span>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setSettings((s) => ({ ...s, operatingMode: 'event' }))}
-                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${settings.operatingMode === 'event'
-                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
-                        : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <Gift className="w-4 h-4 text-emerald-400" />
-                        {settings.operatingMode === 'event' && (
-                          <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-black uppercase">
-                            Selected
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs font-bold text-white">Event Mode</div>
-                      <div className="text-[10px] text-zinc-400">No Paywall • Free Sessions</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSettings((s) => ({ ...s, operatingMode: 'regular' }))}
-                      className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition cursor-pointer ${settings.operatingMode === 'regular'
-                        ? 'bg-pink-500/20 border-pink-500 ring-2 ring-pink-500/30'
-                        : 'bg-zinc-950/60 border-zinc-800 hover:border-zinc-700'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <CreditCard className="w-4 h-4 text-pink-400" />
-                        {settings.operatingMode === 'regular' && (
-                          <span className="px-2 py-0.5 rounded-full bg-pink-500 text-white text-[9px] font-black uppercase">
-                            Selected
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs font-bold text-white">Regular Mode</div>
-                      <div className="text-[10px] text-zinc-400">With Paywall • Monetized Prints</div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Capture Capabilities */}
-                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-pink-400" /> 2. Capture Capabilities
-                  </span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { id: 'photo' as CaptureModeType, name: 'DSLR Photo', icon: Camera },
-                      { id: 'boomerang' as CaptureModeType, name: 'Boomerang', icon: Film },
-                      { id: 'gif' as CaptureModeType, name: 'Multi-GIF', icon: Zap },
-                      { id: 'video' as CaptureModeType, name: 'Video Book', icon: Video },
-                    ].map((mode) => {
-                      const Icon = mode.icon;
-                      const isSelected = settings.activeCaptureModes.includes(mode.id);
-                      return (
-                        <button
-                          key={mode.id}
-                          type="button"
-                          onClick={() => toggleCaptureMode(mode.id)}
-                          className={`p-2 rounded-xl border text-center flex flex-col items-center justify-center gap-1 transition cursor-pointer ${isSelected
-                            ? 'bg-pink-500/20 border-pink-500 text-white shadow-md'
-                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-                            }`}
-                        >
-                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-pink-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-[10px] font-bold truncate">{mode.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Welcoming Screen Themes (5 Presets + Custom Upload) */}
-                <div className="p-3.5 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl flex flex-col gap-2.5 flex-1 min-h-0 justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                      <Palette className="w-3.5 h-3.5 text-pink-400" /> 3. Welcoming Screen Theme
-                    </span>
-                    {settings.customWelcomeImageUrl ? (
-                      <span className="px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 text-[9px] font-black uppercase flex items-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5 text-pink-400" /> Custom Screen Active
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-zinc-500 font-medium">
-                        5 Presets or Custom Poster
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 6 Options Grid: 5 Presets + 1 Custom Option */}
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {WELCOME_THEME_PRESETS.map((t) => {
-                      const isSelected = settings.welcomeTheme === t.id && !settings.customWelcomeImageUrl;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => setSettings((s) => ({ ...s, welcomeTheme: t.id, customWelcomeImageUrl: undefined }))}
-                          title={`${t.name} - ${t.subtitle}`}
-                          className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${isSelected
-                            ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
-                            : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
-                            }`}
-                        >
-                          <div className={`w-full h-9 rounded-lg bg-gradient-to-tr ${t.previewGradient} shadow-md mb-1 flex items-center justify-center`}>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-white drop-shadow stroke-[3]" />}
-                          </div>
-                          <span className="text-[9px] font-bold text-zinc-200 truncate w-full text-center leading-tight">
-                            {t.name.split(' ')[0]}
-                          </span>
-                        </button>
-                      );
-                    })}
-
-                    {/* Custom Poster Theme Tile */}
                     <button
                       type="button"
                       onClick={() => {
-                        setSettings((s) => ({ ...s, welcomeTheme: 'custom' }));
-                        if (!settings.customWelcomeImageUrl && welcomeFileInputRef.current) {
-                          welcomeFileInputRef.current.click();
-                        }
+                        setIsOutletDropdownOpen(false);
+                        setIsAddOutletModalOpen(true);
                       }}
-                      title="Custom Welcoming Screen / Poster"
-                      className={`flex flex-col items-center p-1.5 rounded-xl border transition cursor-pointer ${settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl
-                        ? 'border-pink-500 bg-pink-500/20 ring-2 ring-pink-500/30'
-                        : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
-                        }`}
+                      className="h-12 px-4 text-left text-[16px] font-medium text-accent border-t border-paper-line hover:bg-paper-surface cursor-pointer flex items-center gap-2"
                     >
-                      <div className="w-full h-9 rounded-lg bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 shadow-md mb-1 flex items-center justify-center relative overflow-hidden">
-                        {settings.customWelcomeImageUrl ? (
-                          <img
-                            src={settings.customWelcomeImageUrl}
-                            alt="Custom"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ImagePlus className="w-4 h-4 text-white" />
-                        )}
-                        {(settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl) && (
-                          <div className="absolute inset-0 bg-pink-500/30 flex items-center justify-center">
-                            <Check className="w-3.5 h-3.5 text-white drop-shadow stroke-[3]" />
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-[9px] font-bold text-zinc-200 truncate w-full text-center leading-tight">
-                        Custom
-                      </span>
+                      <Plus className="w-4 h-4" /> Add an outlet
                     </button>
                   </div>
-
-                  {/* Custom Welcoming Screen Upload & Headline Controls */}
-                  <div className="pt-2 border-t border-zinc-800/60 flex flex-col gap-2">
-                    <input
-                      ref={welcomeFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleWelcomeImageUpload}
-                    />
-
-                    {settings.customWelcomeImageUrl ? (
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-zinc-950/80 border border-pink-500/30">
-                        <div className="flex items-center gap-2.5 overflow-hidden">
-                          <img
-                            src={settings.customWelcomeImageUrl}
-                            alt="Custom Welcome Poster"
-                            className="w-10 h-10 object-cover rounded-lg border border-zinc-700 shrink-0"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-bold text-white truncate">
-                              Custom Welcome Screen Active
-                            </span>
-                            <span className="text-[9px] text-zinc-400">
-                              Full-bleed custom poster background
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => welcomeFileInputRef.current?.click()}
-                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
-                          >
-                            <Upload className="w-3 h-3 text-pink-400" /> Replace
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleRemoveWelcomeImage}
-                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[10px] font-bold transition cursor-pointer"
-                            title="Remove custom image"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[10px] text-zinc-400 flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-pink-400" />
-                          Upload your custom event banner or poster
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => welcomeFileInputRef.current?.click()}
-                          className="px-3 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                        >
-                          <Upload className="w-3 h-3 text-pink-400" />
-                          Upload Poster
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Optional Custom Welcome Headline */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-zinc-400 shrink-0">
-                        Custom Headline:
-                      </span>
-                      <input
-                        type="text"
-                        value={settings.customWelcomeHeadline || ''}
-                        onChange={(e) =>
-                          setSettings((s) => ({ ...s, customWelcomeHeadline: e.target.value }))
-                        }
-                        placeholder="e.g. Maya & Alex's Wedding Photobooth (Optional)"
-                        className="flex-1 px-2.5 py-1 bg-zinc-950/70 border border-zinc-800 rounded-lg text-[10px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-pink-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
+                )}
               </div>
+            </div>
 
-              {/* Right Summary & Next Step Action (col-span-4) */}
-              <div className="col-span-12 lg:col-span-4 bg-zinc-900/90 border border-zinc-800/80 rounded-2xl p-4 flex flex-col justify-between h-full min-h-0">
-                <div className="space-y-3">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-[10px] font-bold uppercase">
-                    <Sparkles className="w-3 h-3" /> Step 1 of 2
-                  </div>
-                  <h3 className="text-base font-black text-white">Event Configuration</h3>
-                  <p className="text-[11px] text-zinc-400 leading-relaxed">
-                    Select your active event file on the left, operating mode, media capture modes, and welcome theme.
-                  </p>
+            <button type="button" onClick={() => onSignOut?.()} title="Sign out of operator session" className={BTN_S}>
+              Sign out
+            </button>
+          </header>
 
-                  <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80 space-y-1.5 text-[11px]">
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Event:</span>
-                      <span className="font-bold text-white truncate max-w-[120px]">{settings.eventName}</span>
-                    </div>
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Mode:</span>
-                      <span className="font-bold text-emerald-400 uppercase text-[9px]">
-                        {settings.operatingMode === 'event' ? 'Event Mode' : 'Regular Mode'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-zinc-400">
-                      <span>Theme:</span>
-                      <span className="font-bold text-pink-400 uppercase text-[9px]">
-                        {settings.customWelcomeImageUrl
-                          ? 'Custom Screen'
-                          : settings.welcomeTheme || 'neon_cyber'}
-                      </span>
-                    </div>
-                    {settings.customWelcomeHeadline && (
-                      <div className="flex justify-between text-zinc-400">
-                        <span>Headline:</span>
-                        <span className="font-bold text-zinc-200 truncate max-w-[120px] text-[10px]">
-                          {settings.customWelcomeHeadline}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Next Button */}
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(2)}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-yellow-400 hover:brightness-110 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-pink-500/25 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Next: Layout & Timers</span>
-                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+          <div className="grid lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] gap-10 flex-1 min-h-0">
+            <section className="flex flex-col gap-4 min-h-0">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[20px] font-semibold tracking-tight">Events</h2>
+                <button type="button" onClick={() => setIsAddEventModalOpen(true)} title="Add a new event" className="h-10 px-3 rounded border border-paper-control text-[15px] font-medium cursor-pointer hover:bg-paper-surface">
+                  <span className="inline-flex items-center gap-1.5"><Plus className="w-4 h-4" /> New event</span>
                 </button>
               </div>
 
-            </div>
+              <ul className="flex flex-col gap-2 overflow-y-auto min-h-0">
+                {events.map((ev) => {
+                  const isSelected = activeEventId === ev.id;
+                  return (
+                    <li
+                      key={ev.id}
+                      onClick={() => handleSelectEvent(ev)}
+                      aria-current={isSelected ? 'true' : undefined}
+                      className={`p-4 rounded border flex items-center justify-between gap-3 cursor-pointer ${isSelected ? 'border-ink bg-paper-surface' : 'border-paper-control hover:bg-paper-surface'}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[16px] font-medium truncate">{ev.name}</p>
+                        <p className="text-[14px] text-muted truncate tabular-nums">{ev.date} · {ev.hashtag}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteEvent(e, ev.id)}
+                        disabled={events.length <= 1}
+                        title={events.length <= 1 ? 'Cannot delete the last event' : `Delete ${ev.name}`}
+                        aria-label={`Delete ${ev.name}`}
+                        className="w-9 h-9 rounded flex items-center justify-center text-muted hover:text-negative disabled:opacity-30 cursor-pointer shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
 
+              <p className="text-[14px] text-muted pt-3 border-t border-paper-line">
+                Printed on the strip: <span className="text-ink">{settings.eventName}</span>, {settings.eventDate}, {settings.eventHashtag}
+              </p>
+            </section>
+
+            <section className="flex flex-col gap-8 min-w-0">
+              <div className="flex flex-col gap-3">
+                <h2 className="text-[20px] font-semibold tracking-tight">Mode</h2>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSettings((s) => ({ ...s, operatingMode: 'event' }))}
+                    aria-pressed={settings.operatingMode === 'event'}
+                    className={`p-4 rounded border text-left cursor-pointer ${settings.operatingMode === 'event' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
+                  >
+                    <p className="text-[18px] font-medium">Event</p>
+                    <p className="text-[15px] text-muted mt-1">Free sessions, no payment screen.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettings((s) => ({ ...s, operatingMode: 'regular' }))}
+                    aria-pressed={settings.operatingMode === 'regular'}
+                    className={`p-4 rounded border text-left cursor-pointer ${settings.operatingMode === 'regular' ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
+                  >
+                    <p className="text-[18px] font-medium">Regular</p>
+                    <p className="text-[15px] text-muted mt-1">Guests pay by QRIS before the session.</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <h2 className="text-[20px] font-semibold tracking-tight">What to capture</h2>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'photo' as CaptureModeType, name: 'Photos' },
+                    { id: 'boomerang' as CaptureModeType, name: 'Boomerang' },
+                    { id: 'gif' as CaptureModeType, name: 'GIF' },
+                    { id: 'video' as CaptureModeType, name: 'Video' },
+                  ].map((mode) => {
+                    const isSelected = settings.activeCaptureModes.includes(mode.id);
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => toggleCaptureMode(mode.id)}
+                        aria-pressed={isSelected}
+                        className={`h-11 px-4 rounded border text-[16px] cursor-pointer ${isSelected ? 'border-ink bg-ink text-white' : 'border-paper-control text-ink hover:bg-paper-surface'}`}
+                      >
+                        {mode.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 min-w-0">
+                <div className="flex items-baseline justify-between gap-4">
+                  <h2 className="text-[20px] font-semibold tracking-tight">Welcome screen</h2>
+                  <span className="text-[14px] text-muted">{settings.customWelcomeImageUrl ? 'Your photo is on the screen' : 'Pick a colour, or upload a photo'}</span>
+                </div>
+
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {WELCOME_THEME_PRESETS.map((t) => {
+                    const isSelected = settings.welcomeTheme === t.id && !settings.customWelcomeImageUrl;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSettings((s) => ({ ...s, welcomeTheme: t.id, customWelcomeImageUrl: undefined }))}
+                        title={`${t.name}: ${t.subtitle}`}
+                        aria-pressed={isSelected}
+                        className={`p-3 rounded border text-left text-[14px] cursor-pointer ${isSelected ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
+                      >
+                        {t.name.split(' ')[0]}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettings((s) => ({ ...s, welcomeTheme: 'custom' }));
+                      if (!settings.customWelcomeImageUrl && welcomeFileInputRef.current) {
+                        welcomeFileInputRef.current.click();
+                      }
+                    }}
+                    title="Your own photo as the welcome screen"
+                    aria-pressed={settings.welcomeTheme === 'custom' || !!settings.customWelcomeImageUrl}
+                    className={`p-3 rounded border text-left text-[14px] cursor-pointer ${settings.welcomeTheme === 'custom' || settings.customWelcomeImageUrl ? 'border-ink ring-1 ring-ink' : 'border-paper-control hover:bg-paper-surface'}`}
+                  >
+                    Own photo
+                  </button>
+                </div>
+
+                <input ref={welcomeFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleWelcomeImageUpload} />
+
+                {settings.customWelcomeImageUrl ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded border border-paper-control">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={settings.customWelcomeImageUrl} alt="Your welcome photo" className="w-14 h-14 object-cover bg-paper-surface" />
+                      <p className="text-[15px]">Photo on the welcome screen</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>Replace</button>
+                      <button type="button" onClick={handleRemoveWelcomeImage} className={BTN_S}>Remove</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-[14px] text-muted">A landscape photo at least 1920 × 1080 works best.</p>
+                    <button type="button" onClick={() => welcomeFileInputRef.current?.click()} className={BTN_S}>Upload a photo</button>
+                  </div>
+                )}
+
+                <label className="flex flex-col gap-2">
+                  <span className={LABEL}>Headline on the welcome screen (optional)</span>
+                  <input
+                    type="text"
+                    value={settings.customWelcomeHeadline || ''}
+                    onChange={(e) => setSettings((s) => ({ ...s, customWelcomeHeadline: e.target.value }))}
+                    placeholder="e.g. Maya and Alex's wedding"
+                    className={INPUT}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-auto pt-6 border-t border-paper-line flex flex-wrap items-center justify-between gap-4">
+                <p className="text-[15px] text-muted">Step 1 of 2</p>
+                <button type="button" onClick={() => setCurrentPage(2)} className={BTN_P}>
+                  Next: layout and printer
+                </button>
+              </div>
+            </section>
           </div>
-
         </div>
       )}
 
@@ -2101,81 +1866,36 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       {/* DISCRETE MODAL: ADD NEW EVENT PROFILE                                     */}
       {/* ========================================================================= */}
       {isAddEventModalOpen && (
-        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Plus className="w-4 h-4 text-pink-400" /> Create New Event File
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddEventModalOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
-              >
+        <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
+          <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[22px] font-semibold tracking-tight">New event</h3>
+              <button type="button" onClick={() => setIsAddEventModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateEvent} className="space-y-3 text-xs">
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Event Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Summer Gala 2026"
-                  value={newEventName}
-                  onChange={(e) => setNewEventName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
-                />
-              </div>
+            <form onSubmit={handleCreateEvent} className="grid gap-4">
+              <label className="grid gap-2">
+                <span className={LABEL}>Event name</span>
+                <input type="text" required placeholder="e.g. Summer Gala 2026" value={newEventName} onChange={(e) => setNewEventName(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Date shown on the strip</span>
+                <input type="text" placeholder="e.g. OCT 2026" value={newEventDate} onChange={(e) => setNewEventDate(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Hashtag</span>
+                <input type="text" placeholder="e.g. #QuickPicSummer" value={newEventHashtag} onChange={(e) => setNewEventHashtag(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Text printed at the foot of the strip</span>
+                <input type="text" placeholder="e.g. Summer Gala, Jakarta" value={newEventFooterText} onChange={(e) => setNewEventFooterText(e.target.value)} className={INPUT} />
+              </label>
 
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Subtitle / Date</label>
-                <input
-                  type="text"
-                  placeholder="e.g. OCT 2026"
-                  value={newEventDate}
-                  onChange={(e) => setNewEventDate(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Social Hashtag</label>
-                <input
-                  type="text"
-                  placeholder="e.g. #QuickPicSummer"
-                  value={newEventHashtag}
-                  onChange={(e) => setNewEventHashtag(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Strip Bottom Text (Printed on Photo)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. ⚡ QUICKPIC SUMMER GALA"
-                  value={newEventFooterText}
-                  onChange={(e) => setNewEventFooterText(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-pink-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddEventModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-pink-500/25 transition cursor-pointer"
-                >
-                  Save & Select Event
-                </button>
+              <div className="flex flex-wrap justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setIsAddEventModalOpen(false)} className={BTN_S}>Cancel</button>
+                <button type="submit" className={BTN_P}>Save and select</button>
               </div>
             </form>
           </div>
@@ -2186,146 +1906,65 @@ export const OperatorSetupWizard: React.FC<OperatorSetupWizardProps> = ({
       {/* DISCRETE MODAL: ADD NEW OUTLET                                             */}
       {/* ========================================================================= */}
       {isAddOutletModalOpen && (
-        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Store className="w-4 h-4 text-amber-400" /> Add New Outlet Location
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddOutletModalOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
-              >
+        <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
+          <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[22px] font-semibold tracking-tight">Add an outlet</h3>
+              <button type="button" onClick={() => setIsAddOutletModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateOutlet} className="space-y-3 text-xs">
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Outlet Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Grand Indonesia - Flagship"
-                  value={newOutletName}
-                  onChange={(e) => setNewOutletName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
-                />
-              </div>
+            <form onSubmit={handleCreateOutlet} className="grid gap-4">
+              <label className="grid gap-2">
+                <span className={LABEL}>Outlet name</span>
+                <input type="text" required placeholder="e.g. Grand Indonesia, Flagship" value={newOutletName} onChange={(e) => setNewOutletName(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Address or venue details</span>
+                <input type="text" placeholder="e.g. West Mall, Level 3, Jakarta" value={newOutletLocation} onChange={(e) => setNewOutletLocation(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Branch code</span>
+                <input type="text" placeholder="e.g. GI-01" value={newOutletCode} onChange={(e) => setNewOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
+              </label>
 
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Location / Venue Details</label>
-                <input
-                  type="text"
-                  placeholder="e.g. West Mall Level 3, Jakarta Pusat"
-                  value={newOutletLocation}
-                  onChange={(e) => setNewOutletLocation(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Branch Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. GI-01"
-                  value={newOutletCode}
-                  onChange={(e) => setNewOutletCode(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500 font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddOutletModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Save Outlet</span>
-                </button>
+              <div className="flex flex-wrap justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setIsAddOutletModalOpen(false)} className={BTN_S}>Cancel</button>
+                <button type="submit" className={BTN_P}>Save outlet</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* DISCRETE MODAL: EDIT OUTLET                                                */}
-      {/* ========================================================================= */}
       {isEditOutletModalOpen && (
-        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-amber-400" /> Edit Outlet Location
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsEditOutletModalOpen(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white transition cursor-pointer"
-              >
+        <div className="fixed inset-0 z-60 bg-ink/40 flex items-center justify-center p-6 animate-fade-in">
+          <div className="w-full max-w-lg bg-paper border border-paper-control rounded p-8 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[22px] font-semibold tracking-tight">Edit outlet</h3>
+              <button type="button" onClick={() => setIsEditOutletModalOpen(false)} aria-label="Close" className="w-10 h-10 rounded flex items-center justify-center text-muted hover:text-ink hover:bg-paper-surface cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateOutlet} className="space-y-3 text-xs">
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Outlet Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Grand Indonesia - Flagship"
-                  value={editOutletName}
-                  onChange={(e) => setEditOutletName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
-                />
-              </div>
+            <form onSubmit={handleUpdateOutlet} className="grid gap-4">
+              <label className="grid gap-2">
+                <span className={LABEL}>Outlet name</span>
+                <input type="text" required placeholder="e.g. Grand Indonesia, Flagship" value={editOutletName} onChange={(e) => setEditOutletName(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Address or venue details</span>
+                <input type="text" placeholder="e.g. West Mall, Level 3, Jakarta" value={editOutletLocation} onChange={(e) => setEditOutletLocation(e.target.value)} className={INPUT} />
+              </label>
+              <label className="grid gap-2">
+                <span className={LABEL}>Branch code</span>
+                <input type="text" placeholder="e.g. GI-01" value={editOutletCode} onChange={(e) => setEditOutletCode(e.target.value)} className={`${INPUT} tabular-nums`} />
+              </label>
 
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Location / Venue Details</label>
-                <input
-                  type="text"
-                  placeholder="e.g. West Mall Level 3, Jakarta Pusat"
-                  value={editOutletLocation}
-                  onChange={(e) => setEditOutletLocation(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1 font-semibold">Branch Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. GI-01"
-                  value={editOutletCode}
-                  onChange={(e) => setEditOutletCode(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-white focus:outline-amber-500 font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsEditOutletModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-pink-500 hover:brightness-110 text-white font-bold text-xs shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Update Outlet</span>
-                </button>
+              <div className="flex flex-wrap justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setIsEditOutletModalOpen(false)} className={BTN_S}>Cancel</button>
+                <button type="submit" className={BTN_P}>Update outlet</button>
               </div>
             </form>
           </div>
